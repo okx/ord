@@ -1,5 +1,5 @@
-use crate::okx::datastore::StateReadWrite;
-use crate::okx::protocol::{BlockContext, ProtocolConfig, ProtocolManager};
+use crate::okx::protocol::{context::Context, BlockContext, ProtocolConfig, ProtocolManager};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use {
   self::{inscription_updater::InscriptionUpdater, rune_updater::RuneUpdater},
   super::{fetcher::Fetcher, *},
@@ -8,7 +8,8 @@ use {
   tokio::sync::mpsc::{error::TryRecvError, Receiver, Sender},
 };
 
-mod inscription_updater;
+pub(crate) mod inscription_updater;
+pub(crate) use inscription_updater::{Flotsam, Origin};
 mod rune_updater;
 
 pub(crate) struct BlockData {
@@ -89,6 +90,7 @@ impl<'index> Updater<'_> {
     let (mut outpoint_sender, mut tx_out_receiver) = Self::spawn_fetcher(self.index)?;
 
     let mut uncommitted = 0;
+    let mut tx_out_cache = HashMap::new();
     while let Ok(block) = rx.recv() {
       self.index_block(
         self.index,
@@ -96,6 +98,7 @@ impl<'index> Updater<'_> {
         &mut tx_out_receiver,
         &mut wtx,
         block,
+        &mut tx_out_cache,
       )?;
 
       if let Some(progress_bar) = &mut progress_bar {
@@ -316,6 +319,7 @@ impl<'index> Updater<'_> {
     tx_out_receiver: &mut Receiver<TxOut>,
     wtx: &mut WriteTransaction,
     block: BlockData,
+    tx_out_cache: &mut HashMap<OutPoint, TxOut>,
   ) -> Result<()> {
     Reorg::detect_reorg(&block, self.height, self.index)?;
 
@@ -333,8 +337,11 @@ impl<'index> Updater<'_> {
 
     let index_inscriptions = self.height >= index.first_inscription_height;
 
-    let mut fetching_outputs_count = 0;
-    let mut total_outputs_count = 0;
+    let fetching_outputs_count = AtomicUsize::new(0);
+    let total_outputs_count = AtomicUsize::new(0);
+    let cache_outputs_count = AtomicUsize::new(0);
+    let miss_outputs_count = AtomicUsize::new(0);
+    let meet_outputs_count = AtomicUsize::new(0);
     if index_inscriptions {
       // Send all missing input outpoints to be fetched right away
       let txids = block
@@ -342,40 +349,53 @@ impl<'index> Updater<'_> {
         .iter()
         .map(|(_, txid)| txid)
         .collect::<HashSet<_>>();
-      for (tx, _) in &block.txdata {
-        for input in &tx.input {
-          total_outputs_count += 1u64;
+      use rayon::prelude::*;
+      let tx_outs = block
+        .txdata
+        .par_iter()
+        .flat_map(|(tx, _)| tx.input.par_iter())
+        .filter_map(|input| {
+          total_outputs_count.fetch_add(1, Ordering::Relaxed);
           let prev_output = input.previous_output;
           // We don't need coinbase input value
           if prev_output.is_null() {
-            continue;
+            None
+          } else if txids.contains(&prev_output.txid) {
+            meet_outputs_count.fetch_add(1, Ordering::Relaxed);
+            None
+          } else if tx_out_cache.contains_key(&prev_output) {
+            cache_outputs_count.fetch_add(1, Ordering::Relaxed);
+            None
+          } else if let Some(txout) =
+            get_txout_by_outpoint(&outpoint_to_entry, &prev_output).unwrap()
+          {
+            miss_outputs_count.fetch_add(1, Ordering::Relaxed);
+            Some((prev_output, txout))
+          } else {
+            fetching_outputs_count.fetch_add(1, Ordering::Relaxed);
+            outpoint_sender.blocking_send(prev_output).unwrap();
+            None
           }
-          // We don't need input values from txs earlier in the block, since they'll be added to value_cache
-          // when the tx is indexed
-          if txids.contains(&prev_output.txid) {
-            continue;
-          }
-          // We don't need input values we already have in our outpoint_to_entry table from earlier blocks that
-          // were committed to db already
-          if outpoint_to_entry.get(&prev_output.store())?.is_some() {
-            continue;
-          }
-          // We don't know the value of this tx input. Send this outpoint to background thread to be fetched
-          outpoint_sender.blocking_send(prev_output)?;
-          fetching_outputs_count += 1u64;
-        }
+        })
+        .collect::<Vec<_>>();
+      for (out_point, tx_out) in tx_outs.into_iter() {
+        tx_out_cache.insert(out_point, tx_out);
       }
     }
 
     let time = timestamp(block.header.time);
 
     log::info!(
-      "Block {} at {} with {} transactions, fetching previous outputs {}/{}…",
+      "Block {} at {} with {} transactions, fetching previous outputs {}/{}…, {},{},{}, cost:{}ms",
       self.height,
       time,
       block.txdata.len(),
-      fetching_outputs_count,
-      total_outputs_count,
+      fetching_outputs_count.load(Ordering::Relaxed),
+      total_outputs_count.load(Ordering::Relaxed),
+      miss_outputs_count.load(Ordering::Relaxed),
+      meet_outputs_count.load(Ordering::Relaxed),
+      cache_outputs_count.load(Ordering::Relaxed),
+      start.elapsed().as_millis(),
     );
 
     let mut height_to_block_hash = wtx.open_table(HEIGHT_TO_BLOCK_HASH)?;
@@ -420,8 +440,9 @@ impl<'index> Updater<'_> {
       .map(|(number, _id)| number.value() + 1)
       .unwrap_or(0);
 
-    let mut tx_out_cache = HashMap::new();
+    let mut operations = HashMap::new();
     let mut inscription_updater = InscriptionUpdater::new(
+      &mut operations,
       blessed_inscription_count,
       self.index.options.chain(),
       cursed_inscription_count,
@@ -440,9 +461,10 @@ impl<'index> Updater<'_> {
       block.header.time,
       unbound_inscriptions,
       tx_out_receiver,
-      &mut tx_out_cache,
+      tx_out_cache,
     )?;
 
+    let start_time = Instant::now();
     if self.index.index_sats {
       let mut sat_to_satpoint = wtx.open_table(SAT_TO_SATPOINT)?;
       let mut outpoint_to_sat_ranges = wtx.open_table(OUTPOINT_TO_SAT_RANGES)?;
@@ -538,6 +560,7 @@ impl<'index> Updater<'_> {
         inscription_updater.index_envelopes(tx, *txid, None)?;
       }
     }
+    let ord_cost = start_time.elapsed().as_millis();
 
     if index_inscriptions {
       height_to_last_sequence_number
@@ -568,24 +591,37 @@ impl<'index> Updater<'_> {
       &inscription_updater.unbound_inscriptions,
     )?;
 
+    inscription_updater.flush_cache()?;
+
     // Create a protocol manager to index the block of bitmap data.
     let config = ProtocolConfig::new_with_options(&index.options);
-    ProtocolManager::new(&StateReadWrite::new(wtx), &config).index_block(
-      BlockContext {
-        network: index.get_chain_network(),
-        blockheight: self.height,
-        blocktime: block.header.time,
+    ProtocolManager::new(config).index_block(
+      &mut Context {
+        chain: BlockContext {
+          network: index.get_chain_network(),
+          blockheight: self.height,
+          blocktime: block.header.time,
+        },
+        tx_out_cache,
+        ORD_TX_TO_OPERATIONS: &mut wtx.open_table(ORD_TX_TO_OPERATIONS)?,
+        COLLECTIONS_KEY_TO_INSCRIPTION_ID: &mut wtx
+          .open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)?,
+        COLLECTIONS_INSCRIPTION_ID_TO_KINDS: &mut wtx
+          .open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)?,
+        SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY: &mut sequence_number_to_inscription_entry,
+        OUTPOINT_TO_ENTRY: &mut outpoint_to_entry,
+        BRC20_BALANCES: &mut wtx.open_table(BRC20_BALANCES)?,
+        BRC20_TOKEN: &mut wtx.open_table(BRC20_TOKEN)?,
+        BRC20_EVENTS: &mut wtx.open_multimap_table(BRC20_EVENTS)?,
+        BRC20_TRANSFERABLELOG: &mut wtx.open_table(BRC20_TRANSFERABLELOG)?,
+        BRC20_INSCRIBE_TRANSFER: &mut wtx.open_table(BRC20_INSCRIBE_TRANSFER)?,
+        ZERO_INSCRIPTION_ID_TO_INSCRIPTION: &mut wtx
+          .open_table(ZERO_INSCRIPTION_ID_TO_INSCRIPTION)?,
+        ZERO_HEIGHT_TO_TXS: &mut wtx.open_table(ZERO_HEIGHT_TO_TXS)?,
       },
       &block,
-      &inscription_updater.operations,
+      operations,
     )?;
-
-    // write tx_out to outpoint_to_entry table.
-    for (outpoint, tx_out) in tx_out_cache {
-      let mut entry = Vec::new();
-      tx_out.consensus_encode(&mut entry)?;
-      outpoint_to_entry.insert(&outpoint.store(), entry.as_slice())?;
-    }
 
     if index.index_runes && self.height >= self.index.options.first_rune_height() {
       let mut outpoint_to_rune_balances = wtx.open_table(OUTPOINT_TO_RUNE_BALANCES)?;
@@ -624,8 +660,9 @@ impl<'index> Updater<'_> {
     self.outputs_traversed += outputs_in_block;
 
     log::info!(
-      "Wrote {sat_ranges_written} sat ranges from {outputs_in_block} outputs in {} ms",
+      "Wrote {sat_ranges_written} sat ranges from {outputs_in_block} outputs in {} ms, ord cost: {} ms",
       (Instant::now() - start).as_millis(),
+      ord_cost,
     );
 
     Ok(())

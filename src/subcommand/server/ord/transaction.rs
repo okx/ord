@@ -156,6 +156,37 @@ pub(crate) async fn ord_txid_inscriptions(
   })))
 }
 
+// ord/tx/:txid/inscriptions
+/// Retrieve the inscription actions from the given transaction.
+#[utoipa::path(
+get,
+path = "/api/v1/ord/tx/{txid}/inscriptionsop",
+params(
+("txid" = String, Path, description = "transaction ID")
+),
+responses(
+(status = 200, description = "Obtain inscription actions by txid", body = OrdTxInscriptions),
+(status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
+(status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
+(status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
+)
+)]
+pub(crate) async fn ord_txid_inscriptions_op(
+  Extension(index): Extension<Arc<Index>>,
+  Path(txid): Path<String>,
+) -> ApiResult<Vec<InscriptionOp>> {
+  log::debug!("rpc: get ord_txid_inscriptions: {}", txid);
+  let txid = Txid::from_str(&txid).map_err(ApiError::bad_request)?;
+
+  let ops = index
+      .ord_txid_inscriptions(&txid)?
+      .ok_or_api_not_found(OrdError::OperationNotFound)?;
+
+  log::debug!("rpc: get ord_txid_inscriptions: {:?}", ops);
+
+  Ok(Json(ApiResponse::ok(ops)))
+}
+
 // ord/block/:blockhash/inscriptions
 /// Retrieve the inscription actions from the given block.
 #[utoipa::path(

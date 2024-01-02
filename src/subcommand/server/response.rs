@@ -4,6 +4,14 @@ use {
 };
 #[derive(Default, Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[aliases(
+  BRC20Tick = ApiResponse<brc20::TickInfo>,
+  BRC20AllTick = ApiResponse<brc20::AllTickInfo>,
+  BRC20Balance = ApiResponse<brc20::Balance>,
+  BRC20AllBalance = ApiResponse<brc20::AllBalance>,
+  BRC20TxEvents = ApiResponse<brc20::TxEvents>,
+  BRC20BlockEvents = ApiResponse<brc20::BlockEvents>,
+  BRC20Transferable = ApiResponse<brc20::TransferableInscriptions>,
+
   OrdOrdInscription = ApiResponse<ord::OrdInscription>,
   OrdOutPointData = ApiResponse<ord::OutPointData>,
   OrdOutPointResult = ApiResponse<ord::OutPointResult>,
@@ -17,18 +25,21 @@ pub(crate) struct ApiResponse<T: Serialize> {
   /// ok
   #[schema(example = "ok")]
   pub msg: String,
-  pub data: T,
+  pub data: Option<T>,
 }
 
 impl<T> ApiResponse<T>
 where
   T: Serialize,
 {
-  fn new(code: i32, msg: String, data: T) -> Self {
+  fn new(code: i32, msg: String, data: Option<T>) -> Self {
     Self { code, msg, data }
   }
 
   pub fn ok(data: T) -> Self {
-    Self::new(0, "ok".to_string(), data)
+    Self::new(0, "ok".to_string(), Some(data))
+  }
+  pub fn err(msg: String) -> Self {
+    Self::new(1, msg.to_string(), None)
   }
 }
