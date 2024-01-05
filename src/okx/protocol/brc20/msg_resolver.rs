@@ -76,224 +76,230 @@ impl Message {
     }))
   }
 }
-// #[cfg(test)]
-// mod tests {
-//   use super::*;
-//   use crate::okx::datastore::brc20::{Brc20ReaderWriter, Tick, TransferInfo};
-//   use bitcoin::OutPoint;
-//   use redb::Database;
-//   use std::str::FromStr;
-//   use tempfile::NamedTempFile;
-//   fn create_inscription(str: &str) -> Inscription {
-//     Inscription::new(
-//       Some("text/plain;charset=utf-8".as_bytes().to_vec()),
-//       Some(str.as_bytes().to_vec()),
-//     )
-//   }
-//
-//   fn create_inscribe_operation(str: &str) -> (Vec<Inscription>, InscriptionOp) {
-//     let inscriptions = vec![create_inscription(str)];
-//     let txid =
-//       Txid::from_str("b61b0172d95e266c18aea0c624db987e971a5d6d4ebc2aaed85da4642d635735").unwrap();
-//     let op = InscriptionOp {
-//       txid,
-//       action: Action::New {
-//         cursed: false,
-//         unbound: false,
-//         inscription: inscriptions.get(0).unwrap().clone(),
-//       },
-//       inscription_number: Some(1),
-//       inscription_id: InscriptionId { txid, index: 0 },
-//       old_satpoint: SatPoint {
-//         outpoint: OutPoint {
-//           txid: Txid::from_str("2111111111111111111111111111111111111111111111111111111111111111")
-//             .unwrap(),
-//           vout: 0,
-//         },
-//         offset: 0,
-//       },
-//       new_satpoint: Some(SatPoint {
-//         outpoint: OutPoint { txid, vout: 0 },
-//         offset: 0,
-//       }),
-//     };
-//     (inscriptions, op)
-//   }
-//
-//   fn create_transfer_operation() -> InscriptionOp {
-//     let txid =
-//       Txid::from_str("b61b0172d95e266c18aea0c624db987e971a5d6d4ebc2aaed85da4642d635735").unwrap();
-//
-//     let inscription_id = InscriptionId {
-//       txid: Txid::from_str("2111111111111111111111111111111111111111111111111111111111111111")
-//         .unwrap(),
-//       index: 0,
-//     };
-//
-//     InscriptionOp {
-//       txid,
-//       action: Action::Transfer,
-//       inscription_number: Some(1),
-//       inscription_id,
-//       old_satpoint: SatPoint {
-//         outpoint: OutPoint {
-//           txid: inscription_id.txid,
-//           vout: 0,
-//         },
-//         offset: 0,
-//       },
-//       new_satpoint: Some(SatPoint {
-//         outpoint: OutPoint { txid, vout: 0 },
-//         offset: 0,
-//       }),
-//     }
-//   }
-//
-//   #[test]
-//   fn test_invalid_protocol() {
-//     let db_file = NamedTempFile::new().unwrap();
-//     let db = Database::create(db_file.path()).unwrap();
-//     let wtx = db.begin_write().unwrap();
-//     let brc20_store = DataStore::new(&wtx);
-//
-//     let (inscriptions, op) = create_inscribe_operation(
-//       r#"{ "p": "brc-20s","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
-//     );
-//     assert_matches!(Message::resolve(&brc20_store, &inscriptions, &op), Ok(None));
-//   }
-//
-//   #[test]
-//   fn test_cursed_or_unbound_inscription() {
-//     let db_file = NamedTempFile::new().unwrap();
-//     let db = Database::create(db_file.path()).unwrap();
-//     let wtx = db.begin_write().unwrap();
-//     let brc20_store = DataStore::new(&wtx);
-//
-//     let (inscriptions, op) = create_inscribe_operation(
-//       r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
-//     );
-//     let op = InscriptionOp {
-//       action: Action::New {
-//         cursed: true,
-//         unbound: false,
-//         inscription: inscriptions.get(0).unwrap().clone(),
-//       },
-//       ..op
-//     };
-//     assert_matches!(Message::resolve(&brc20_store, &inscriptions, &op), Ok(None));
-//
-//     let op2 = InscriptionOp {
-//       action: Action::New {
-//         cursed: false,
-//         unbound: true,
-//         inscription: inscriptions.get(0).unwrap().clone(),
-//       },
-//       ..op
-//     };
-//     assert_matches!(
-//       Message::resolve(&brc20_store, &inscriptions, &op2),
-//       Ok(None)
-//     );
-//     let op3 = InscriptionOp {
-//       action: Action::New {
-//         cursed: true,
-//         unbound: true,
-//         inscription: inscriptions.get(0).unwrap().clone(),
-//       },
-//       ..op
-//     };
-//     assert_matches!(
-//       Message::resolve(&brc20_store, &inscriptions, &op3),
-//       Ok(None)
-//     );
-//   }
-//
-//   #[test]
-//   fn test_valid_inscribe_operation() {
-//     let db_file = NamedTempFile::new().unwrap();
-//     let db = Database::create(db_file.path()).unwrap();
-//     let wtx = db.begin_write().unwrap();
-//     let brc20_store = DataStore::new(&wtx);
-//
-//     let (inscriptions, op) = create_inscribe_operation(
-//       r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
-//     );
-//     let _result_msg = Message {
-//       txid: op.txid,
-//       inscription_id: op.inscription_id,
-//       old_satpoint: op.old_satpoint,
-//       new_satpoint: op.new_satpoint,
-//       op: Operation::Deploy(Deploy {
-//         tick: "ordi".to_string(),
-//         max_supply: "1000".to_string(),
-//         mint_limit: Some("10".to_string()),
-//         decimals: None,
-//       }),
-//       sat_in_outputs: true,
-//     };
-//     assert_matches!(
-//       Message::resolve(&brc20_store, &inscriptions, &op),
-//       Ok(Some(_result_msg))
-//     );
-//   }
-//
-//   #[test]
-//   fn test_invalid_transfer() {
-//     let db_file = NamedTempFile::new().unwrap();
-//     let db = Database::create(db_file.path()).unwrap();
-//     let wtx = db.begin_write().unwrap();
-//     let brc20_store = DataStore::new(&wtx);
-//
-//     // inscribe transfer not found
-//     let op = create_transfer_operation();
-//     assert_matches!(Message::resolve(&brc20_store, &[], &op), Ok(None));
-//
-//     // non-first transfer operations.
-//     let op1 = InscriptionOp {
-//       old_satpoint: SatPoint {
-//         outpoint: OutPoint {
-//           txid: Txid::from_str("3111111111111111111111111111111111111111111111111111111111111111")
-//             .unwrap(),
-//           vout: 0,
-//         },
-//         offset: 0,
-//       },
-//       ..op
-//     };
-//     assert_matches!(Message::resolve(&brc20_store, &[], &op1), Ok(None));
-//   }
-//
-//   #[test]
-//   fn test_valid_transfer() {
-//     let db_file = NamedTempFile::new().unwrap();
-//     let db = Database::create(db_file.path()).unwrap();
-//     let wtx = db.begin_write().unwrap();
-//     let brc20_store = DataStore::new(&wtx);
-//
-//     // inscribe transfer not found
-//     let op = create_transfer_operation();
-//
-//     brc20_store
-//       .insert_inscribe_transfer_inscription(
-//         op.inscription_id,
-//         TransferInfo {
-//           tick: Tick::from_str("ordi").unwrap(),
-//           amt: 100,
-//         },
-//       )
-//       .unwrap();
-//     let _msg = Message {
-//       txid: op.txid,
-//       inscription_id: op.inscription_id,
-//       old_satpoint: op.old_satpoint,
-//       new_satpoint: op.new_satpoint,
-//       op: Operation::Transfer(Transfer {
-//         tick: "ordi".to_string(),
-//         amount: "100".to_string(),
-//       }),
-//       sat_in_outputs: true,
-//     };
-//
-//     assert_matches!(Message::resolve(&brc20_store, &[], &op), Ok(Some(_msg)));
-//   }
-// }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::index::BRC20_INSCRIBE_TRANSFER;
+  use crate::okx::datastore::brc20::redb::table::insert_inscribe_transfer_inscription;
+  use crate::okx::datastore::brc20::{Tick, TransferInfo};
+  use bitcoin::OutPoint;
+  use redb::Database;
+  use std::str::FromStr;
+  use tempfile::NamedTempFile;
+
+  fn create_inscription(str: &str) -> Inscription {
+    Inscription::new(
+      Some("text/plain;charset=utf-8".as_bytes().to_vec()),
+      Some(str.as_bytes().to_vec()),
+    )
+  }
+
+  fn create_inscribe_operation(str: &str) -> (Vec<Inscription>, InscriptionOp) {
+    let inscriptions = vec![create_inscription(str)];
+    let txid =
+      Txid::from_str("b61b0172d95e266c18aea0c624db987e971a5d6d4ebc2aaed85da4642d635735").unwrap();
+    let op = InscriptionOp {
+      txid,
+      action: Action::New {
+        cursed: false,
+        unbound: false,
+        inscription: inscriptions.get(0).unwrap().clone(),
+        vindicated: false,
+      },
+      sequence_number: 1,
+      inscription_number: Some(1),
+      inscription_id: InscriptionId { txid, index: 0 },
+      old_satpoint: SatPoint {
+        outpoint: OutPoint {
+          txid: Txid::from_str("2111111111111111111111111111111111111111111111111111111111111111")
+            .unwrap(),
+          vout: 0,
+        },
+        offset: 0,
+      },
+      new_satpoint: Some(SatPoint {
+        outpoint: OutPoint { txid, vout: 0 },
+        offset: 0,
+      }),
+    };
+    (inscriptions, op)
+  }
+
+  fn create_transfer_operation() -> InscriptionOp {
+    let txid =
+      Txid::from_str("b61b0172d95e266c18aea0c624db987e971a5d6d4ebc2aaed85da4642d635735").unwrap();
+
+    let inscription_id = InscriptionId {
+      txid: Txid::from_str("2111111111111111111111111111111111111111111111111111111111111111")
+        .unwrap(),
+      index: 0,
+    };
+
+    InscriptionOp {
+      txid,
+      action: Action::Transfer,
+      sequence_number: 1,
+      inscription_number: Some(1),
+      inscription_id,
+      old_satpoint: SatPoint {
+        outpoint: OutPoint {
+          txid: inscription_id.txid,
+          vout: 0,
+        },
+        offset: 0,
+      },
+      new_satpoint: Some(SatPoint {
+        outpoint: OutPoint { txid, vout: 0 },
+        offset: 0,
+      }),
+    }
+  }
+
+  #[test]
+  fn test_invalid_protocol() {
+    let db_file = NamedTempFile::new().unwrap();
+    let db = Database::create(db_file.path()).unwrap();
+    let wtx = db.begin_write().unwrap();
+    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+
+    let (inscriptions, op) = create_inscribe_operation(
+      r#"{ "p": "brc-20s","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
+    );
+    assert_matches!(Message::resolve(&table, &inscriptions, &op), Ok(None));
+  }
+
+  #[test]
+  fn test_cursed_or_unbound_inscription() {
+    let db_file = NamedTempFile::new().unwrap();
+    let db = Database::create(db_file.path()).unwrap();
+    let wtx = db.begin_write().unwrap();
+    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+
+    let (inscriptions, op) = create_inscribe_operation(
+      r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
+    );
+    let op = InscriptionOp {
+      action: Action::New {
+        cursed: true,
+        unbound: false,
+        inscription: inscriptions.get(0).unwrap().clone(),
+        vindicated: false,
+      },
+      ..op
+    };
+    assert_matches!(Message::resolve(&table, &inscriptions, &op), Ok(None));
+
+    let op2 = InscriptionOp {
+      action: Action::New {
+        cursed: false,
+        unbound: true,
+        inscription: inscriptions.get(0).unwrap().clone(),
+        vindicated: false,
+      },
+      ..op
+    };
+    assert_matches!(Message::resolve(&table, &inscriptions, &op2), Ok(None));
+    let op3 = InscriptionOp {
+      action: Action::New {
+        cursed: true,
+        unbound: true,
+        inscription: inscriptions.get(0).unwrap().clone(),
+        vindicated: false,
+      },
+      ..op
+    };
+    assert_matches!(Message::resolve(&table, &inscriptions, &op3), Ok(None));
+  }
+
+  #[test]
+  fn test_valid_inscribe_operation() {
+    let db_file = NamedTempFile::new().unwrap();
+    let db = Database::create(db_file.path()).unwrap();
+    let wtx = db.begin_write().unwrap();
+    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+
+    let (inscriptions, op) = create_inscribe_operation(
+      r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
+    );
+    let _result_msg = Message {
+      txid: op.txid,
+      sequence_number: op.sequence_number,
+      inscription_id: op.inscription_id,
+      old_satpoint: op.old_satpoint,
+      new_satpoint: op.new_satpoint,
+      op: Operation::Deploy(Deploy {
+        tick: "ordi".to_string(),
+        max_supply: "1000".to_string(),
+        mint_limit: Some("10".to_string()),
+        decimals: None,
+      }),
+      sat_in_outputs: true,
+    };
+    assert_matches!(
+      Message::resolve(&table, &inscriptions, &op),
+      Ok(Some(_result_msg))
+    );
+  }
+
+  #[test]
+  fn test_invalid_transfer() {
+    let db_file = NamedTempFile::new().unwrap();
+    let db = Database::create(db_file.path()).unwrap();
+    let wtx = db.begin_write().unwrap();
+    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+
+    // inscribe transfer not found
+    let op = create_transfer_operation();
+    assert_matches!(Message::resolve(&table, &[], &op), Ok(None));
+
+    // non-first transfer operations.
+    let op1 = InscriptionOp {
+      old_satpoint: SatPoint {
+        outpoint: OutPoint {
+          txid: Txid::from_str("3111111111111111111111111111111111111111111111111111111111111111")
+            .unwrap(),
+          vout: 0,
+        },
+        offset: 0,
+      },
+      ..op
+    };
+    assert_matches!(Message::resolve(&table, &[], &op1), Ok(None));
+  }
+
+  #[test]
+  fn test_valid_transfer() {
+    let db_file = NamedTempFile::new().unwrap();
+    let db = Database::create(db_file.path()).unwrap();
+    let wtx = db.begin_write().unwrap();
+    let mut table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+
+    // inscribe transfer not found
+    let op = create_transfer_operation();
+
+    insert_inscribe_transfer_inscription(
+      &mut table,
+      &op.inscription_id,
+      TransferInfo {
+        tick: Tick::from_str("ordi").unwrap(),
+        amt: 100,
+      },
+    )
+    .unwrap();
+    let _msg = Message {
+      txid: op.txid,
+      sequence_number: op.sequence_number,
+      inscription_id: op.inscription_id,
+      old_satpoint: op.old_satpoint,
+      new_satpoint: op.new_satpoint,
+      op: Operation::Transfer(Transfer {
+        tick: "ordi".to_string(),
+        amount: "100".to_string(),
+      }),
+      sat_in_outputs: true,
+    };
+
+    assert_matches!(Message::resolve(&table, &[], &op), Ok(Some(_msg)));
+  }
+}

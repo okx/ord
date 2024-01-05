@@ -615,6 +615,25 @@ impl Index {
       WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP,
     );
 
+    insert_table_info(&mut tables, &wtx, total_bytes, ORD_TX_TO_OPERATIONS);
+    insert_table_info(
+      &mut tables,
+      &wtx,
+      total_bytes,
+      COLLECTIONS_KEY_TO_INSCRIPTION_ID,
+    );
+    insert_table_info(
+      &mut tables,
+      &wtx,
+      total_bytes,
+      COLLECTIONS_INSCRIPTION_ID_TO_KINDS,
+    );
+    insert_table_info(&mut tables, &wtx, total_bytes, BRC20_BALANCES);
+    insert_table_info(&mut tables, &wtx, total_bytes, BRC20_TOKEN);
+    insert_table_info(&mut tables, &wtx, total_bytes, BRC20_EVENTS);
+    insert_table_info(&mut tables, &wtx, total_bytes, BRC20_TRANSFERABLELOG);
+    insert_table_info(&mut tables, &wtx, total_bytes, BRC20_INSCRIBE_TRANSFER);
+
     for table in wtx.list_tables()? {
       assert!(tables.contains_key(table.name()));
     }
