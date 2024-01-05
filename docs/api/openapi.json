@@ -1,0 +1,2272 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ord",
+    "description": "◉ Ordinal wallet and block explorer",
+    "license": {
+      "name": "CC0-1.0"
+    },
+    "version": "0.14.0"
+  },
+  "paths": {
+    "/api/v1/brc20/address/{address}/balance": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Get all ticker balances of the address.",
+        "description": "Get all ticker balances of the address.\n\nRetrieve all BRC20 protocol asset balances associated with a address.",
+        "operationId": "brc20_all_balance",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "description": "Address",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain account balances by query address.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BRC20AllBalance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brc20/address/{address}/transferable": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Get the balance of ticker of the address.",
+        "description": "Get the balance of ticker of the address.\n\nRetrieve the balance of the ticker from the given address.",
+        "operationId": "brc20_all_transferable",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "description": "Address",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain account all transferable inscriptions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BRC20Transferable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brc20/block/{blockhash}/events": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Get block events by blockhash.",
+        "description": "Get block events by blockhash.\n\nRetrieve all BRC20 events associated with a block.",
+        "operationId": "brc20_block_events",
+        "parameters": [
+          {
+            "name": "blockhash",
+            "in": "path",
+            "description": "block hash",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain block events by block hash",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BRC20BlockEvents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brc20/tick": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Get all tickers info.",
+        "description": "Get all tickers info.\n\nRetrieve detailed information about all tickers.",
+        "operationId": "brc20_all_tick_info",
+        "responses": {
+          "200": {
+            "description": "Obtain matching all BRC20 tickers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BRC20AllTick"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brc20/tick/{ticker}": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Get the ticker info.",
+        "description": "Get the ticker info.\n\nRetrieve detailed information about the ticker.",
+        "operationId": "brc20_tick_info",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "description": "Token ticker",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 4,
+              "minLength": 4
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain matching BRC20 ticker by query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BRC20Tick"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "ticker must be 4 bytes length"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ticker not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "tick not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brc20/tick/{ticker}/address/{address}/balance": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Get the ticker balance of the address.",
+        "description": "Get the ticker balance of the address.\n\nRetrieve the asset balance of the 'ticker' for the address.",
+        "operationId": "brc20_balance",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "description": "Token ticker",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 4,
+              "minLength": 4
+            }
+          },
+          {
+            "name": "address",
+            "in": "path",
+            "description": "Address",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain account balance by query ticker.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BRC20Balance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brc20/tick/{ticker}/address/{address}/transferable": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Get the transferable inscriptions of the address.",
+        "description": "Get the transferable inscriptions of the address.\n\nRetrieve the transferable inscriptions with the ticker from the given address.",
+        "operationId": "brc20_transferable",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "description": "Token ticker",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 4,
+              "minLength": 4
+            }
+          },
+          {
+            "name": "address",
+            "in": "path",
+            "description": "Address",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain account transferable inscriptions of ticker.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BRC20Transferable"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brc20/tx/{txid}/events": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Get transaction events by txid.",
+        "description": "Get transaction events by txid.\n\nRetrieve all BRC20 events associated with a transaction.",
+        "operationId": "brc20_tx_events",
+        "parameters": [
+          {
+            "name": "txid",
+            "in": "path",
+            "description": "transaction ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain transaction events by txid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BRC20TxEvents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/node/info": {
+      "get": {
+        "tags": [
+          "info"
+        ],
+        "summary": "Retrieve the indexer status.",
+        "description": "Retrieve the indexer status.\n\nDisplay indexer synchronization information, including indexer version, blockchain network, indexer height, blockchain network height, and other information.",
+        "operationId": "node_info",
+        "parameters": [
+          {
+            "name": "btc",
+            "in": "path",
+            "description": "Optional to query the BTC chain status.",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain node runtime status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ord/block/{blockhash}/inscriptions": {
+      "get": {
+        "tags": [
+          "ord"
+        ],
+        "summary": "Retrieve the inscription actions from the given block.",
+        "description": "Retrieve the inscription actions from the given block.",
+        "operationId": "ord_block_inscriptions",
+        "parameters": [
+          {
+            "name": "blockhash",
+            "in": "path",
+            "description": "block hash",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain inscription actions by blockhash",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdBlockInscriptions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ord/id/{id}/inscription": {
+      "get": {
+        "tags": [
+          "ord"
+        ],
+        "summary": "Retrieve the inscription infomation with the specified inscription id.",
+        "description": "Retrieve the inscription infomation with the specified inscription id.",
+        "operationId": "ord_inscription_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "inscription ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain inscription infomation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdOrdInscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ord/number/{number}/inscription": {
+      "get": {
+        "tags": [
+          "ord"
+        ],
+        "summary": "Retrieve the inscription infomation with the specified inscription number.",
+        "description": "Retrieve the inscription infomation with the specified inscription number.",
+        "operationId": "ord_inscription_number",
+        "parameters": [
+          {
+            "name": "number",
+            "in": "path",
+            "description": "inscription number",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain inscription infomation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdOrdInscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ord/outpoint/{outpoint}/info": {
+      "get": {
+        "tags": [
+          "ord"
+        ],
+        "summary": "Retrieve the outpoint infomation with the specified outpoint.",
+        "description": "Retrieve the outpoint infomation with the specified outpoint.",
+        "operationId": "ord_outpoint",
+        "parameters": [
+          {
+            "name": "outpoint",
+            "in": "path",
+            "description": "Outpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain outpoint infomation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdOutPointData"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ord/tx/{txid}/inscriptions": {
+      "get": {
+        "tags": [
+          "ord"
+        ],
+        "summary": "Retrieve the inscription actions from the given transaction.",
+        "description": "Retrieve the inscription actions from the given transaction.",
+        "operationId": "ord_txid_inscriptions",
+        "parameters": [
+          {
+            "name": "txid",
+            "in": "path",
+            "description": "transaction ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain inscription actions by txid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdTxInscriptions"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "Internal"
+            ],
+            "properties": {
+              "Internal": {
+                "type": "string",
+                "description": "Internal server error."
+              }
+            },
+            "example": {
+              "code": 1,
+              "msg": "internal error"
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "BadRequest"
+            ],
+            "properties": {
+              "BadRequest": {
+                "type": "string",
+                "description": "Bad request."
+              }
+            },
+            "example": {
+              "code": 1,
+              "msg": "bad request"
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "NotFound"
+            ],
+            "properties": {
+              "NotFound": {
+                "type": "string",
+                "description": "Resource not found."
+              }
+            },
+            "example": {
+              "code": 1,
+              "msg": "not found"
+            }
+          }
+        ]
+      },
+      "BRC20AllBalance": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.AllBalance"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "BRC20AllTick": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.AllTickInfo"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "BRC20Balance": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.Balance"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "BRC20BlockEvents": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.BlockEvents"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "BRC20Tick": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.TickInfo"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "BRC20Transferable": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.TransferableInscriptions"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "BRC20TxEvents": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.TxEvents"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ChainInfo": {
+        "type": "object",
+        "properties": {
+          "chainHeight": {
+            "type": "integer",
+            "format": "uint64",
+            "description": "The height of the blockchain.",
+            "nullable": true,
+            "minimum": 0
+          },
+          "network": {
+            "type": "string",
+            "description": "The network of the blockchain.",
+            "nullable": true
+          },
+          "ordHeight": {
+            "type": "integer",
+            "format": "uint64",
+            "description": "The height of our indexer.",
+            "nullable": true,
+            "minimum": 0
+          }
+        }
+      },
+      "Node": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NodeInfo"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "NodeInfo": {
+        "type": "object",
+        "required": [
+          "chainInfo"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string",
+            "description": "The name of the branch or tag of the API endpoint build.",
+            "nullable": true
+          },
+          "buildTime": {
+            "type": "string",
+            "description": "Build time of the API endpoint.",
+            "nullable": true
+          },
+          "chainInfo": {
+            "$ref": "#/components/schemas/ChainInfo"
+          },
+          "commitHash": {
+            "type": "string",
+            "description": "Git commit hash of the API endpoint build.",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "description": "Node version of the API endpoint build.",
+            "nullable": true
+          }
+        }
+      },
+      "OrdBlockInscriptions": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.BlockInscriptions"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "OrdOrdInscription": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.OrdInscription"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "OrdOutPointData": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.OutPointData"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "OrdOutPointResult": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.OutPointResult"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "OrdTxInscriptions": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.TxInscriptions"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ScriptPubkey": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "Address."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "nonStandard"
+            ],
+            "properties": {
+              "nonStandard": {
+                "type": "string",
+                "description": "Non-standard script hash."
+              }
+            }
+          }
+        ]
+      },
+      "brc20.AllBalance": {
+        "type": "object",
+        "required": [
+          "balance"
+        ],
+        "properties": {
+          "balance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/brc20.Balance"
+            }
+          }
+        }
+      },
+      "brc20.AllTickInfo": {
+        "type": "object",
+        "required": [
+          "tokens"
+        ],
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/brc20.TickInfo"
+            }
+          }
+        }
+      },
+      "brc20.Balance": {
+        "type": "object",
+        "required": [
+          "tick",
+          "availableBalance",
+          "transferableBalance",
+          "overallBalance"
+        ],
+        "properties": {
+          "availableBalance": {
+            "type": "string",
+            "format": "uint64",
+            "description": "Available balance."
+          },
+          "overallBalance": {
+            "type": "string",
+            "format": "uint64",
+            "description": "Overall balance."
+          },
+          "tick": {
+            "type": "string",
+            "description": "Name of the ticker."
+          },
+          "transferableBalance": {
+            "type": "string",
+            "format": "uint64",
+            "description": "Transferable balance."
+          }
+        }
+      },
+      "brc20.BlockEvents": {
+        "type": "object",
+        "required": [
+          "block"
+        ],
+        "properties": {
+          "block": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/brc20.TxEvents"
+            }
+          }
+        }
+      },
+      "brc20.DeployEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "tick",
+          "inscriptionId",
+          "inscriptionNumber",
+          "oldSatpoint",
+          "newSatpoint",
+          "supply",
+          "limitPerMint",
+          "decimal",
+          "from",
+          "to",
+          "valid",
+          "msg"
+        ],
+        "properties": {
+          "decimal": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The decimal of the deployed ticker.",
+            "minimum": 0
+          },
+          "from": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "inscriptionId": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "inscriptionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          },
+          "limitPerMint": {
+            "type": "string",
+            "description": "The limit per mint of the deployed ticker."
+          },
+          "msg": {
+            "type": "string",
+            "description": "Message generated during execution."
+          },
+          "newSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction output."
+          },
+          "oldSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction input."
+          },
+          "supply": {
+            "type": "string",
+            "description": "The total supply of the deployed ticker."
+          },
+          "tick": {
+            "type": "string",
+            "description": "The ticker deployed."
+          },
+          "to": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "type": {
+            "type": "string",
+            "description": "Event type."
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Executed state."
+          }
+        }
+      },
+      "brc20.ErrorEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "inscriptionId",
+          "inscriptionNumber",
+          "oldSatpoint",
+          "newSatpoint",
+          "from",
+          "to",
+          "valid",
+          "msg"
+        ],
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "inscriptionId": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "inscriptionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          },
+          "msg": {
+            "type": "string",
+            "description": "Error message."
+          },
+          "newSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction output."
+          },
+          "oldSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction input."
+          },
+          "to": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "type": {
+            "type": "string",
+            "description": "Event type."
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Executed state."
+          }
+        }
+      },
+      "brc20.InscribeTransferEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "tick",
+          "inscriptionId",
+          "inscriptionNumber",
+          "oldSatpoint",
+          "newSatpoint",
+          "amount",
+          "from",
+          "to",
+          "valid",
+          "msg"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string",
+            "description": "The amount of pretransfer."
+          },
+          "from": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "inscriptionId": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "inscriptionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          },
+          "msg": {
+            "type": "string",
+            "description": "Message generated during execution."
+          },
+          "newSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction output."
+          },
+          "oldSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction input."
+          },
+          "tick": {
+            "type": "string",
+            "description": "The ticker of pretransfer."
+          },
+          "to": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "type": {
+            "type": "string",
+            "description": "Event type."
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Executed state."
+          }
+        }
+      },
+      "brc20.MintEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "tick",
+          "inscriptionId",
+          "inscriptionNumber",
+          "oldSatpoint",
+          "newSatpoint",
+          "amount",
+          "from",
+          "to",
+          "valid",
+          "msg"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string",
+            "description": "The amount minted."
+          },
+          "from": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "inscriptionId": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "inscriptionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          },
+          "msg": {
+            "type": "string",
+            "description": "Message generated during execution."
+          },
+          "newSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction output."
+          },
+          "oldSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction input."
+          },
+          "tick": {
+            "type": "string",
+            "description": "The ticker minted."
+          },
+          "to": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "type": {
+            "type": "string",
+            "description": "Event type."
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Executed state."
+          }
+        }
+      },
+      "brc20.TickInfo": {
+        "type": "object",
+        "description": "Description of a BRC20 ticker.",
+        "required": [
+          "tick",
+          "inscriptionId",
+          "inscriptionNumber",
+          "supply",
+          "limitPerMint",
+          "minted",
+          "decimal",
+          "deployBy",
+          "txid",
+          "deployHeight",
+          "deployBlocktime"
+        ],
+        "properties": {
+          "decimal": {
+            "type": "integer",
+            "format": "uint8",
+            "description": "The decimal of the ticker.<br>\nNumber of decimals cannot exceed 18 (default).",
+            "default": 18,
+            "example": 18,
+            "maximum": 18,
+            "minimum": 0
+          },
+          "deployBlocktime": {
+            "type": "integer",
+            "format": "uint32",
+            "description": "The timestamp of the block that the ticker deployed.",
+            "minimum": 0
+          },
+          "deployBy": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "deployHeight": {
+            "type": "integer",
+            "format": "uint32",
+            "description": "The height of the block that the ticker deployed.",
+            "minimum": 0
+          },
+          "inscriptionId": {
+            "type": "string",
+            "description": "Inscription ID of the ticker deployed."
+          },
+          "inscriptionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Inscription number of the ticker deployed."
+          },
+          "limitPerMint": {
+            "type": "string",
+            "format": "uint64",
+            "description": "The maximum amount of each mining."
+          },
+          "minted": {
+            "type": "string",
+            "format": "uint64",
+            "description": "The amount of the ticker that has been minted."
+          },
+          "supply": {
+            "type": "string",
+            "format": "uint64",
+            "description": "The total supply of the ticker.<br>\nMaximum supply cannot exceed uint64_max.\n\nA string containing a 64-bit unsigned integer.<br>\nWe represent u64 values as a string to ensure compatibility with languages such as JavaScript that do not parse u64s in JSON natively."
+          },
+          "tick": {
+            "type": "string",
+            "description": "Name of the ticker."
+          },
+          "txid": {
+            "type": "string",
+            "description": "A hex encoded 32 byte transaction ID that the ticker deployed.\n\nThis is represented in a string as adding a prefix 0x to a 64 character hex string."
+          }
+        }
+      },
+      "brc20.TransferEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "tick",
+          "inscriptionId",
+          "inscriptionNumber",
+          "oldSatpoint",
+          "newSatpoint",
+          "amount",
+          "from",
+          "to",
+          "valid",
+          "msg"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string",
+            "description": "The amount of transfer."
+          },
+          "from": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "inscriptionId": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "inscriptionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          },
+          "msg": {
+            "type": "string",
+            "description": "Message generated during execution."
+          },
+          "newSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction output."
+          },
+          "oldSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction input."
+          },
+          "tick": {
+            "type": "string",
+            "description": "The ticker of transfer."
+          },
+          "to": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "type": {
+            "type": "string",
+            "description": "Event type."
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Executed state."
+          }
+        }
+      },
+      "brc20.TransferableInscription": {
+        "type": "object",
+        "required": [
+          "inscriptionId",
+          "inscriptionNumber",
+          "amount",
+          "tick",
+          "owner"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string",
+            "format": "uint64",
+            "description": "The amount of the ticker that will be transferred."
+          },
+          "inscriptionId": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "inscriptionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          },
+          "owner": {
+            "type": "string",
+            "description": "The address to which the transfer will be made."
+          },
+          "tick": {
+            "type": "string",
+            "description": "The ticker name that will be transferred."
+          }
+        }
+      },
+      "brc20.TransferableInscriptions": {
+        "type": "object",
+        "required": [
+          "inscriptions"
+        ],
+        "properties": {
+          "inscriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/brc20.TransferableInscription"
+            }
+          }
+        }
+      },
+      "brc20.TxEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/brc20.DeployEvent"
+          },
+          {
+            "$ref": "#/components/schemas/brc20.MintEvent"
+          },
+          {
+            "$ref": "#/components/schemas/brc20.InscribeTransferEvent"
+          },
+          {
+            "$ref": "#/components/schemas/brc20.TransferEvent"
+          },
+          {
+            "$ref": "#/components/schemas/brc20.ErrorEvent"
+          }
+        ]
+      },
+      "brc20.TxEvents": {
+        "type": "object",
+        "required": [
+          "events",
+          "txid"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/brc20.TxEvent"
+            }
+          },
+          "txid": {
+            "type": "string"
+          }
+        }
+      },
+      "ord.BlockInscriptions": {
+        "type": "object",
+        "required": [
+          "block"
+        ],
+        "properties": {
+          "block": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ord.TxInscriptions"
+            }
+          }
+        }
+      },
+      "ord.InscriptionAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "new"
+            ],
+            "properties": {
+              "new": {
+                "type": "object",
+                "description": "New inscription",
+                "required": [
+                  "cursed",
+                  "unbound"
+                ],
+                "properties": {
+                  "cursed": {
+                    "type": "boolean"
+                  },
+                  "unbound": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "string",
+            "description": "Transfer inscription",
+            "enum": [
+              "transfer"
+            ]
+          }
+        ]
+      },
+      "ord.InscriptionDigest": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "location"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "location": {
+            "type": "string",
+            "description": "The inscription location."
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          }
+        }
+      },
+      "ord.OrdInscription": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "genesisHeight",
+          "location",
+          "collections"
+        ],
+        "properties": {
+          "collections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Collections of Inscriptions."
+          },
+          "content": {
+            "type": "string",
+            "description": "The inscription content body.",
+            "nullable": true
+          },
+          "contentType": {
+            "type": "string",
+            "description": "The inscription content type.",
+            "nullable": true
+          },
+          "genesisHeight": {
+            "type": "integer",
+            "format": "uint64",
+            "description": "The inscription genesis block height.",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "location": {
+            "type": "string",
+            "description": "The inscription location."
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          },
+          "owner": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScriptPubkey"
+              }
+            ],
+            "nullable": true
+          },
+          "sat": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The inscription sat index.",
+            "nullable": true,
+            "minimum": 0
+          }
+        }
+      },
+      "ord.OutPointData": {
+        "type": "object",
+        "required": [
+          "txid",
+          "scriptPubKey",
+          "owner",
+          "value",
+          "inscriptionDigest"
+        ],
+        "properties": {
+          "inscriptionDigest": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ord.InscriptionDigest"
+            },
+            "description": "The inscriptions on the transaction output."
+          },
+          "owner": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "scriptPubKey": {
+            "type": "string",
+            "description": "The script pubkey."
+          },
+          "txid": {
+            "type": "string",
+            "description": "The transaction id."
+          },
+          "value": {
+            "type": "integer",
+            "format": "uint64",
+            "description": "The value of the transaction output.",
+            "minimum": 0
+          }
+        }
+      },
+      "ord.OutPointResult": {
+        "type": "object",
+        "required": [
+          "latestBlockhash",
+          "latestHeight"
+        ],
+        "properties": {
+          "latestBlockhash": {
+            "type": "string"
+          },
+          "latestHeight": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ord.OutPointData"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "ord.TxInscription": {
+        "type": "object",
+        "required": [
+          "action",
+          "inscriptionId",
+          "oldSatpoint",
+          "from"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ord.InscriptionAction"
+          },
+          "from": {
+            "$ref": "#/components/schemas/ScriptPubkey"
+          },
+          "inscriptionId": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "inscriptionNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number.",
+            "nullable": true
+          },
+          "newSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction output.",
+            "nullable": true
+          },
+          "oldSatpoint": {
+            "type": "string",
+            "description": "The inscription satpoint of the transaction input."
+          },
+          "to": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScriptPubkey"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "ord.TxInscriptions": {
+        "type": "object",
+        "required": [
+          "inscriptions",
+          "txid"
+        ],
+        "properties": {
+          "inscriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ord.TxInscription"
+            }
+          },
+          "txid": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

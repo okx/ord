@@ -1,6 +1,8 @@
 `ord`
 =====
+Forks on [ordinals/ord](https://github.com/ordinals/ord) and adds the [BRC20 Protocol](https://domo-2.gitbook.io/brc-20-experiment/) feature. It can easily call the API, obtaining the BRC20 transaction and tick balance.
 
+-----------------------
 `ord` is an index, block explorer, and command-line wallet. It is experimental
 software with no warranty. See [LICENSE](LICENSE) for more details.
 
@@ -114,23 +116,6 @@ Once built, the `ord` binary can be found at `./target/release/ord`.
 
 `ord` requires `rustc` version 1.67.0 or later. Run `rustc --version` to ensure you have this version. Run `rustup update` to get the latest stable release.
 
-### Homebrew
-
-`ord` is available in [Homebrew](https://brew.sh/):
-
-```
-brew install ord
-```
-
-### Debian Package
-
-To build a `.deb` package:
-
-```
-cargo install cargo-deb
-cargo deb
-```
-
 Contributing
 ------------
 
@@ -229,16 +214,42 @@ bitcoin_rpc_user: foo
 bitcoin_rpc_pass: bar
 ```
 
+Quick start
+-----------
+```
+./ord --data-dir=./_cache --log-level <level> --rpc-url=<url> --bitcoin-rpc-user <username> --bitcoin-rpc-pass <password> --enable-save-ord-receipts --enable-index-brc20 server --http-port <port>
+```
+For more commands, please check `./ord --help`.
+
+Features
+--------
+- [x] Saving ord creation and transfer receipts.(with the `--enable-save-ord-receipts` command).
+- [x] Indexing BRC20 protocol and saving states (with the `--enable-index-brc20` command).
+- [x] Indexing Bitmap collection and saving states (with the `--enable-index-bitmap` command).
+
+APIs
+----
+For more information, follow [openapi.json](./docs/api/openapi.json)
+
 Logging
 --------
 
-`ord` uses [env_logger](https://docs.rs/env_logger/latest/env_logger/). Set the
-`RUST_LOG` environment variable in order to turn on logging. For example, run
+`ord` uses [log4rs](https://docs.rs/log4rs/latest/log4rs/) instead of [env_logger](https://docs.rs/env_logger/latest/env_logger/). Set the
+`--log-level` argument variable in order to turn on logging. For example, run
 the server and show `info`-level log messages and above:
 
 ```
-$ RUST_LOG=info cargo run server
+$ cargo run server --log-level info
 ```
+
+SnapShot
+--------
+Use a snapshot to quickly synchronize the BRC20 indexer database.
+
+1. Download the specified height snapshot database from this web page.
+- <https://static.okex.org/cdn/chain/brc20/snapshot/history-brc20.html>
+
+2. Extract and Unzip the `.tar.gz` file and replace the database file.
 
 New Releases
 ------------
