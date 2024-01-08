@@ -93,7 +93,7 @@ impl<'index> Updater<'_> {
     let commit_height_interval = self.index.options.commit_height_interval();
     let commit_persist_interval = self.index.options.commit_persist_interval();
     log::info!(
-      "commit height interval: {}, commit none interval: {}",
+      "commit height interval: {}, commit persist interval: {}",
       commit_height_interval,
       commit_persist_interval
     );
