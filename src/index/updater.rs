@@ -91,11 +91,11 @@ impl<'index> Updater<'_> {
     let (mut outpoint_sender, mut tx_out_receiver) = Self::spawn_fetcher(self.index)?;
 
     let commit_height_interval = self.index.options.commit_height_interval();
-    let commit_none_interval = self.index.options.commit_none_interval();
+    let commit_persist_interval = self.index.options.commit_persist_interval();
     log::info!(
       "commit height interval: {}, commit none interval: {}",
       commit_height_interval,
-      commit_none_interval
+      commit_persist_interval
     );
 
     let mut uncommitted = 0;
@@ -129,7 +129,7 @@ impl<'index> Updater<'_> {
       let should_break = SHUTTING_DOWN.load(atomic::Ordering::Relaxed);
       if uncommitted >= commit_height_interval {
         unpersisted += 1;
-        if unpersisted < commit_none_interval && !should_break {
+        if unpersisted < commit_persist_interval && !should_break {
           wtx.set_durability(redb::Durability::None);
           log::info!("set wtx durability to none");
         } else {

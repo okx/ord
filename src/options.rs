@@ -94,9 +94,9 @@ pub struct Options {
   #[clap(
     long,
     default_value = "0",
-    help = "(experimental) DB commit none interval."
+    help = "(experimental) DB commit persist interval."
   )]
-  pub(crate) commit_none_interval: u64,
+  pub(crate) commit_persist_interval: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -332,11 +332,11 @@ impl Options {
     }
   }
 
-  pub(crate) fn commit_none_interval(&self) -> u64 {
-    if self.commit_none_interval == 0 {
+  pub(crate) fn commit_persist_interval(&self) -> u64 {
+    if self.commit_persist_interval == 0 {
       1
     } else {
-      self.commit_none_interval
+      self.commit_persist_interval
     }
   }
 }
