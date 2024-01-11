@@ -90,7 +90,16 @@ impl<'index> Updater<'_> {
 
     let (mut outpoint_sender, mut tx_out_receiver) = Self::spawn_fetcher(self.index)?;
 
+    let commit_height_interval = self.index.options.commit_height_interval();
+    let commit_persist_interval = self.index.options.commit_persist_interval();
+    log::info!(
+      "commit height interval: {}, commit persist interval: {}",
+      commit_height_interval,
+      commit_persist_interval
+    );
+
     let mut uncommitted = 0;
+    let mut unpersisted = 0;
     let mut tx_out_cache = SimpleLru::new(self.index.options.lru_size);
     while let Ok(block) = rx.recv() {
       tx_out_cache.refresh();
@@ -117,7 +126,15 @@ impl<'index> Updater<'_> {
 
       uncommitted += 1;
 
-      if uncommitted == 200 {
+      let should_break = SHUTTING_DOWN.load(atomic::Ordering::Relaxed);
+      if uncommitted >= commit_height_interval {
+        unpersisted += 1;
+        if unpersisted < commit_persist_interval && !should_break {
+          wtx.set_durability(redb::Durability::None);
+          log::info!("set wtx durability to none");
+        } else {
+          unpersisted = 0;
+        }
         self.commit(wtx)?;
         uncommitted = 0;
         wtx = self.index.begin_write()?;
@@ -133,6 +150,9 @@ impl<'index> Updater<'_> {
           // write transaction
           break;
         }
+        if should_break {
+          break;
+        }
         wtx
           .open_table(WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP)?
           .insert(
@@ -142,14 +162,14 @@ impl<'index> Updater<'_> {
               .map(|duration| duration.as_millis())
               .unwrap_or(0),
           )?;
-      }
-
-      if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
-        break;
+      } else {
+        if should_break {
+          break;
+        }
       }
     }
 
-    if uncommitted > 0 {
+    if uncommitted > 0 || unpersisted > 0 {
       self.commit(wtx)?;
     }
 
