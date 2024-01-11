@@ -68,8 +68,8 @@ where
 }
 
 // ORD_TX_TO_OPERATIONS
-pub fn save_transaction_operations<'db, 'txn>(
-  table: &mut Table<'db, 'txn, &'static TxidValue, &'static [u8]>,
+pub fn save_transaction_operations(
+  table: &mut Table<'_, '_, &'static TxidValue, &'static [u8]>,
   txid: &Txid,
   operations: &[InscriptionOp],
 ) -> crate::Result<()> {
@@ -78,8 +78,8 @@ pub fn save_transaction_operations<'db, 'txn>(
 }
 
 // COLLECTIONS_KEY_TO_INSCRIPTION_ID
-pub fn set_inscription_by_collection_key<'db, 'txn>(
-  table: &mut Table<'db, 'txn, &'static str, InscriptionIdValue>,
+pub fn set_inscription_by_collection_key(
+  table: &mut Table<'_, '_, &'static str, InscriptionIdValue>,
   key: &str,
   inscription_id: &InscriptionId,
 ) -> crate::Result<()> {
@@ -88,8 +88,8 @@ pub fn set_inscription_by_collection_key<'db, 'txn>(
 }
 
 // COLLECTIONS_INSCRIPTION_ID_TO_KINDS
-pub fn set_inscription_attributes<'db, 'txn>(
-  table: &mut Table<'db, 'txn, InscriptionIdValue, &'static [u8]>,
+pub fn set_inscription_attributes(
+  table: &mut Table<'_, '_, InscriptionIdValue, &'static [u8]>,
   inscription_id: &InscriptionId,
   kind: &[CollectionKind],
 ) -> crate::Result<()> {

@@ -95,10 +95,7 @@ fn process_deploy(
 
   let tick = deploy.tick.parse::<Tick>()?;
 
-  if let Some(stored_tick_info) = context
-    .get_token_info(&tick)
-    .map_err(|e| Error::LedgerError(e))?
-  {
+  if let Some(stored_tick_info) = context.get_token_info(&tick).map_err(Error::LedgerError)? {
     return Err(Error::BRC20Error(BRC20Error::DuplicateTick(
       stored_tick_info.tick.to_string(),
     )));
@@ -152,7 +149,7 @@ fn process_deploy(
   };
   context
     .insert_token_info(&tick, &new_info)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   Ok(Event::Deploy(DeployEvent {
     supply,
@@ -170,7 +167,7 @@ fn process_mint(context: &mut Context, msg: &ExecutionMessage, mint: Mint) -> Re
 
   let token_info = context
     .get_token_info(&tick)
-    .map_err(|e| Error::LedgerError(e))?
+    .map_err(Error::LedgerError)?
     .ok_or(BRC20Error::TickNotFound(tick.to_string()))?;
 
   let base = BIGDECIMAL_TEN.checked_powu(u64::from(token_info.decimal))?;
@@ -217,7 +214,7 @@ fn process_mint(context: &mut Context, msg: &ExecutionMessage, mint: Mint) -> Re
   // get or initialize user balance.
   let mut balance = context
     .get_balance(&to_script_key, &tick)
-    .map_err(|e| Error::LedgerError(e))?
+    .map_err(Error::LedgerError)?
     .map_or(Balance::new(&tick), |v| v);
 
   // add amount to available balance.
@@ -228,13 +225,13 @@ fn process_mint(context: &mut Context, msg: &ExecutionMessage, mint: Mint) -> Re
   // store to database.
   context
     .update_token_balance(&to_script_key, balance)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   // update token minted.
   let minted = minted.checked_add(&amt)?.checked_to_u128()?;
   context
     .update_mint_token_info(&tick, minted, context.chain.blockheight)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   Ok(Event::Mint(MintEvent {
     tick: token_info.tick,
@@ -255,7 +252,7 @@ fn process_inscribe_transfer(
 
   let token_info = context
     .get_token_info(&tick)
-    .map_err(|e| Error::LedgerError(e))?
+    .map_err(Error::LedgerError)?
     .ok_or(BRC20Error::TickNotFound(tick.to_string()))?;
 
   let base = BIGDECIMAL_TEN.checked_powu(u64::from(token_info.decimal))?;
@@ -277,7 +274,7 @@ fn process_inscribe_transfer(
 
   let mut balance = context
     .get_balance(&to_script_key, &tick)
-    .map_err(|e| Error::LedgerError(e))?
+    .map_err(Error::LedgerError)?
     .map_or(Balance::new(&tick), |v| v);
 
   let overall = Into::<Num>::into(balance.overall_balance);
@@ -295,7 +292,7 @@ fn process_inscribe_transfer(
   let amt = amt.checked_to_u128()?;
   context
     .update_token_balance(&to_script_key, balance)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   let inscription = TransferableLog {
     inscription_id: msg.inscription_id,
@@ -307,7 +304,7 @@ fn process_inscribe_transfer(
 
   context
     .insert_transferable(&inscription.owner, &tick, &inscription)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   context
     .insert_inscribe_transfer_inscription(
@@ -317,7 +314,7 @@ fn process_inscribe_transfer(
         amt,
       },
     )
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   Ok(Event::InscribeTransfer(InscripbeTransferEvent {
     tick: inscription.tick,
@@ -328,7 +325,7 @@ fn process_inscribe_transfer(
 fn process_transfer(context: &mut Context, msg: &ExecutionMessage) -> Result<Event, Error> {
   let transferable = context
     .get_transferable_by_id(&msg.from, &msg.inscription_id)
-    .map_err(|e| Error::LedgerError(e))?
+    .map_err(Error::LedgerError)?
     .ok_or(BRC20Error::TransferableNotFound(msg.inscription_id))?;
 
   let amt = Into::<Num>::into(transferable.amount);
@@ -343,13 +340,13 @@ fn process_transfer(context: &mut Context, msg: &ExecutionMessage) -> Result<Eve
 
   let token_info = context
     .get_token_info(&tick)
-    .map_err(|e| Error::LedgerError(e))?
+    .map_err(Error::LedgerError)?
     .ok_or(BRC20Error::TickNotFound(tick.to_string()))?;
 
   // update from key balance.
   let mut from_balance = context
     .get_balance(&msg.from, &tick)
-    .map_err(|e| Error::LedgerError(e))?
+    .map_err(Error::LedgerError)?
     .map_or(Balance::new(&tick), |v| v);
 
   let from_overall = Into::<Num>::into(from_balance.overall_balance);
@@ -363,7 +360,7 @@ fn process_transfer(context: &mut Context, msg: &ExecutionMessage) -> Result<Eve
 
   context
     .update_token_balance(&msg.from, from_balance)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   // redirect receiver to sender if transfer to conibase.
   let mut out_msg = None;
@@ -379,7 +376,7 @@ fn process_transfer(context: &mut Context, msg: &ExecutionMessage) -> Result<Eve
   // update to key balance.
   let mut to_balance = context
     .get_balance(&to_script_key, &tick)
-    .map_err(|e| Error::LedgerError(e))?
+    .map_err(Error::LedgerError)?
     .map_or(Balance::new(&tick), |v| v);
 
   let to_overall = Into::<Num>::into(to_balance.overall_balance);
@@ -387,15 +384,15 @@ fn process_transfer(context: &mut Context, msg: &ExecutionMessage) -> Result<Eve
 
   context
     .update_token_balance(&to_script_key, to_balance)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   context
     .remove_transferable(&msg.from, &tick, &msg.inscription_id)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   context
     .remove_inscribe_transfer_inscription(&msg.inscription_id)
-    .map_err(|e| Error::LedgerError(e))?;
+    .map_err(Error::LedgerError)?;
 
   Ok(Event::Transfer(TransferEvent {
     msg: out_msg,

@@ -17,6 +17,7 @@ pub struct InscriptionOp {
 }
 
 // the act of marking an inscription.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum Action {
   New {
@@ -53,6 +54,7 @@ mod tests {
       pub new_satpoint: Option<SatPoint>,
     }
 
+    #[allow(clippy::large_enum_variant)]
     #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
     enum OldAction {
       New {

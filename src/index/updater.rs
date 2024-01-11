@@ -162,10 +162,8 @@ impl<'index> Updater<'_> {
               .map(|duration| duration.as_millis())
               .unwrap_or(0),
           )?;
-      } else {
-        if should_break {
-          break;
-        }
+      } else if should_break {
+        break;
       }
     }
 

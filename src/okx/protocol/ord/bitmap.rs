@@ -24,10 +24,10 @@ pub fn index_bitmap(
   let mut positive_inscriptions = operations
     .values()
     .flatten()
-    .cloned()
     .filter(|op| {
       !op.inscription_number.unwrap().is_negative() && matches!(op.action, Action::New { .. })
     })
+    .cloned()
     .collect::<Vec<_>>();
 
   // sort by inscription number.

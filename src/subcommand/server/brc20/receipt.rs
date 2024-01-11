@@ -328,7 +328,7 @@ pub(crate) async fn brc20_block_events(
 
   // get blockhash from redb.
   let blockhash = index
-    .block_hash(Some(blockinfo.height as u32))
+    .block_hash(Some(u32::try_from(blockinfo.height).unwrap()))
     .map_err(ApiError::internal)?
     .ok_or_api_not_found(BRC20Error::BlockNotFound)?;
 

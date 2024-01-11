@@ -23,6 +23,7 @@ pub(super) struct Flotsam {
   origin: Origin,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 enum Origin {
   New {

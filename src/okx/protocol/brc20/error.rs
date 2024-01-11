@@ -1,6 +1,7 @@
 use crate::okx::datastore::brc20::BRC20Error;
 use redb::TableError;
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
   #[error("brc20 error: {0}")]

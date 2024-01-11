@@ -850,7 +850,7 @@ impl Index {
     if let Some(height) = ord_height {
       if query_btc {
         let btc_height = match self.client.get_blockchain_info() {
-          Ok(info) => Height(info.headers as u32),
+          Ok(info) => Height(u32::try_from(info.headers).unwrap()),
           Err(e) => {
             return Err(anyhow!(
               "failed to get blockchain info from bitcoin node: {}",
@@ -2255,7 +2255,7 @@ impl Index {
       if let Some(tx_blockhash) = tx.blockhash {
         let tx_bh = self.client.get_block_header_info(&tx_blockhash)?;
         let parsed_height = self.block_height()?;
-        if parsed_height.is_none() || tx_bh.height as u32 > parsed_height.unwrap().0 {
+        if parsed_height.is_none() || u32::try_from(tx_bh.height)? > parsed_height.unwrap().0 {
           return Ok(None);
         }
       } else {
@@ -2313,10 +2313,7 @@ impl Index {
   ) -> Result<Vec<brc20::Balance>> {
     let rtx = self.database.begin_read().unwrap();
     let table = rtx.open_table(BRC20_BALANCES)?;
-    Ok(get_balances(
-      &table,
-      &ScriptKey::from_address(address.clone()),
-    )?)
+    get_balances(&table, &ScriptKey::from_address(address.clone()))
   }
 
   pub(crate) fn brc20_get_tx_events_by_txid(
@@ -2332,7 +2329,7 @@ impl Index {
       if let Some(tx_blockhash) = tx.blockhash {
         let tx_bh = self.client.get_block_header_info(&tx_blockhash)?;
         let parsed_height = self.begin_read()?.block_height()?;
-        if parsed_height.is_none() || tx_bh.height as u32 > parsed_height.unwrap().0 {
+        if parsed_height.is_none() || u32::try_from(tx_bh.height)? > parsed_height.unwrap().0 {
           return Ok(None);
         }
       } else {

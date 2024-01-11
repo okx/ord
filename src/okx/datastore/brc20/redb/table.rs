@@ -152,8 +152,8 @@ where
 }
 
 // BRC20_BALANCES
-pub fn update_token_balance<'db, 'txn>(
-  table: &mut Table<'db, 'txn, &'static str, &'static [u8]>,
+pub fn update_token_balance(
+  table: &mut Table<'_, '_, &'static str, &'static [u8]>,
   script_key: &ScriptKey,
   new_balance: Balance,
 ) -> crate::Result<()> {
@@ -165,8 +165,8 @@ pub fn update_token_balance<'db, 'txn>(
 }
 
 // BRC20_TOKEN
-pub fn insert_token_info<'db, 'txn>(
-  table: &mut Table<'db, 'txn, &'static str, &'static [u8]>,
+pub fn insert_token_info(
+  table: &mut Table<'_, '_, &'static str, &'static [u8]>,
   tick: &Tick,
   new_info: &TokenInfo,
 ) -> crate::Result<()> {
@@ -178,8 +178,8 @@ pub fn insert_token_info<'db, 'txn>(
 }
 
 // BRC20_TOKEN
-pub fn update_mint_token_info<'db, 'txn>(
-  table: &mut Table<'db, 'txn, &'static str, &'static [u8]>,
+pub fn update_mint_token_info(
+  table: &mut Table<'_, '_, &'static str, &'static [u8]>,
   tick: &Tick,
   minted_amt: u128,
   minted_block_number: u32,
@@ -198,8 +198,8 @@ pub fn update_mint_token_info<'db, 'txn>(
 }
 
 // BRC20_EVENTS
-pub fn save_transaction_receipts<'db, 'txn>(
-  table: &mut Table<'db, 'txn, &'static TxidValue, &'static [u8]>,
+pub fn save_transaction_receipts(
+  table: &mut Table<'_, '_, &'static TxidValue, &'static [u8]>,
   txid: &Txid,
   receipts: &[Receipt],
 ) -> crate::Result<()> {
@@ -211,8 +211,8 @@ pub fn save_transaction_receipts<'db, 'txn>(
 }
 
 // BRC20_TRANSFERABLELOG
-pub fn insert_transferable<'db, 'txn>(
-  table: &mut Table<'db, 'txn, &'static str, &'static [u8]>,
+pub fn insert_transferable(
+  table: &mut Table<'_, '_, &'static str, &'static [u8]>,
   script: &ScriptKey,
   tick: &Tick,
   inscription: &TransferableLog,
@@ -225,8 +225,8 @@ pub fn insert_transferable<'db, 'txn>(
 }
 
 // BRC20_TRANSFERABLELOG
-pub fn remove_transferable<'db, 'txn>(
-  table: &mut Table<'db, 'txn, &'static str, &'static [u8]>,
+pub fn remove_transferable(
+  table: &mut Table<'_, '_, &'static str, &'static [u8]>,
   script: &ScriptKey,
   tick: &Tick,
   inscription_id: &InscriptionId,
@@ -236,8 +236,8 @@ pub fn remove_transferable<'db, 'txn>(
 }
 
 // BRC20_INSCRIBE_TRANSFER
-pub fn insert_inscribe_transfer_inscription<'db, 'txn>(
-  table: &mut Table<'db, 'txn, InscriptionIdValue, &'static [u8]>,
+pub fn insert_inscribe_transfer_inscription(
+  table: &mut Table<'_, '_, InscriptionIdValue, &'static [u8]>,
   inscription_id: &InscriptionId,
   transfer_info: TransferInfo,
 ) -> crate::Result<()> {
@@ -249,8 +249,8 @@ pub fn insert_inscribe_transfer_inscription<'db, 'txn>(
 }
 
 // BRC20_INSCRIBE_TRANSFER
-pub fn remove_inscribe_transfer_inscription<'db, 'txn>(
-  table: &mut Table<'db, 'txn, InscriptionIdValue, &'static [u8]>,
+pub fn remove_inscribe_transfer_inscription(
+  table: &mut Table<'_, '_, InscriptionIdValue, &'static [u8]>,
   inscription_id: &InscriptionId,
 ) -> crate::Result<()> {
   table.remove(&inscription_id.store())?;
