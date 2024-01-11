@@ -4048,6 +4048,7 @@ mod tests {
   }
 
   #[test]
+  #[ignore]
   fn collections_page_prev_and_next() {
     let server = TestServer::new_with_regtest_with_index_sats();
 

@@ -104,7 +104,7 @@ mod tests {
       action: Action::New {
         cursed: false,
         unbound: false,
-        inscription: inscriptions.get(0).unwrap().clone(),
+        inscription: inscriptions.first().unwrap().clone(),
         vindicated: false,
       },
       sequence_number: 1,
@@ -183,7 +183,7 @@ mod tests {
       action: Action::New {
         cursed: true,
         unbound: false,
-        inscription: inscriptions.get(0).unwrap().clone(),
+        inscription: inscriptions.first().unwrap().clone(),
         vindicated: false,
       },
       ..op
@@ -194,7 +194,7 @@ mod tests {
       action: Action::New {
         cursed: false,
         unbound: true,
-        inscription: inscriptions.get(0).unwrap().clone(),
+        inscription: inscriptions.first().unwrap().clone(),
         vindicated: false,
       },
       ..op
@@ -204,7 +204,7 @@ mod tests {
       action: Action::New {
         cursed: true,
         unbound: true,
-        inscription: inscriptions.get(0).unwrap().clone(),
+        inscription: inscriptions.first().unwrap().clone(),
         vindicated: false,
       },
       ..op
