@@ -88,37 +88,26 @@ pub(crate) async fn ord_inscription_number(
 
 fn ord_get_inscription_by_id(index: Arc<Index>, id: InscriptionId) -> ApiResult<OrdInscription> {
   let inscription_data = get_inscription_all_data_by_id(index.clone(), id)?
-    .ok_or_api_not_found(format!("inscriptionId not found {id}"))?;
+    .ok_or_api_not_found(format!("inscription {id} not found"))?;
   let location_outpoint = inscription_data.sat_point.outpoint;
-  let mut owner = None;
-  if location_outpoint != unbound_outpoint() {
-    owner = if inscription_data.tx.txid() != location_outpoint.txid {
-      let location_raw_tx = index
+
+  let output = if location_outpoint == unbound_outpoint() {
+    None
+  } else {
+    let location_transaction = if inscription_data.tx.txid() != location_outpoint.txid {
+      index
         .get_transaction(location_outpoint.txid)?
         .ok_or_api_not_found(format!(
-          "inscriptionId not found {}",
+          "the transaction {} where the inscription is located cannot be found.",
           location_outpoint.txid
-        ))?;
-      Some(
-        ScriptKey::from_script(
-          &location_raw_tx
-            .output
-            .get(usize::try_from(location_outpoint.vout).unwrap())
-            .unwrap()
-            .script_pubkey,
-          index.get_chain_network(),
-        )
-        .into(),
-      )
+        ))?
     } else {
-      Some(
-        ScriptKey::from_script(
-          &inscription_data.tx.output[0].script_pubkey,
-          index.get_chain_network(),
-        )
-        .into(),
-      )
+      inscription_data.tx.clone()
     };
+    location_transaction
+      .output
+      .into_iter()
+      .nth(location_outpoint.vout.try_into().unwrap())
   };
 
   Ok(Json(ApiResponse::ok(OrdInscription {
@@ -129,7 +118,8 @@ fn ord_get_inscription_by_id(index: Arc<Index>, id: InscriptionId) -> ApiResult<
       .content_type()
       .map(String::from),
     content: inscription_data.inscription.body().map(hex::encode),
-    owner,
+    owner: output
+      .map(|vout| ScriptKey::from_script(&vout.script_pubkey, index.get_chain_network()).into()),
     genesis_height: inscription_data.entry.height,
     location: inscription_data.sat_point.to_string(),
     collections: inscription_data
