@@ -33,6 +33,11 @@ pub struct Context<'a, 'db, 'txn> {
   pub(crate) tx_out_cache: &'a mut SimpleLru<OutPoint, TxOut>,
   pub(crate) hit: u64,
   pub(crate) miss: u64,
+  pub(crate) save_cost: u128,
+  pub(crate) resolve_cost: u128,
+  pub(crate) execute_cost: u128,
+  pub(crate) inscriptions_size: usize,
+  pub(crate) messages_size: usize,
 
   // ord tables
   pub(crate) ORD_TX_TO_OPERATIONS: &'a mut Table<'db, 'txn, &'static TxidValue, &'static [u8]>,

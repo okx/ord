@@ -1,3 +1,4 @@
+use crate::okx::datastore::ord::InscriptionOp;
 use crate::okx::protocol::{context::Context, BlockContext, ProtocolConfig, ProtocolManager};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use {
@@ -332,17 +333,15 @@ impl<'index> Updater<'_> {
     Ok((outpoint_sender, tx_out_receiver))
   }
 
-  fn index_block(
+  fn index_block_ord(
     &mut self,
     index: &Index,
     outpoint_sender: &mut Sender<OutPoint>,
     tx_out_receiver: &mut Receiver<TxOut>,
     wtx: &mut WriteTransaction,
-    block: BlockData,
+    block: &BlockData,
     tx_out_cache: &mut SimpleLru<OutPoint, TxOut>,
-  ) -> Result<()> {
-    Reorg::detect_reorg(&block, self.height, self.index)?;
-
+  ) -> Result<HashMap<Txid, Vec<InscriptionOp>>> {
     let start = Instant::now();
     let mut sat_ranges_written = 0;
     let mut outputs_in_block = 0;
@@ -620,32 +619,6 @@ impl<'index> Updater<'_> {
 
     inscription_updater.flush_cache()?;
 
-    let mut context = Context {
-      chain: BlockContext {
-        network: index.get_chain_network(),
-        blockheight: self.height,
-        blocktime: block.header.time,
-      },
-      tx_out_cache,
-      hit: 0,
-      miss: 0,
-      ORD_TX_TO_OPERATIONS: &mut wtx.open_table(ORD_TX_TO_OPERATIONS)?,
-      COLLECTIONS_KEY_TO_INSCRIPTION_ID: &mut wtx.open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)?,
-      COLLECTIONS_INSCRIPTION_ID_TO_KINDS: &mut wtx
-        .open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)?,
-      SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY: &mut sequence_number_to_inscription_entry,
-      OUTPOINT_TO_ENTRY: &mut outpoint_to_entry,
-      BRC20_BALANCES: &mut wtx.open_table(BRC20_BALANCES)?,
-      BRC20_TOKEN: &mut wtx.open_table(BRC20_TOKEN)?,
-      BRC20_EVENTS: &mut wtx.open_table(BRC20_EVENTS)?,
-      BRC20_TRANSFERABLELOG: &mut wtx.open_table(BRC20_TRANSFERABLELOG)?,
-      BRC20_INSCRIBE_TRANSFER: &mut wtx.open_table(BRC20_INSCRIBE_TRANSFER)?,
-    };
-
-    // Create a protocol manager to index the block of bitmap data.
-    let config = ProtocolConfig::new_with_options(&index.options);
-    ProtocolManager::new(config).index_block(&mut context, &block, operations)?;
-
     if index.index_runes && self.height >= self.index.options.first_rune_height() {
       let mut outpoint_to_rune_balances = wtx.open_table(OUTPOINT_TO_RUNE_BALANCES)?;
       let mut rune_id_to_rune_entry = wtx.open_table(RUNE_ID_TO_RUNE_ENTRY)?;
@@ -695,16 +668,70 @@ impl<'index> Updater<'_> {
 
     height_to_block_header.insert(&self.height, &block.header.store())?;
 
-    self.height += 1;
     self.outputs_traversed += outputs_in_block;
 
     log::info!(
-      "Wrote {sat_ranges_written} sat ranges from {outputs_in_block} outputs in {}/{} ms, hit miss: {}/{}",
+      "Wrote {sat_ranges_written} sat ranges from {outputs_in_block} outputs in {}/{} ms.",
       ord_cost,
       (Instant::now() - start).as_millis(),
-      context.hit,
-      context.miss,
     );
+
+    Ok(operations)
+  }
+
+  fn index_block(
+    &mut self,
+    index: &Index,
+    outpoint_sender: &mut Sender<OutPoint>,
+    tx_out_receiver: &mut Receiver<TxOut>,
+    wtx: &mut WriteTransaction,
+    block: BlockData,
+    tx_out_cache: &mut SimpleLru<OutPoint, TxOut>,
+  ) -> Result<()> {
+    Reorg::detect_reorg(&block, self.height, self.index)?;
+
+    let operations = self.index_block_ord(
+      index,
+      outpoint_sender,
+      tx_out_receiver,
+      wtx,
+      &block,
+      tx_out_cache,
+    )?;
+
+    let mut context = Context {
+      chain: BlockContext {
+        network: index.get_chain_network(),
+        blockheight: self.height,
+        blocktime: block.header.time,
+      },
+      tx_out_cache,
+      hit: 0,
+      miss: 0,
+      save_cost: 0,
+      resolve_cost: 0,
+      execute_cost: 0,
+      inscriptions_size: 0,
+      messages_size: 0,
+      ORD_TX_TO_OPERATIONS: &mut wtx.open_table(ORD_TX_TO_OPERATIONS)?,
+      COLLECTIONS_KEY_TO_INSCRIPTION_ID: &mut wtx.open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)?,
+      COLLECTIONS_INSCRIPTION_ID_TO_KINDS: &mut wtx
+        .open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)?,
+      SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY: &mut wtx
+        .open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?,
+      OUTPOINT_TO_ENTRY: &mut wtx.open_table(OUTPOINT_TO_ENTRY)?,
+      BRC20_BALANCES: &mut wtx.open_table(BRC20_BALANCES)?,
+      BRC20_TOKEN: &mut wtx.open_table(BRC20_TOKEN)?,
+      BRC20_EVENTS: &mut wtx.open_table(BRC20_EVENTS)?,
+      BRC20_TRANSFERABLELOG: &mut wtx.open_table(BRC20_TRANSFERABLELOG)?,
+      BRC20_INSCRIBE_TRANSFER: &mut wtx.open_table(BRC20_INSCRIBE_TRANSFER)?,
+    };
+
+    // Create a protocol manager to index the block of bitmap data.
+    let config = ProtocolConfig::new_with_options(&index.options);
+    ProtocolManager::new(config).index_block(&mut context, &block, operations)?;
+
+    self.height += 1;
 
     Ok(())
   }

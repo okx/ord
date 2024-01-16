@@ -1,5 +1,6 @@
 use crate::okx::datastore::ord::OrdReaderWriter;
 use crate::okx::protocol::context::Context;
+use bitcoin::Transaction;
 use {
   super::*,
   crate::{
@@ -27,6 +28,38 @@ impl ProtocolManager {
     }
   }
 
+  pub(crate) fn index_tx(
+    &self,
+    context: &mut Context,
+    tx: &Transaction,
+    txid: &Txid,
+    tx_operations: &Vec<InscriptionOp>,
+  ) -> Result {
+    // save all transaction operations to ord database.
+    if self.config.enable_ord_receipts
+      && context.chain.blockheight >= self.config.first_inscription_height
+    {
+      let start = Instant::now();
+      context.save_transaction_operations(txid, tx_operations)?;
+      context.inscriptions_size += tx_operations.len();
+      context.save_cost += start.elapsed().as_micros();
+    }
+
+    let start = Instant::now();
+    // Resolve and execute messages.
+    let messages = self
+      .resolve_man
+      .resolve_message(context, tx, tx_operations)?;
+    context.resolve_cost += start.elapsed().as_micros();
+
+    let start = Instant::now();
+    self.call_man.execute_message(context, txid, &messages)?;
+    context.execute_cost += start.elapsed().as_micros();
+    context.messages_size += messages.len();
+
+    Ok(())
+  }
+
   pub(crate) fn index_block(
     &self,
     context: &mut Context,
@@ -34,11 +67,7 @@ impl ProtocolManager {
     operations: HashMap<Txid, Vec<InscriptionOp>>,
   ) -> Result {
     let start = Instant::now();
-    let mut inscriptions_size = 0;
-    let mut messages_size = 0;
-    let mut cost1 = 0u128;
-    let mut cost2 = 0u128;
-    let mut cost3 = 0u128;
+
     // skip the coinbase transaction.
     for (tx, txid) in block.txdata.iter() {
       // skip coinbase transaction.
@@ -52,27 +81,7 @@ impl ProtocolManager {
 
       // index inscription operations.
       if let Some(tx_operations) = operations.get(txid) {
-        // save all transaction operations to ord database.
-        if self.config.enable_ord_receipts
-          && context.chain.blockheight >= self.config.first_inscription_height
-        {
-          let start = Instant::now();
-          context.save_transaction_operations(txid, tx_operations)?;
-          inscriptions_size += tx_operations.len();
-          cost1 += start.elapsed().as_micros();
-        }
-
-        let start = Instant::now();
-        // Resolve and execute messages.
-        let messages = self
-          .resolve_man
-          .resolve_message(context, tx, tx_operations)?;
-        cost2 += start.elapsed().as_micros();
-
-        let start = Instant::now();
-        self.call_man.execute_message(context, txid, &messages)?;
-        cost3 += start.elapsed().as_micros();
-        messages_size += messages.len();
+        self.index_tx(context, tx, txid, tx_operations)?;
       }
     }
 
@@ -81,19 +90,21 @@ impl ProtocolManager {
     if self.config.enable_index_bitmap {
       bitmap_count = ord_proto::bitmap::index_bitmap(context, &operations)?;
     }
-    let cost4 = bitmap_start.elapsed().as_millis();
+    let bitmap_cost = bitmap_start.elapsed().as_millis();
 
     log::info!(
-      "Protocol Manager indexed block {} with ord inscriptions {}, messages {}, bitmap {} in {} ms, {}/{}/{}/{}",
+      "Protocol Manager indexed block {} with ord inscriptions {}, messages {}, bitmap {} in {} ms, {}/{}/{}/{}, hit/miss {}/{}",
       context.chain.blockheight,
-      inscriptions_size,
-      messages_size,
+      context.inscriptions_size,
+      context.messages_size,
       bitmap_count,
       start.elapsed().as_millis(),
-      cost1/1000,
-      cost2/1000,
-      cost3/1000,
-      cost4,
+      context.save_cost/1000,
+      context.resolve_cost/1000,
+      context.execute_cost/1000,
+      bitmap_cost,
+      context.hit,
+      context.miss,
     );
     Ok(())
   }
