@@ -10,7 +10,7 @@ use {
     server_config::ServerConfig,
     templates::{
       BlockHtml, BlockJson, BlocksHtml, ChildrenHtml, ChildrenJson, ClockSvg, CollectionsHtml,
-      HomeHtml, InputHtml, InscriptionHtml, InscriptionJson, InscriptionsBlockHtml,
+      FAQsHtml, HomeHtml, InputHtml, InscriptionHtml, InscriptionJson, InscriptionsBlockHtml,
       InscriptionsHtml, InscriptionsJson, OutputHtml, OutputJson, PageContent, PageHtml,
       PreviewAudioHtml, PreviewCodeHtml, PreviewFontHtml, PreviewImageHtml, PreviewMarkdownHtml,
       PreviewModelHtml, PreviewPdfHtml, PreviewTextHtml, PreviewUnknownHtml, PreviewVideoHtml,
@@ -1022,8 +1022,11 @@ impl Server {
     Ok(InputHtml { path, input }.page(server_config))
   }
 
-  async fn faq() -> Redirect {
-    Redirect::to("https://docs.ordinals.com/faq/")
+  async fn faq(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+  ) -> ServerResult<PageHtml<FAQsHtml>> {
+    Ok(FAQsHtml {}.page(page_config, index.has_sat_index()?))
   }
 
   async fn bounties() -> Redirect {

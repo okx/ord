@@ -24,9 +24,9 @@ html {
 }
 
 body {
-  background: url('./images/bgVectors.png');
+  /* background: url('./images/bgVectors.png'); */
   background-repeat: repeat-y;
-  background-size: contain;
+  background-size: cover;
   font-family: 'Helvetica' !important;
 }
 
@@ -107,6 +107,10 @@ nav a:hover {
 nav a {
   color: var(--nav-link);
   font-size: 1rem;
+}
+
+nav a:active {
+  font-weight: 700;
 }
 
 form {
@@ -197,9 +201,9 @@ dd {
 
 .arrow {
   border: solid var(--theme);
-  border-width: 0 2px 2px 0;
+  border-width: 0 3px 3px 0;
   display: inline-block;
-  padding: 4px;
+  padding: 3px;
 }
 
 .right {
@@ -210,6 +214,16 @@ dd {
 .left {
   transform: rotate(135deg);
   -webkit-transform: rotate(135deg);
+}
+
+.up {
+  transform: rotate(-135deg);
+  -webkit-transform: rotate(-135deg);
+}
+
+.down {
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
 }
 
 ol,
@@ -425,4 +439,43 @@ a.mythic {
 .icon {
   height: 1rem;
   width: 1rem;
+}
+
+.FAQs {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 40px;
+}
+
+.faq-item {
+  background-color: white;
+  border-radius: 12px;
+  padding: 18px 20px 20px 18px;
+  margin-top: 20px;
+  cursor: pointer;
+}
+
+.faq-item>.faq-header {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.faq-header>i {
+  float: right;
+  margin-top: -1rem;
+}
+
+.faq-item>.faq-body {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  height: 0;
+  overflow: hidden;
+  transition: all 0.5s ease-out;
+}
+
+.faq-item>.faq-body.active {
+  margin-top: 20px;
+  height: fit-content;
 }
