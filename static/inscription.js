@@ -47,7 +47,11 @@ if (sat_block) {
 const copyIcons = document.getElementsByClassName("copy-icon");
 for (const copyIcon of copyIcons) {
   copyIcon.addEventListener('click', () => {
-    navigator.clipboard.writeText(copyIcon.dataset.copy);
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(copyIcon.dataset.copy);
+      } else {
+        console.log("Failed to copy to clipboard");
+      }
   });
 }
 
