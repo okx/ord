@@ -24,7 +24,7 @@ html {
 }
 
 body {
-  /* background: url('./images/bgVectors.png'); */
+  background: url('./images/bgVectors.png');
   background-repeat: repeat-y;
   background-size: cover;
   font-family: 'Helvetica' !important;
@@ -834,6 +834,7 @@ a.mythic {
 
 footer {
   padding: 40px;
+  background: white;
 }
 
 footer .top {
