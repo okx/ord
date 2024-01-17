@@ -438,15 +438,23 @@ a.mythic {
   justify-content: center;
 }
 
-.inscription>*:nth-child(1),
+.inscription-id {
+  font-size: 32px;
+  text-align: left;
+  width: 100%;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.inscription>*:nth-child(2),
 .inscription>*:nth-child(3) {
-  align-items: center;
   color: var(--dark-bg);
-  display: flex;
   flex: 1;
   font-size: 200%;
-  justify-content: center;
   text-decoration: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .inscription>a:nth-child(1):hover,
@@ -805,3 +813,6 @@ a.mythic {
 .inscription .links img {
   cursor: pointer;
 }
+
+.uppercase {
+  text-transform: uppercase;

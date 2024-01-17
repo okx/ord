@@ -19,6 +19,11 @@ if (address) {
   document.getElementById("address").innerHTML = sliceAddress(address.innerText);
 }
 
+let inscribedByAddress = document.getElementById("inscribed-by");
+if (inscribedByAddress) {
+  document.getElementById("inscribed-by").innerHTML = sliceAddress(inscribedByAddress.innerText);
+}
+
 const getSize = (size) => {
   if (size < 1024) return size.toLocaleString('en-us') + " B";
   else return (size / 1024).toLocaleString('en-us', { maximumFractionDigits: 2 }) + " KB";

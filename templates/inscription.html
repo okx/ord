@@ -1,6 +1,6 @@
 <div class="container inscription-container">
   <div class=inscription>
-    <!-- <img src=/content/{{self.inscription_id}}></img> -->
+    <div class="inscription-id">Inscription #{{ self.number }}</div>
     {{ Iframe::main(self.inscription_id) }}
     <div class="links">
       <div class="copy-icon" data-copy="http://13.58.99.149:8780/inscription/{{self.inscription_id}}">
@@ -23,20 +23,20 @@
           <img src="/static/images/copy-icon.svg" />
         </div>
       </div>
-      <div class="content">{{ self.inscription_id }}</div>
+      <div class="content uppercase">{{ self.inscription_id }}</div>
     </div>
     <div class="info">
       <div class="title">License type</div>
       <div class="content">Personal</div>
     </div>
-    <div class="info">
+    <!-- <div class="info">
       <div class="title">royalty percentage</div>
       <div class="content">0%</div>
     </div>
     <div class="info">
       <div class="title">royalty Must be paid to</div>
       <div class="content">-</div>
-    </div>
+    </div> -->
     %% if let Some(content_type) = self.inscription.content_type() {
     <div class="info">
       <div class="title">File type</div>
@@ -68,7 +68,7 @@
           <img src="/static/images/copy-icon.svg" />
         </div>
       </div>
-      <div class="content" id="address">{{ address }}</div>
+      <div class="content" id="inscribed-by">{{ address }}</div>
     </div>
     %% }
     <div class="info">
@@ -80,8 +80,16 @@
     <div class="second-infos hidden" id="second-infos">
       <div class="info">
         <div class="title">hash</div>
-        <div class="content" id="hash">{{ self.inscription_id.txid }}</div>
+        <div class="content uppercase" id="hash">{{ self.inscription_id.txid }}</div>
       </div>
+      %% if let Ok(address) = self.chain.address_from_script(&self.output.script_pubkey ) {
+      <div class="info">
+        <div class="title">
+          address that holds ordinal
+        </div>
+        <div class="content uppercase" id="address">{{ address }}</div>
+      </div>
+      %% }
       <div class="info">
         <div class="title">
           <div>creation block</div>
