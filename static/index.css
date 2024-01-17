@@ -174,7 +174,6 @@ form {
   position: relative;
   display: flex;
   gap: 1rem;
-  margin-left: auto;
   width: 240px;
 }
 
@@ -297,10 +296,15 @@ ul {
 
 @media (max-width: 62rem) {
   nav {
-    flex-direction: column;
+    position: relative;
   }
 
-  nav form {
+  header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  header>form {
     margin: 0 auto;
   }
 }
