@@ -449,6 +449,7 @@ a.mythic {
 }
 
 .faq-item {
+  position: relative;
   background-color: white;
   border-radius: 12px;
   padding: 18px 20px 20px 18px;
@@ -461,10 +462,18 @@ a.mythic {
   font-weight: 700;
 }
 
-.faq-header>i {
-  float: right;
-  margin-top: -1rem;
+.faq-item-title {
+  width: 95%;
+  line-height: 1.75rem;
+  font-size: 1rem;
 }
+
+.faq-header>i {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+}
+
 
 .faq-item>.faq-body {
   font-size: 16px;
