@@ -8,10 +8,13 @@
   <meta property=og:title content='{{ self.content.title() }}'>
   <meta property=og:image content='{{ self.og_image() }}'>
   <meta property=twitter:card content=summary>
-  <title>{{ self.content.title() }}</title>
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com;" <title>{{ self.content.title() }}
+  </title>
   <link rel=alternate href=/feed.xml type=application/rss+xml title='Inscription RSS Feed'>
   <link rel=stylesheet href=/static/index.css>
   <link rel=stylesheet href=/static/modern-normalize.css>
+  <script src="/static/moment.min.js"></script>
   <script src=/static/index.js defer></script>
 </head>
 
@@ -20,11 +23,11 @@
     <nav>
       <a href= /><img src=/static/images/logo.png alt=logo /></a>
       <div class=nav-items-wrapper>
-        <a href=/ class=explorer>Explorer</a>
-        <a href=http://13.58.172.21:8787>Minting</a>
-        <a href=/goats>Goats</a>
-        <a href=/faq>FAQs</a>
-        <a href=/contact>Contact</a>
+        <a href=/ class="nav-link">Explorer</a>
+        <a href=http://13.58.172.21:8787 target="_blank">Minting</a>
+        <a href=/goats class="nav-link">Goats</a>
+        <a href=/faq class="nav-link">FAQs</a>
+        <a href=/contact class="nav-link">Contact</a>
         %% if self.config.index_sats {
         <a href=/rare.txt title=rare><img class=icon src=/static/gem.svg></a>
         %% }

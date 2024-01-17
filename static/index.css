@@ -116,7 +116,7 @@ nav {
   padding: 24px 32px 24px 32px;
 }
 
-nav a.explorer {
+nav a.active {
   color: var(--light-fg);
   font-weight: bold;
 }
@@ -668,6 +668,11 @@ a.mythic {
   width: 100%;
 }
 
+.input-control input {
+  padding: 20px;
+  height: auto;
+}
+
 .contact-form .input-control label {
   font-size: 12px;
   color: #606060;
@@ -688,4 +693,115 @@ a.mythic {
 .contact-form .submit-button {
   width: 100%;
   margin-top: 100px;
+}
+
+.container.inscription-container {
+  max-width: 1360px;
+  display: grid;
+  padding: 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 60px;
+  overflow-wrap: break-word;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 40px;
+}
+
+@media screen and (max-width: 992px) {
+  .container.inscription-container {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.inscription>img {
+  border-radius: 8px;
+  width: 100%;
+  height: max-content;
+}
+
+.main-infos,
+.second-infos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info .title {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.info .content {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.info .content.timestamp {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+#timestamp {
+  margin-right: 12px;
+}
+
+#from-now {
+  color: rgba(0, 0, 0, 0.4);
+  font-weight: 400;
+}
+
+.show-more-btn {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 160px;
+  font-size: 16px;
+  font-weight: 700;
+  color: black;
+  text-align: center;
+  padding: 12px 18px;
+  border: 1px solid black;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.hidden-panel {
+  position: relative;
+}
+
+.hidden {
+  display: none;
+}
+
+.copy-icon {
+  cursor: pointer;
+}
+
+.inscription {
+  display: flex;
+  flex-direction: column;
+}
+
+.inscription .links {
+  display: flex;
+  justify-content: center;
+  margin-top: 26px;
+  gap: 28px;
+}
+
+.inscription .links img {
+  cursor: pointer;
 }
