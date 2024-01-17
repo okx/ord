@@ -650,6 +650,11 @@ a.mythic {
   font-size: 18px;
 }
 
+a.base-button {
+  text-decoration: none;
+
+}
+
 .goats-page .mint-button {
   max-width: 320px;
   width: 100%;
@@ -690,6 +695,39 @@ a.mythic {
 .contact-page {
   max-width: 500px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.contact-page .heading {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 100px;
+}
+
+.contact-page .contents {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+}
+
+.contact-page .contents .item {
+  font-size: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contact-page .contents .item .title {
+  font-weight: 700;
+}
+
+.contact-page .base-button {
+  width: 320px;
+  margin-top: 30px;
 }
 
 #success-msg {
