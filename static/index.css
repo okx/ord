@@ -32,6 +32,12 @@ body {
 
 main {
   max-width: 100%;
+  min-height: calc(100vh - 308px);
+}
+
+.container {
+  max-width: 1536px;
+  margin: auto;
 }
 
 main>.container {
@@ -543,6 +549,10 @@ a.mythic {
   height: fit-content;
 }
 
+.goats-page.container {
+  max-width: 1536px;
+}
+
 .goats-page h1,
 .goats-page p {
   margin: 0;
@@ -820,3 +830,38 @@ a.mythic {
 
 .uppercase {
   text-transform: uppercase;
+}
+
+footer {
+  padding: 40px;
+}
+
+footer .top {
+  display: flex;
+  justify-content: space-between;
+}
+
+footer .terms {
+  margin-top: 36px;
+  font-size: 14px;
+}
+
+footer .terms>p {
+  margin: 0;
+  color: #4169e1;
+}
+
+footer .links {
+  display: flex;
+  gap: 16px;
+}
+
+@media screen and (max-width: 640px) {
+  footer {
+    padding: 10px;
+  }
+
+  footer .links {
+    gap: 4px;
+  }
+}
