@@ -20,8 +20,8 @@
 
 <body>
   <header class="container">
+    <a href= /><img src=/static/images/logo.png alt=logo /></a>
     <nav>
-      <a href= /><img src=/static/images/logo.png alt=logo /></a>
       <div class=nav-items-wrapper>
         <a href=/ class="nav-link">Explorer</a>
         <a href=http://13.58.172.21:8787 target="_blank">Minting</a>
@@ -32,12 +32,12 @@
       <a href=https://docs.ordinals.com/ title=handbook><img class=icon src=/static/book.svg></a>
       <a href=https://github.com/ordinals/ord title=github><img class=icon src=/static/github.svg></a>
       <a href=https://discord.com/invite/ordinals title=discord><img class=icon src=/static/discord.svg></a>
-      <form action=/search method=get>
-        <input type=text autocapitalize=off autocomplete=off autocorrect=off name=query spellcheck=false
-          placeholder='Search'>
-        <button class=search-icon></button>
-      </form>
     </nav>
+    <form action=/search method=get id="search-form">
+      <input type=text autocapitalize=off autocomplete=off autocorrect=off name=query spellcheck=false
+        placeholder='Search Inscription ID'>
+      <button class=search-icon></button>
+    </form>
   </header>
   <main>
     $$ Trusted(&self.content)
@@ -45,7 +45,9 @@
   <footer>
     <div class="container">
       <div class="top">
-        <img src="/static/images/footer-logo.svg" alt="" />
+        <a href="http://jurat.io/" target="_blank">
+          <img src="/static/images/footer-logo.svg" alt="" />
+        </a>>
         <div class="links">
           <a href="http://twitter.com/JuratNetwork" target="_blank">
             <img src="/static/images/twitter.svg" />
