@@ -1,18 +1,18 @@
 <h1>All Inscriptions</h1>
 <div class=thumbnails>
-%% for id in &self.inscriptions {
+  %% for id in &self.inscriptions {
   {{Iframe::thumbnail(*id)}}
-%% }
+  %% }
 </div>
-<div class=center>
-%% if let Some(prev) = self.prev {
-<a class=prev href=/inscriptions/{{prev}}>prev</a>
-%% } else {
-prev
-%% }
-%% if let Some(next) = self.next {
-<a class=next href=/inscriptions/{{next}}>next</a>
-%% } else {
-next
-%% }
+<div class="center prev-next">
+  %% if let Some(prev) = self.prev {
+  <a class="prev arrow left" href=/inscriptions/{{prev}}></a>
+  %% } else {
+  <i class="arrow left"></i>
+  %% }
+  %% if let Some(next) = self.next {
+  <a class="next arrow right" href=/inscriptions/{{next}}></a>
+  %% } else {
+  <i class="arrow right"></i>
+  %% }
 </div>

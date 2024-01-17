@@ -1,6 +1,15 @@
-<h1>Latest Inscriptions</h1>
+<h2>Latest Inscriptions</h2>
 <div class=thumbnails>
-%% for inscription in &self.inscriptions {
+  %% for inscription in &self.inscriptions {
   {{ Iframe::thumbnail(*inscription) }}
-%% }
+  %% }
+  <div class='center show-more'><a href=/inscriptions>Show more</a></div>
 </div>
+<h2 class=latest-blocks-title>Latest Blocks</h2>
+<ol class=blocks>
+  %% for (index, hash) in self.blocks.iter().enumerate() {
+  <li>
+    <div>{{format!("{:06}", (self.last as usize) - index)}}.</div><a href=/block/{{hash}}>{{hash}}</a>
+  </li>
+  %% }
+</ol>
