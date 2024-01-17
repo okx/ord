@@ -31,10 +31,39 @@ body {
 }
 
 main {
-  margin: 0 auto;
   max-width: 100%;
+}
+
+main>.container {
+  margin: 0 auto;
   padding: 0 1rem 1rem;
-  width: 45rem;
+  max-width: 45rem;
+}
+
+ol,
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  vertical-align: middle;
+}
+
+*,
+::before,
+::after {
+  border-width: 0;
+  border-style: solid;
 }
 
 h1 {
@@ -99,6 +128,12 @@ nav .nav-items-wrapper {
   justify-content: center;
 }
 
+@media screen and (max-width: 480px) {
+  nav .nav-items-wrapper {
+    column-gap: 12px;
+  }
+}
+
 nav a:hover {
   color: var(--link);
   text-decoration: none;
@@ -130,6 +165,13 @@ input[type=text] {
   min-width: 0;
   height: 40px;
   padding: 10px 36px 10px 12px;
+}
+
+textarea {
+  background-color: var(--search-bg);
+  border-radius: 8px;
+  border: 1px solid var(--search-border);
+  color: var(--search-fg);
 }
 
 .search-icon {
@@ -231,9 +273,13 @@ ul {
   overflow: hidden;
 }
 
-@media (max-width: 38rem) {
+@media (max-width: 62rem) {
   nav {
-    flex-wrap: wrap;
+    flex-direction: column;
+  }
+
+  nav form {
+    margin: 0 auto;
   }
 }
 
@@ -487,4 +533,159 @@ a.mythic {
 .faq-item>.faq-body.active {
   margin-top: 20px;
   height: fit-content;
+}
+
+.goats-page h1,
+.goats-page p {
+  margin: 0;
+}
+
+.goats-page .banner-img {
+  width: 100%;
+}
+
+.goats-page .banner {
+  position: relative;
+}
+
+.goats-page .title-banner {
+  position: absolute;
+  left: 40px;
+  bottom: 0px;
+  border-radius: 16px;
+  border: 4px solid white;
+  width: 20vw;
+  max-width: 200px;
+  transform: translateY(50%);
+  aspect-ratio: 1;
+  border-radius: 8px;
+}
+
+.goats-page>.content {
+  margin-top: 132px;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+
+@media screen and (max-width: 768px) {
+  .goats-page>.content {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+}
+
+.goats-page .minting .heading {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.goats-page .minting .heading h1 {
+  width: fit-content;
+  font-size: 32px;
+}
+
+.goats-page .check-icon {
+  width: 26.67px;
+  height: 26.67px;
+}
+
+.goats-page .minting .description {
+  margin-top: 16px;
+  margin-bottom: 132px;
+  font-size: 20px;
+}
+
+.base-button {
+  display: block;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  padding: 20px;
+  background-color: #8885DB;
+  border-radius: 8px;
+  color: white;
+  font-size: 18px;
+}
+
+.goats-page .mint-button {
+  max-width: 320px;
+  width: 100%;
+}
+
+
+.goats-page .story {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.goats-page .story .title {
+  font-size: 24px;
+}
+
+.goats-page .story .content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.goats-page .story .content .question h1 {
+  font-size: 18px;
+}
+
+.goats-page .story .content .question p {
+  /* max-width: 640px; */
+  margin-top: 8px;
+  font-size: 18px;
+}
+
+.contact-page p,
+.contact-page h1 {
+  margin: 0;
+}
+
+.contact-page {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.contact-page .contact-form {
+  width: 100%;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.contact-form .input-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.contact-form .input-control label {
+  font-size: 12px;
+  color: #606060;
+}
+
+.contact-form .names {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.contact-form textarea {
+  padding: 20px;
+  height: 160px;
+  resize: none;
+}
+
+.contact-form .submit-button {
+  width: 100%;
+  margin-top: 100px;
 }
