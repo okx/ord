@@ -488,8 +488,12 @@ a.mythic {
   color: var(--dark-fg);
 }
 
+.inscription-preview .disabled {
+  color: gray;
+}
+
 .inscription-preview>*:nth-child(2) {
-  flex: 0 75%;
+  flex: 0 85%;
 }
 
 .inscription-preview>a>iframe {
@@ -923,4 +927,37 @@ footer .links {
   footer .links {
     gap: 4px;
   }
+}
+
+.not-found-page.container {
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.not-found-page .sorry {
+  color: #8885DB;
+}
+
+.not-found-page .content {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: #312F2F;
+}
+
+.not-found-page .content .title {
+  font-size: 48px;
+  color: black;
+}
+
+.not-found-page img {
+  margin-top: 32px;
+  border-radius: 16px;
+  width: 360px;
+  height: auto;
 }

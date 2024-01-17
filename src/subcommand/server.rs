@@ -15,7 +15,7 @@ use {
       PreviewAudioHtml, PreviewCodeHtml, PreviewFontHtml, PreviewImageHtml, PreviewMarkdownHtml,
       PreviewModelHtml, PreviewPdfHtml, PreviewTextHtml, PreviewUnknownHtml, PreviewVideoHtml,
       RangeHtml, RareTxt, RuneHtml, RuneJson, RunesHtml, RunesJson, SatHtml, SatInscriptionJson,
-      SatInscriptionsJson, SatJson, TransactionHtml,
+      SatInscriptionsJson, SatJson, TransactionHtml, NotFoundHtml,
     },
   },
   axum::{
@@ -272,6 +272,7 @@ impl Server {
         .route("/static/*path", get(Self::static_asset))
         .route("/status", get(Self::status))
         .route("/tx/:txid", get(Self::transaction))
+        .fallback(Self::custom_404_handler)
         .layer(Extension(index))
         .layer(Extension(server_config.clone()))
         .layer(Extension(config))
@@ -1038,6 +1039,13 @@ impl Server {
     Ok(GoatsHtml {}.page(page_config, index.has_sat_index()?))
   }
 
+  async fn custom_404_handler(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+  ) -> ServerResult<PageHtml<NotFoundHtml>> {
+    Ok(NotFoundHtml {}.page(page_config, index.has_sat_index()?))
+  }
+  
   async fn contact(
     Extension(page_config): Extension<Arc<PageConfig>>,
     Extension(index): Extension<Arc<Index>>,

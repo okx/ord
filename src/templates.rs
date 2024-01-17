@@ -7,6 +7,7 @@ pub(crate) use {
   clock::ClockSvg,
   faqs::FAQsHtml,
   goats::GoatsHtml,
+  notfound::NotFoundHtml,
   contact::ContactHtml,
   collections::CollectionsHtml,
   home::HomeHtml,
@@ -37,6 +38,7 @@ mod children;
 mod clock;
 mod faqs;
 mod goats;
+mod notfound;
 mod contact;
 pub mod collections;
 mod home;
