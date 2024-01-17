@@ -1,25 +1,24 @@
 <div class="container">
     <div class="contact-page">
         <h1>Contact Us!</h1>
-        <form class="contact-form" action="#">
+        <form class="contact-form" action="mailto:info@jurat.io" method="post" id="contact-form">
             <div class="names">
                 <div class="input-control">
                     <label for="firstName">First Name</label>
-                    <input type="text" id="firstName" name="firstName" value="John" />
+                    <input type="text" id="firstName" name="firstName" required />
                 </div>
                 <div class="input-control">
                     <label for="lastName">Last Name</label>
-                    <input type="text" id="lastName" name="lastName" value="John" />
+                    <input type="text" id="lastName" name="lastName" required />
                 </div>
             </div>
             <div class="input-control">
                 <label for="email">Email Address</label>
-                <input type="text" id="email" name="email" value="email@email.com" />
+                <input type="email" id="email" name="email" />
             </div>
             <div class="input-control">
                 <label for="walletAddress">Wallet Address (Optional)</label>
-                <input type="text" id="walletAddress" name="walletAddress"
-                    value="bc1qj4ku25tdvp94pdfasfafasf454rq24124sfsed5626yy" />
+                <input type="text" id="walletAddress" name="walletAddress" />
             </div>
             <div class="input-control">
                 <label for="message">Message</label>
@@ -27,5 +26,8 @@
             </div>
             <button class="base-button submit-button" type="submit">Submit</button>
         </form>
+        <h2 id="success-msg" class="hidden">Thank you for messaging us, we will get back to within 24 hours</h2>
     </div>
 </div>
+
+<script src=/static/contact.js defer></script>

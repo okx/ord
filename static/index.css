@@ -405,9 +405,9 @@ a.mythic {
 }
 
 .show-more {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
   font-weight: 700;
 }
 
@@ -433,7 +433,7 @@ a.mythic {
   margin-top: 40px;
 }
 
-.inscription {
+.inscription-preview {
   display: flex;
   justify-content: center;
 }
@@ -446,8 +446,8 @@ a.mythic {
   margin-bottom: 20px;
 }
 
-.inscription>*:nth-child(2),
-.inscription>*:nth-child(3) {
+.inscription-preview>*:nth-child(1),
+.inscription-preview>*:nth-child(3) {
   color: var(--dark-bg);
   flex: 1;
   font-size: 200%;
@@ -457,16 +457,16 @@ a.mythic {
   align-items: center;
 }
 
-.inscription>a:nth-child(1):hover,
-.inscription>a:nth-child(3):hover {
+.inscription-preview>a:nth-child(1):hover,
+.inscription-preview>a:nth-child(3):hover {
   color: var(--dark-fg);
 }
 
-.inscription>*:nth-child(2) {
+.inscription-preview>*:nth-child(2) {
   flex: 0 75%;
 }
 
-.inscription>a>iframe {
+.inscription-preview>a>iframe {
   width: 100%;
 }
 
@@ -660,6 +660,10 @@ a.mythic {
 .contact-page {
   max-width: 500px;
   margin: 0 auto;
+}
+
+#success-msg {
+  text-align: center;
 }
 
 .contact-page .contact-form {
