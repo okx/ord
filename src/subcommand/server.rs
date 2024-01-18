@@ -24,7 +24,7 @@ use {
     headers::UserAgent,
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Json, Redirect, Response},
-    routing::get,
+    routing::{get, post},
     Router, TypedHeader,
   },
   axum_server::Handle,
@@ -36,7 +36,7 @@ use {
     caches::DirCache,
     AcmeConfig,
   },
-  std::{cmp::Ordering, io::Read, str, sync::Arc},
+  std::{cmp::Ordering, io::Read, str, sync::Arc, collections::HashMap},
   tokio_stream::StreamExt,
   tower_http::{
     compression::CompressionLayer,
@@ -359,7 +359,7 @@ impl Server {
         .route("/input/:block/:transaction/:input", get(Self::input))
         .route("/inscription/:inscription_query", get(Self::inscription))
         .route("/inscriptions", get(Self::inscriptions))
-        .route("/inscriptions_by_tx/:tx_id", get(Self::inscriptions_by_tx))
+        .route("/inscriptions_by_tx/:tx_id", post(Self::inscriptions_by_tx))
         .route("/inscriptions/:page", get(Self::inscriptions_paginated))
         .route(
           "/inscriptions/block/:height",
@@ -1566,15 +1566,17 @@ impl Server {
 
   async fn inscriptions_by_tx(
     Extension(index): Extension<Arc<Index>>,
-    Path(tx_id): Path<Txid>,
-  ) -> ServerResult<Json<InscriptionIdResponse>> {
-    let inscriptions = index.get_inscriptions_by_tx(tx_id);
+    Json(request_body): Json<TxIdArrayRequest>,
+  ) -> ServerResult<Json<HashMap<Txid, Vec<InscriptionId>>>> {
+    let mut response_map: HashMap<Txid, Vec<InscriptionId>> = HashMap::new();
 
-    let response = InscriptionIdResponse {
-      inscription_ids: inscriptions.unwrap_or(vec![]),
-    };
+    for tx_id in request_body.tx_ids {
+      if let Ok(inscriptions) = index.get_inscriptions_by_tx(tx_id) {
+        response_map.insert(tx_id, inscriptions);
+      }
+    }
 
-    Ok(Json(response))
+    Ok(Json(response_map))
   }
 
   async fn inscriptions_paginated(
@@ -1712,9 +1714,9 @@ impl Server {
   }
 }
 
-#[derive(Serialize)]
-struct InscriptionIdResponse {
-  inscription_ids: Vec<InscriptionId>,
+#[derive(Debug, Deserialize)]
+struct TxIdArrayRequest {
+  tx_ids: Vec<Txid>,
 }
 
 #[cfg(test)]
