@@ -138,6 +138,10 @@ nav {
   gap: 1rem;
 }
 
+nav a {
+  white-space: nowrap;
+}
+
 nav a.active {
   color: var(--light-fg);
   font-weight: bold;
@@ -148,12 +152,6 @@ nav .nav-items-wrapper {
   column-gap: 48px;
   flex: 1;
   justify-content: center;
-}
-
-@media screen and (max-width: 480px) {
-  nav .nav-items-wrapper {
-    column-gap: 12px;
-  }
 }
 
 nav a:hover {
@@ -168,6 +166,20 @@ nav a {
 
 nav a:active {
   font-weight: 700;
+}
+
+@media screen and (max-width: 640px) {
+  nav .nav-items-wrapper {
+    column-gap: 10px;
+  }
+
+  header {
+    padding: 4px;
+  }
+
+  nav a {
+    font-size: 14px;
+  }
 }
 
 form {
@@ -523,13 +535,6 @@ a.mythic {
 .icon {
   height: 1rem;
   width: 1rem;
-}
-
-.FAQs {
-  text-align: center;
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 40px;
 }
 
 .faq-item {
@@ -960,4 +965,317 @@ footer .links {
   border-radius: 16px;
   width: 360px;
   height: auto;
+}
+
+.faqs-page .title {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.faqs-page {
+  font-size: 16px;
+}
+
+.faqs-page .container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.faqs-page .mint-ordinals {
+  margin-top: 80px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.faqs-page .mint-ordinals .left-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.faqs-page .mint-ordinals .left-content .description {
+  margin-top: 16px;
+}
+
+.faqs-page .mint-ordinals .left-content .benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.faqs-page .mint-ordinals .left-content .benefits .item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.faqs-page .base-button {
+  display: block;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  outline: none;
+  border: none;
+  padding: 20px;
+  background-color: #8885DB;
+  border-radius: 8px;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.faqs-page .mint-button {
+  margin-top: 48px;
+  max-width: 320px;
+  width: 100%;
+}
+
+.faqs-page .mint-ordinals .goats-img {
+  max-width: 520px;
+  width: 100%;
+  height: auto;
+}
+
+.faqs-page .mint-ordinals .goats-img img {
+  width: 100%;
+}
+
+.faqs-page .take-ordinals {
+  margin: 100px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}
+
+.faqs-page .instructions-section {
+  background-color: white;
+  padding: 40px 0;
+}
+
+.faqs-page .instructions-section .title {
+  text-align: center;
+}
+
+.faqs-page .instructions-section .sub-title {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.faqs-page .instructions-section .content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.faqs-page .instructions-section .content .item {
+  display: flex;
+}
+
+.faqs-page .instructions-section .content .item .text {
+  width: 100%;
+}
+
+.faqs-page .instructions-section .content .item .marker {
+  font-weight: 700;
+  width: 32px;
+}
+
+.faqs-page .instructions-section .content .item:last-child {
+  font-weight: 700;
+}
+
+.faqs-page .instructions-section ul {
+  margin: 0;
+  padding: 0 25px;
+}
+
+.faqs-page .instructions-section ul.none {
+  list-style: none;
+}
+
+.faqs-page .instructions-section .mint-button {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.faqs-page .other-sections {
+  display: flex;
+  flex-direction: column;
+  margin: 100px 0;
+  gap: 100px;
+}
+
+.faqs-page .claim-earn {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 32px;
+}
+
+.faqs-page .claim-earn .card {
+  background-color: white;
+  padding: 64px 32px;
+  border-radius: 20px;
+  text-align: center;
+}
+
+.faqs-page .claim-earn .card .description {
+  margin-top: 16px;
+}
+
+.faqs-page .claim-earn .card .base-button {
+  background-color: #8885DB;
+  max-width: 243px;
+  width: 100%;
+  margin: 32px auto 0 auto;
+}
+
+.faqs-page .digital-art .content {
+  margin-top: 32px;
+}
+
+.faqs-page .faqs .content {
+  margin-top: 32px;
+}
+
+.faqs-page .faqs .content>div:last-child {
+  margin-top: 24px;
+}
+
+.faqs-page a {
+  text-decoration: none;
+  font-weight: 700;
+  color: #46D0AE;
+}
+
+.faqs-page .newsletter {
+  display: flex;
+  gap: 131px;
+}
+
+.faqs-page .newsletter img {
+  margin-top: -68px;
+}
+
+.faqs-page .newsletter form {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+}
+
+.faqs-page .newsletter form .inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.faqs-page .newsletter form .inputs .input-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.faqs-page .newsletter form .inputs .input-control input {
+  padding: 20px;
+  height: auto;
+  border: 1px solid #D1D1D1;
+  border-radius: 12px;
+}
+
+@media screen and (max-width: 1040px) {
+  .faqs-page .mint-ordinals {
+    margin-top: 32px;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .faqs-page .title {
+    text-align: center;
+  }
+
+  .faqs-page .mint-ordinals .left-content .description {
+    text-align: center;
+    margin-top: 12px;
+  }
+
+  .faqs-page .mint-button {
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 40px;
+  }
+
+  .faqs-page .mint-ordinals .left-content .benefits {
+    gap: 12px;
+  }
+
+  .faqs-page .mint-ordinals .goats-img {
+    margin-top: 60px;
+  }
+
+  .faqs-page .take-ordinals {
+    margin: 60px 0;
+  }
+
+  .faqs-page .instructions-section {
+    background-color: #7E87E3;
+    color: white;
+  }
+
+  .faqs-page .instructions-section .content {
+    margin-top: 24px;
+  }
+
+  .faqs-page .instructions-section .mint-button {
+    background-color: white;
+    color: black;
+  }
+
+  .faqs-page .other-sections {
+    gap: 60px;
+    margin: 60px 0;
+  }
+
+  .faqs-page .claim-earn {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .faqs-page .claim-earn .card {
+    padding: 32px 16px;
+  }
+
+  .faqs-page .claim-earn .description {
+    margin-top: 12px;
+  }
+
+  .faqs-page .claim-earn .base-button {
+    margin-top: 24px;
+  }
+
+  .faqs-page .digital-art .content {
+    margin-top: 24px;
+    text-align: center;
+  }
+
+  .faqs-page .faqs .content {
+    margin-top: 24px;
+  }
+
+  .faqs-page .newsletter {
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .faqs-page .newsletter img {
+    margin-top: 0;
+  }
+
+  .faqs-page .newsletter form {
+    gap: 24px;
+  }
 }
