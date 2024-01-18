@@ -10,12 +10,12 @@ use {
     server_config::ServerConfig,
     templates::{
       BlockHtml, BlockJson, BlocksHtml, ChildrenHtml, ChildrenJson, ClockSvg, CollectionsHtml,
-      FAQsHtml, GoatsHtml, ContactHtml, HomeHtml, InputHtml, InscriptionHtml, InscriptionJson, InscriptionsBlockHtml,
-      InscriptionsHtml, InscriptionsJson, OutputHtml, OutputJson, PageContent, PageHtml,
+      ContactHtml, FAQsHtml, GoatsHtml, HomeHtml, InputHtml, InscriptionHtml, InscriptionJson, InscriptionsBlockHtml,
+      InscriptionsHtml, InscriptionsJson, NotFoundHtml, OutputHtml, OutputJson, PageContent, PageHtml,
       PreviewAudioHtml, PreviewCodeHtml, PreviewFontHtml, PreviewImageHtml, PreviewMarkdownHtml,
       PreviewModelHtml, PreviewPdfHtml, PreviewTextHtml, PreviewUnknownHtml, PreviewVideoHtml,
       RangeHtml, RareTxt, RuneHtml, RuneJson, RunesHtml, RunesJson, SatHtml, SatInscriptionJson,
-      SatInscriptionsJson, SatJson, TransactionHtml, NotFoundHtml,
+      SatInscriptionsJson, SatJson, TransactionHtml,
     },
   },
   axum::{
@@ -23,7 +23,7 @@ use {
     extract::{Extension, Json, Path, Query},
     headers::UserAgent,
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, Json, Redirect, Response},
     routing::get,
     Router, TypedHeader,
   },
@@ -359,6 +359,7 @@ impl Server {
         .route("/input/:block/:transaction/:input", get(Self::input))
         .route("/inscription/:inscription_query", get(Self::inscription))
         .route("/inscriptions", get(Self::inscriptions))
+        .route("/inscriptions_by_tx/:tx_id", get(Self::inscriptions_by_tx))
         .route("/inscriptions/:page", get(Self::inscriptions_paginated))
         .route(
           "/inscriptions/block/:height",
@@ -1563,6 +1564,19 @@ impl Server {
     .await
   }
 
+  async fn inscriptions_by_tx(
+    Extension(index): Extension<Arc<Index>>,
+    Path(tx_id): Path<Txid>,
+  ) -> ServerResult<Json<InscriptionIdResponse>> {
+    let inscriptions = index.get_inscriptions_by_tx(tx_id);
+
+    let response = InscriptionIdResponse {
+      inscription_ids: inscriptions.unwrap_or(vec![]),
+    };
+
+    Ok(Json(response))
+  }
+
   async fn inscriptions_paginated(
     Extension(server_config): Extension<Arc<ServerConfig>>,
     Extension(index): Extension<Arc<Index>>,
@@ -1696,6 +1710,11 @@ impl Server {
 
     Redirect::to(&destination)
   }
+}
+
+#[derive(Serialize)]
+struct InscriptionIdResponse {
+  inscription_ids: Vec<InscriptionId>,
 }
 
 #[cfg(test)]

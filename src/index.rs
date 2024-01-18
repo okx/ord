@@ -1891,6 +1891,24 @@ impl Index {
     ))
   }
 
+  pub(crate) fn get_inscriptions_by_tx(
+    &self,
+    txid: Txid,
+  ) -> Result<Vec<InscriptionId>> {
+    let inscriptions: Vec<InscriptionId> = self
+        .database.begin_read()?
+        .open_table(SATPOINT_TO_INSCRIPTION_ID)?
+        .range::<&[u8; 44]>(&[0; 44]..)?
+        .filter(|(_satpoint, id)| {
+            let inscription_id: InscriptionId = Entry::load(*id.value());
+            inscription_id.txid == txid
+        }) // Filter by txId
+        .map(|(_satpoint, id)| Entry::load(*id.value()))
+        .collect();
+
+    Ok(inscriptions)
+  }
+
   pub(crate) fn get_home_inscriptions(&self) -> Result<Vec<InscriptionId>> {
     Ok(
       self
