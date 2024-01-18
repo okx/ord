@@ -126,7 +126,9 @@ mod fee_rate;
 mod height;
 mod index;
 mod inscriptions;
+mod logger;
 mod object;
+mod okx;
 mod options;
 mod outgoing;
 pub mod rarity;
@@ -213,7 +215,9 @@ fn gracefully_shutdown_indexer() {
 }
 
 pub fn main() {
-  env_logger::init();
+  let args = Arguments::parse();
+  let log_dir = args.options.log_dir();
+  logger::init(args.options.log_level(), log_dir).expect("initialize logger error:");
 
   ctrlc::set_handler(move || {
     if SHUTTING_DOWN.fetch_or(true, atomic::Ordering::Relaxed) {

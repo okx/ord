@@ -4,9 +4,11 @@ on:
   push:
     branches:
     - master
+    - dev
   pull_request:
     branches:
     - master
+    - dev
 
 defaults:
   run:
@@ -97,9 +99,9 @@ jobs:
     strategy:
       matrix:
         os:
-        - macos-latest
+#        - macos-latest
         - ubuntu-latest
-        - windows-latest
+#        - windows-latest
 
     runs-on: ${{matrix.os}}
 

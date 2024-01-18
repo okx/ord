@@ -1,4 +1,5 @@
 use super::*;
+use crate::okx::datastore::ord::operation::{Action, InscriptionOp};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum Curse {
@@ -15,11 +16,14 @@ enum Curse {
 
 #[derive(Debug, Clone)]
 pub(super) struct Flotsam {
+  txid: Txid,
   inscription_id: InscriptionId,
   offset: u64,
+  old_satpoint: SatPoint,
   origin: Origin,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 enum Origin {
   New {
@@ -30,14 +34,14 @@ enum Origin {
     pointer: Option<u64>,
     reinscription: bool,
     unbound: bool,
+    inscription: Inscription,
     vindicated: bool,
   },
-  Old {
-    old_satpoint: SatPoint,
-  },
+  Old,
 }
 
 pub(super) struct InscriptionUpdater<'a, 'db, 'tx> {
+  pub(super) operations: &'a mut HashMap<Txid, Vec<InscriptionOp>>,
   pub(super) blessed_inscription_count: u64,
   pub(super) chain: Chain,
   pub(super) cursed_inscription_count: u64,
@@ -48,9 +52,9 @@ pub(super) struct InscriptionUpdater<'a, 'db, 'tx> {
   pub(super) id_to_sequence_number: &'a mut Table<'db, 'tx, InscriptionIdValue, u32>,
   pub(super) index_transactions: bool,
   pub(super) inscription_number_to_sequence_number: &'a mut Table<'db, 'tx, i32, u32>,
-  pub(super) lost_sats: u64,
   pub(super) next_sequence_number: u32,
-  pub(super) outpoint_to_value: &'a mut Table<'db, 'tx, &'static OutPointValue, u64>,
+  pub(super) lost_sats: u64,
+  pub(super) outpoint_to_entry: &'a mut Table<'db, 'tx, &'static OutPointValue, &'static [u8]>,
   pub(super) reward: u64,
   pub(super) transaction_buffer: Vec<u8>,
   pub(super) transaction_id_to_transaction:
@@ -63,11 +67,66 @@ pub(super) struct InscriptionUpdater<'a, 'db, 'tx> {
   pub(super) sequence_number_to_satpoint: &'a mut Table<'db, 'tx, u32, &'static SatPointValue>,
   pub(super) timestamp: u32,
   pub(super) unbound_inscriptions: u64,
-  pub(super) value_cache: &'a mut HashMap<OutPoint, u64>,
-  pub(super) value_receiver: &'a mut Receiver<u64>,
+  pub(super) tx_out_receiver: &'a mut Receiver<TxOut>,
+  pub(super) tx_out_cache: &'a mut SimpleLru<OutPoint, TxOut>,
+  pub(super) new_outpoints: Vec<OutPoint>,
 }
 
 impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
+  pub(super) fn new(
+    operations: &'a mut HashMap<Txid, Vec<InscriptionOp>>,
+    blessed_inscription_count: u64,
+    chain: Chain,
+    cursed_inscription_count: u64,
+    height: u32,
+    home_inscriptions: &'a mut Table<'db, 'tx, u32, InscriptionIdValue>,
+    id_to_sequence_number: &'a mut Table<'db, 'tx, InscriptionIdValue, u32>,
+    index_transactions: bool,
+    inscription_number_to_sequence_number: &'a mut Table<'db, 'tx, i32, u32>,
+    next_sequence_number: u32,
+    lost_sats: u64,
+    outpoint_to_entry: &'a mut Table<'db, 'tx, &'static OutPointValue, &'static [u8]>,
+    transaction_id_to_transaction: &'a mut Table<'db, 'tx, &'static TxidValue, &'static [u8]>,
+    sat_to_sequence_number: &'a mut MultimapTable<'db, 'tx, u64, u32>,
+    satpoint_to_sequence_number: &'a mut MultimapTable<'db, 'tx, &'static SatPointValue, u32>,
+    sequence_number_to_children: &'a mut MultimapTable<'db, 'tx, u32, u32>,
+    sequence_number_to_entry: &'a mut Table<'db, 'tx, u32, InscriptionEntryValue>,
+    sequence_number_to_satpoint: &'a mut Table<'db, 'tx, u32, &'static SatPointValue>,
+    timestamp: u32,
+    unbound_inscriptions: u64,
+    tx_out_receiver: &'a mut Receiver<TxOut>,
+    tx_out_cache: &'a mut SimpleLru<OutPoint, TxOut>,
+  ) -> Result<Self> {
+    Ok(Self {
+      operations,
+      blessed_inscription_count,
+      chain,
+      cursed_inscription_count,
+      flotsam: vec![],
+      height,
+      home_inscription_count: home_inscriptions.len()?,
+      home_inscriptions,
+      id_to_sequence_number,
+      index_transactions,
+      inscription_number_to_sequence_number,
+      next_sequence_number,
+      lost_sats,
+      outpoint_to_entry,
+      reward: Height(height).subsidy(),
+      transaction_buffer: vec![],
+      transaction_id_to_transaction,
+      sat_to_sequence_number,
+      satpoint_to_sequence_number,
+      sequence_number_to_children,
+      sequence_number_to_entry,
+      sequence_number_to_satpoint,
+      timestamp,
+      unbound_inscriptions,
+      tx_out_receiver,
+      tx_out_cache,
+      new_outpoints: vec![],
+    })
+  }
   pub(super) fn index_envelopes(
     &mut self,
     tx: &Transaction,
@@ -100,9 +159,11 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       )? {
         let offset = total_input_value + old_satpoint.offset;
         floating_inscriptions.push(Flotsam {
+          txid,
           offset,
           inscription_id,
-          origin: Origin::Old { old_satpoint },
+          old_satpoint,
+          origin: Origin::Old,
         });
 
         inscribed_offsets
@@ -114,21 +175,23 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       let offset = total_input_value;
 
       // multi-level cache for UTXO set to get to the input amount
-      let current_input_value = if let Some(value) = self.value_cache.remove(&tx_in.previous_output)
+      let current_input_value = if let Some(tx_out) = self.tx_out_cache.get(&tx_in.previous_output)
       {
-        value
-      } else if let Some(value) = self
-        .outpoint_to_value
-        .remove(&tx_in.previous_output.store())?
-      {
-        value.value()
+        tx_out.value
       } else {
-        self.value_receiver.blocking_recv().ok_or_else(|| {
+        let tx_out = self.tx_out_receiver.blocking_recv().ok_or_else(|| {
           anyhow!(
             "failed to get transaction for {}",
             tx_in.previous_output.txid
           )
-        })?
+        })?;
+        // received new tx out from chain node, add it to new_outpoints first and persist it in db later.
+        #[cfg(not(feature = "cache"))]
+        self.new_outpoints.push(tx_in.previous_output);
+        self
+          .tx_out_cache
+          .insert(tx_in.previous_output, tx_out.clone());
+        tx_out.value
       };
 
       total_input_value += current_input_value;
@@ -199,8 +262,13 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           .unwrap_or(offset);
 
         floating_inscriptions.push(Flotsam {
+          txid,
           inscription_id,
           offset,
+          old_satpoint: SatPoint {
+            outpoint: tx_in.previous_output,
+            offset: 0,
+          },
           origin: Origin::New {
             cursed: curse.is_some() && !jubilant,
             fee: 0,
@@ -209,6 +277,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             pointer: inscription.payload.pointer(),
             reinscription: inscribed_offsets.get(&offset).is_some(),
             unbound,
+            inscription: inscription.payload.clone(),
             vindicated: curse.is_some() && jubilant,
           },
         });
@@ -303,12 +372,17 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
 
       output_value = end;
 
-      self.value_cache.insert(
+      #[cfg(not(feature = "cache"))]
+      self.new_outpoints.push(OutPoint {
+        vout: vout.try_into().unwrap(),
+        txid,
+      });
+      self.tx_out_cache.insert(
         OutPoint {
           vout: vout.try_into().unwrap(),
           txid,
         },
-        tx_out.value,
+        tx_out.clone(),
       );
     }
 
@@ -357,6 +431,28 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     }
   }
 
+  // write tx_out to outpoint_to_entry table
+  pub(super) fn flush_cache(self) -> Result {
+    let start = Instant::now();
+    let persist = self.new_outpoints.len();
+    let mut entry = Vec::new();
+    for outpoint in self.new_outpoints.into_iter() {
+      let tx_out = self.tx_out_cache.get(&outpoint).unwrap();
+      tx_out.consensus_encode(&mut entry)?;
+      self
+        .outpoint_to_entry
+        .insert(&outpoint.store(), entry.as_slice())?;
+      entry.clear();
+    }
+    log::info!(
+      "flush cache, persist:{}, global:{} cost: {}ms",
+      persist,
+      self.tx_out_cache.len(),
+      start.elapsed().as_millis()
+    );
+    Ok(())
+  }
+
   fn calculate_sat(
     input_sat_ranges: Option<&VecDeque<(u64, u64)>>,
     input_offset: u64,
@@ -384,10 +480,10 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
   ) -> Result {
     let inscription_id = flotsam.inscription_id;
     let (unbound, sequence_number) = match flotsam.origin {
-      Origin::Old { old_satpoint } => {
+      Origin::Old => {
         self
           .satpoint_to_sequence_number
-          .remove_all(&old_satpoint.store())?;
+          .remove_all(&flotsam.old_satpoint.store())?;
 
         (
           false,
@@ -406,6 +502,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
         pointer: _,
         reinscription,
         unbound,
+        inscription: _,
         vindicated,
       } => {
         let inscription_number = if cursed {
@@ -540,6 +637,41 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     } else {
       new_satpoint.store()
     };
+
+    self
+      .operations
+      .entry(flotsam.txid)
+      .or_default()
+      .push(InscriptionOp {
+        txid: flotsam.txid,
+        sequence_number,
+        inscription_number: self
+          .sequence_number_to_entry
+          .get(sequence_number)?
+          .map(|entry| InscriptionEntry::load(entry.value()).inscription_number),
+        inscription_id: flotsam.inscription_id,
+        action: match flotsam.origin {
+          Origin::Old => Action::Transfer,
+          Origin::New {
+            cursed,
+            fee: _,
+            hidden: _,
+            parent: _,
+            pointer: _,
+            reinscription: _,
+            unbound,
+            inscription,
+            vindicated,
+          } => Action::New {
+            cursed,
+            unbound,
+            vindicated,
+            inscription,
+          },
+        },
+        old_satpoint: flotsam.old_satpoint,
+        new_satpoint: Some(Entry::load(satpoint)),
+      });
 
     self
       .satpoint_to_sequence_number

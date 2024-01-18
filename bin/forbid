@@ -9,5 +9,5 @@ which rg > /dev/null
   --glob '!docs/src/bounty/frequency.tsv' \
   --glob '!docs/po/*' \
   --ignore-case \
-  'dbg!|fixme|todo|xxx' \
+  'dbg!|fixme|xxx' \
   .

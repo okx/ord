@@ -43,4 +43,21 @@ impl Rtx<'_> {
       .map(|header| Header::load(*header.value()).block_hash()),
     )
   }
+
+  pub(crate) fn latest_block(&self) -> Result<Option<(Height, BlockHash)>> {
+    Ok(
+      self
+        .0
+        .open_table(HEIGHT_TO_BLOCK_HEADER)?
+        .range(0..)?
+        .next_back()
+        .and_then(|result| result.ok())
+        .map(|(height, hash)| {
+          (
+            Height(height.value()),
+            Header::load(*hash.value()).block_hash(),
+          )
+        }),
+    )
+  }
 }

@@ -6,7 +6,12 @@ use {super::*, bitcoincore_rpc::Auth};
     .required(false)
     .args(&["chain_argument", "signet", "regtest", "testnet"]),
 ))]
+
 pub struct Options {
+  #[arg(long, default_value_t=LogLevel::default(), help = "log level")]
+  pub(crate) log_level: LogLevel,
+  #[arg(long, help = "write log in directory <LOG_DIR>")]
+  pub(crate) log_dir: Option<PathBuf>,
   #[arg(long, help = "Load Bitcoin Core data dir from <BITCOIN_DATA_DIR>.")]
   pub(crate) bitcoin_data_dir: Option<PathBuf>,
   #[arg(long, help = "Authenticate to Bitcoin Core RPC with <RPC_PASS>.")]
@@ -33,6 +38,12 @@ pub struct Options {
     help = "Set index cache to <DB_CACHE_SIZE> bytes. By default takes 1/4 of available RAM."
   )]
   pub(crate) db_cache_size: Option<usize>,
+  #[arg(
+    long,
+    default_value = "10000000",
+    help = "Set lru cache to <LRU_SIZE>. By default 10000000"
+  )]
+  pub(crate) lru_size: usize,
   #[arg(
     long,
     help = "Don't look for inscriptions below <FIRST_INSCRIPTION_HEIGHT>."
@@ -66,6 +77,48 @@ pub struct Options {
   pub(crate) signet: bool,
   #[arg(long, short, help = "Use testnet. Equivalent to `--chain testnet`.")]
   pub(crate) testnet: bool,
+  #[arg(long, help = "Enable Save Ord Receipts.")]
+  pub(crate) enable_save_ord_receipts: bool,
+  #[arg(long, help = "Enable Index Bitmap Collection.")]
+  pub(crate) enable_index_bitmap: bool,
+  // OKX defined options.
+  #[arg(long, help = "Enable Index all of BRC20 Protocol")]
+  pub(crate) enable_index_brc20: bool,
+  #[arg(
+    long,
+    help = "Don't look for BRC20 messages below <FIRST_BRC20_HEIGHT>."
+  )]
+  pub(crate) first_brc20_height: Option<u32>,
+  #[clap(long, default_value = "200", help = "DB commit interval.")]
+  pub(crate) commit_height_interval: u64,
+  #[clap(
+    long,
+    default_value = "0",
+    help = "(experimental) DB commit persist interval."
+  )]
+  pub(crate) commit_persist_interval: u64,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct LogLevel(pub log::LevelFilter);
+
+impl Default for LogLevel {
+  fn default() -> Self {
+    Self(log::LevelFilter::Error)
+  }
+}
+
+impl Display for LogLevel {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    Display::fmt(&self.0, f)
+  }
+}
+
+impl FromStr for LogLevel {
+  type Err = <log::LevelFilter as FromStr>::Err;
+  fn from_str(level: &str) -> Result<Self, Self::Err> {
+    Ok(Self(log::LevelFilter::from_str(level)?))
+  }
 }
 
 impl Options {
@@ -88,6 +141,18 @@ impl Options {
       self
         .first_inscription_height
         .unwrap_or_else(|| self.chain().first_inscription_height())
+    }
+  }
+
+  pub(crate) fn first_brc20_height(&self) -> u32 {
+    if self.chain() == Chain::Regtest {
+      self.first_brc20_height.unwrap_or(0)
+    } else if integration_test() {
+      0
+    } else {
+      self
+        .first_brc20_height
+        .unwrap_or_else(|| self.chain().first_brc20_height())
     }
   }
 
@@ -145,6 +210,17 @@ impl Options {
 
   pub(crate) fn data_dir(&self) -> PathBuf {
     self.chain().join_with_data_dir(&self.data_dir)
+  }
+
+  pub(crate) fn log_level(&self) -> log::LevelFilter {
+    self.log_level.0
+  }
+
+  pub(crate) fn log_dir(&self) -> PathBuf {
+    self
+      .log_dir
+      .as_ref()
+      .map_or_else(|| self.data_dir().join("logs"), |path| path.clone())
   }
 
   pub(crate) fn load_config(&self) -> Result<Config> {
@@ -246,6 +322,22 @@ impl Options {
     }
 
     Ok(client)
+  }
+
+  pub(crate) fn commit_height_interval(&self) -> u64 {
+    if self.commit_height_interval == 0 {
+      1
+    } else {
+      self.commit_height_interval
+    }
+  }
+
+  pub(crate) fn commit_persist_interval(&self) -> u64 {
+    if self.commit_persist_interval == 0 {
+      1
+    } else {
+      self.commit_persist_interval
+    }
   }
 }
 
