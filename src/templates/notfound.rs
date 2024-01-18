@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Boilerplate)]
-pub(crate) struct NotFoundHtml {}
+pub(crate) struct NotFoundHtml;
 
 impl PageContent for NotFoundHtml {
   fn title(&self) -> String {

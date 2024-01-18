@@ -1,4 +1,5 @@
 use {super::*, std::fmt::Write};
+use crate::templates::NotFoundHtml;
 
 #[derive(Debug)]
 pub(super) enum ServerError {
@@ -27,6 +28,7 @@ impl IntoResponse for ServerError {
         )
           .into_response()
       }
+
       Self::NotAcceptable {
         accept_encoding,
         content_encoding,
@@ -44,12 +46,13 @@ impl IntoResponse for ServerError {
 
         (StatusCode::NOT_ACCEPTABLE, message).into_response()
       }
-      Self::NotFound(message) => (
-        StatusCode::NOT_FOUND,
-        [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
-        message,
-      )
-        .into_response(),
+      // Self::NotFound(message) => (
+      //   StatusCode::NOT_FOUND,
+      //   [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
+      //   message,
+      // )
+      //   .into_response(),
+      Self::NotFound(_message) => NotFoundHtml.page_default().into_response(),
     }
   }
 }

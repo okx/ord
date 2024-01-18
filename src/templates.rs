@@ -72,6 +72,17 @@ where
     Self { content, config }
   }
 
+  pub(crate) fn new_default(content: T) -> Self {
+    Self {
+      content,
+      page_config: Arc::new(PageConfig {
+        chain: Chain::Mainnet,
+        domain: None,
+      }),
+      has_sat_index: false,
+    }
+  }
+
   fn og_image(&self) -> String {
     if let Some(domain) = &self.config.domain {
       format!("https://{domain}/static/favicon.png")
@@ -97,6 +108,13 @@ pub(crate) trait PageContent: Display + 'static {
     Self: Sized,
   {
     PageHtml::new(self, server_config)
+  }
+
+  fn page_default(self) -> PageHtml<Self>
+  where
+    Self: Sized,
+  {
+    PageHtml::new_default(self)
   }
 
   fn preview_image_url(&self) -> Option<Trusted<String>> {
