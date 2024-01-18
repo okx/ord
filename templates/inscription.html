@@ -38,19 +38,19 @@
       <div class="content uppercase">{{ self.inscription_id }}</div>
     </div>
     %% if let Some(traits) = &self.traits {
-    %% if let Some(license_type) = traits["license_type"].as_str() {
+    %% if let Some(license_type) = traits["jtc_licenseType"].as_str() {
     <div class="info">
       <div class="title">License type</div>
       <div class="content">{{ license_type }}</div>
     </div>
     %% }
-    %% if let Some(royalty_percentage) = traits["royalty_percentage"].as_str() {
+    %% if let Some(royalty_percentage) = traits["jtc_royaltyAmountPercent"].as_str() {
     <div class="info">
       <div class="title">Royalty Percentage</div>
       <div class="content">{{ royalty_percentage }}</div>
     </div>
     %% }
-    %% if let Some(royalty_address) = traits["royalty_address"].as_str() {
+    %% if let Some(royalty_address) = traits["jtc_royaltyPayToAddress"].as_str() {
     <div class="info">
       <div class="title">royalty Must be paid to</div>
       <div class="content">{{ royalty_address }}</div>
