@@ -32,3 +32,12 @@ search.addEventListener('submit', (e) => {
     e.preventDefault();
   }
 });
+
+const names = ["/", "/goats", "/faq", "/contact"];
+let links = document.getElementsByClassName("nav-link");
+let index = names.indexOf(window.location.pathname);
+links[index === -1 ? 0 : index].classList.add("active");
+
+if (index > 0) {
+  document.getElementById("search-form").classList.add("hidden");
+}

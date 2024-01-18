@@ -10,12 +10,12 @@ use {
     server_config::ServerConfig,
     templates::{
       BlockHtml, BlockJson, BlocksHtml, ChildrenHtml, ChildrenJson, ClockSvg, CollectionsHtml,
-      HomeHtml, InputHtml, InscriptionHtml, InscriptionJson, InscriptionsBlockHtml,
+      FAQsHtml, GoatsHtml, ContactHtml, HomeHtml, InputHtml, InscriptionHtml, InscriptionJson, InscriptionsBlockHtml,
       InscriptionsHtml, InscriptionsJson, OutputHtml, OutputJson, PageContent, PageHtml,
       PreviewAudioHtml, PreviewCodeHtml, PreviewFontHtml, PreviewImageHtml, PreviewMarkdownHtml,
       PreviewModelHtml, PreviewPdfHtml, PreviewTextHtml, PreviewUnknownHtml, PreviewVideoHtml,
       RangeHtml, RareTxt, RuneHtml, RuneJson, RunesHtml, RunesJson, SatHtml, SatInscriptionJson,
-      SatInscriptionsJson, SatJson, TransactionHtml,
+      SatInscriptionsJson, SatJson, TransactionHtml, NotFoundHtml,
     },
   },
   axum::{
@@ -352,6 +352,8 @@ impl Server {
         .route("/collections/:page", get(Self::collections_paginated))
         .route("/content/:inscription_id", get(Self::content))
         .route("/faq", get(Self::faq))
+        .route("/goats", get(Self::goats))
+        .route("/contact", get(Self::contact))
         .route("/favicon.ico", get(Self::favicon))
         .route("/feed.xml", get(Self::feed))
         .route("/input/:block/:transaction/:input", get(Self::input))
@@ -402,6 +404,7 @@ impl Server {
         .route("/static/*path", get(Self::static_asset))
         .route("/status", get(Self::status))
         .route("/tx/:txid", get(Self::transaction))
+        .fallback(Self::custom_404_handler)
         .nest("/api", api_router)
         .layer(Extension(index))
         .layer(Extension(server_config.clone()))
@@ -1155,8 +1158,32 @@ impl Server {
     Ok(InputHtml { path, input }.page(server_config))
   }
 
-  async fn faq() -> Redirect {
-    Redirect::to("https://docs.ordinals.com/faq/")
+  async fn faq(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+  ) -> ServerResult<PageHtml<FAQsHtml>> {
+    Ok(FAQsHtml {}.page(page_config, index.has_sat_index()?))
+  }
+
+  async fn goats(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+  ) -> ServerResult<PageHtml<GoatsHtml>> {
+    Ok(GoatsHtml {}.page(page_config, index.has_sat_index()?))
+  }
+
+  async fn custom_404_handler(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+  ) -> ServerResult<PageHtml<NotFoundHtml>> {
+    Ok(NotFoundHtml {}.page(page_config, index.has_sat_index()?))
+  }
+  
+  async fn contact(
+    Extension(page_config): Extension<Arc<PageConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+  ) -> ServerResult<PageHtml<ContactHtml>> {
+    Ok(ContactHtml {}.page(page_config, index.has_sat_index()?))
   }
 
   async fn bounties() -> Redirect {

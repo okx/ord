@@ -1,109 +1,159 @@
-<h1>Inscription {{ self.inscription_number }}</h1>
-<div class=inscription>
-%% if let Some(previous) = self.previous {
-<a class=prev href=/inscription/{{previous}}>❮</a>
-%% } else {
-<div>❮</div>
-%% }
-{{Iframe::main(self.inscription_id)}}
-%% if let Some(next) = self.next {
-<a class=next href=/inscription/{{next}}>❯</a>
-%% } else {
-<div>❯</div>
-%% }
+<div class="container inscription-container">
+  <div class=inscription>
+    <div class="inscription-id">Inscription #{{ self.number }}</div>
+    <div class="inscription-preview">
+      %% if let Some(previous) = self.previous {
+      <a class=prev href=/inscription/{{previous}}>❮</a>
+      %% } else {
+      <div class="disabled">❮</div>
+      %% }
+      {{ Iframe::main(self.inscription_id) }}
+      %% if let Some(next) = self.next {
+      <a class=next href=/inscription/{{next}}>❯</a>
+      %% } else {
+      <div class="disabled">❯</div>
+      %% }
+    </div>
+    <div class="links">
+      <div class="copy-icon" data-copy="https://ordinals.jurat.io/inscription/{{self.inscription_id}}">
+        <img src="/static/images/copy-icon.svg" width="19" height="19" />
+      </div>
+      <a href="https://www.twitter.com/share?url=https://ordinals.jurat.io/inscription/{{self.inscription_id}}"
+        target="_blank">
+        <img src="/static/images/twitter-icon.svg" width="21" height="18" />
+      </a>
+      <a href="/preview/{{self.inscription_id}}" target="_blank">
+        <img src="/static/images/share-icon.svg" width="18" height="18" />
+      </a>
+    </div>
+  </div>
+  <div class="main-infos">
+    <div class="info">
+      <div class="title">
+        <div>Inscription iD</div>
+        <div class="copy-icon" data-copy="{{ self.inscription_id  }}">
+          <img src="/static/images/copy-icon.svg" />
+        </div>
+      </div>
+      <div class="content uppercase">{{ self.inscription_id }}</div>
+    </div>
+    <!-- <div class="info">
+      <div class="title">License type</div>
+      <div class="content">Personal</div>
+    </div> -->
+    <div class="info">
+      <div class="title">royalty percentage</div>
+      <div class="content">0%</div>
+    </div>
+    <!-- <div class="info">
+      <div class="title">royalty Must be paid to</div>
+      <div class="content">-</div>
+    </div> -->
+    %% if let Some(content_type) = self.inscription.content_type() {
+    <div class="info">
+      <div class="title">File type</div>
+      <div class="content">{{ content_type }}</div>
+    </div>
+    %% }
+    %% if let Some(content_length) = self.inscription.content_length() {
+    <div class="info">
+      <div class="title">File size</div>
+      <div class="content" id="size">{{ content_length }}</div>
+    </div>
+    %% }
+    <div class="info">
+      <div class="title">created</div>
+      <div class="content timestamp">
+        <div id="timestamp">{{ self.timestamp }}</div>
+        <div id="from-now"></div>
+      </div>
+    </div>
+    %% if let Ok(address) = self.chain.address_from_script(&self.output.script_pubkey ) {
+    <div class="info">
+      <div class="title">
+        <div>
+          inscribed by
+          <div>
+          </div>
+        </div>
+        <div class="copy-icon" data-copy="{{ address }}">
+          <img src="/static/images/copy-icon.svg" />
+        </div>
+      </div>
+      <div class="content" id="inscribed-by">{{ address }}</div>
+    </div>
+    %% }
+    <div class="info">
+      <div class="title">tags</div>
+      <div class="content">No tags yet</div>
+    </div>
+  </div>
+  <div class="hidden-panel">
+    <div class="second-infos hidden" id="second-infos">
+      <div class="info">
+        <div class="title">hash</div>
+        <div class="content uppercase" id="hash">{{ self.inscription_id.txid }}</div>
+      </div>
+      %% if let Ok(address) = self.chain.address_from_script(&self.output.script_pubkey ) {
+      <div class="info">
+        <div class="title">
+          <div>
+            <div>
+              address that holds ordinal
+            </div>
+          </div>
+          <div class="copy-icon" data-copy="{{ address }}">
+            <img src="/static/images/copy-icon.svg" />
+          </div>
+        </div>
+        <div class="content uppercase" id="address">{{ address }}</div>
+      </div>
+      %% }
+      <div class="info">
+        <div class="title">
+          <div>creation block</div>
+          <div class="copy-icon" data-copy="{{ self.genesis_height }}">
+            <img src="/static/images/copy-icon.svg" />
+          </div>
+        </div>
+        <div class="content" id="block">{{ self.genesis_height }}</div>
+      </div>
+      <div class="info">
+        <div class="title">
+          <div>creation transaction</div>
+          <div class="copy-icon" data-copy="{{ self.inscription_id.txid }}">
+            <img src="/static/images/copy-icon.svg" />
+          </div>
+        </div>
+        <div class="content" id="transaction">{{ self.inscription_id.txid }}</div>
+      </div>
+      <div class="info">
+        <div class="title">creation fee</div>
+        <div class="content" id="fee">{{ self.genesis_fee }}</div>
+      </div>
+      %% if let Some(sat) = self.sat {
+      <div class="info">
+        <div class="title">
+          <div>sat</div>
+          <div class="copy-icon" data-copy="{{ sat }}">
+            <img src="/static/images/copy-icon.svg" />
+          </div>
+        </div>
+        <div class="content">{{ sat }}</div>
+      </div>
+      <div class="info">
+        <div class="title">sat rarity</div>
+        <div class="content">{{ sat.rarity() }}</div>
+      </div>
+      <div class="info">
+        <div class="title">sat creation block</div>
+        <div class="content" id="sat-block">{{ sat.height() }}</div>
+      </div>
+      %% }
+
+    </div>
+    <button class="show-more-btn" id="show-more">Show More</button>
+  </div>
 </div>
-<dl>
-%% if !self.children.is_empty() {
-  <dt>children</dt>
-  <dd>
-    <div class=thumbnails>
-%% for id in &self.children {
-      {{Iframe::thumbnail(*id)}}
-%% }
-    </div>
-    <div class=center>
-      <a href=/children/{{self.inscription_id}}>all</a>
-    </div>
-  </dd>
-%% }
-  <dt>id</dt>
-  <dd class=monospace>{{ self.inscription_id }}</dd>
-%% if let Some(metadata) = self.inscription.metadata() {
-  <dt>metadata</dt>
-  <dd>
-    {{ Trusted(MetadataHtml(&metadata)) }}
-  </dd>
-%% }
-%% if let Some(parent) = &self.parent {
-  <dt>parent</dt>
-  <dd><a class=monospace href=/inscription/{{ parent }}>{{ parent }}</a></dd>
-%% }
-%% if self.charms != 0 {
-  <dt>charms</dt>
-  <dd>
-%% for charm in Charm::ALL {
-%%   if charm.is_set(self.charms) {
-    <span title={{charm.title()}}>{{charm.icon()}}</span>
-%%   }
-%% }
-  </dd>
-%% }
-%% if let Some(output) = &self.output {
-%% if let Ok(address) = self.chain.address_from_script(&output.script_pubkey ) {
-  <dt>address</dt>
-  <dd class=monospace>{{ address }}</dd>
-%% }
-  <dt>output value</dt>
-  <dd>{{ output.value }}</dd>
-%% }
-%% if let Some(sat) = self.sat {
-  <dt>sat</dt>
-  <dd><a href=/sat/{{sat}}>{{sat}}</a></dd>
-%% }
-%% if let Some(metaprotocol) = self.inscription.metaprotocol() {
-  <dt>metaprotocol</dt>
-  <dd>{{ metaprotocol }}</dd>
-%% }
-%% if self.inscription.content_length().is_some() || self.inscription.delegate().is_some() {
-%% if let Some(delegate) = self.inscription.delegate() {
-  <dt>delegate</dt>
-  <dd><a href=/inscription/{{ delegate }}>{{ delegate }}</a></dd>
-%% }
-  <dt>preview</dt>
-  <dd><a href=/preview/{{self.inscription_id}}>link</a></dd>
-  <dt>content</dt>
-  <dd><a href=/content/{{self.inscription_id}}>link</a></dd>
-%% if let Some(content_length) = self.inscription.content_length() {
-  <dt>content length</dt>
-  <dd>{{ content_length }} bytes</dd>
-%% }
-%% }
-%% if let Some(content_type) = self.inscription.content_type() {
-  <dt>content type</dt>
-  <dd>{{ content_type }}</dd>
-%% }
-%% if let Some(content_encoding) = self.inscription.content_encoding() {
-  <dt>content encoding</dt>
-  <dd>{{ content_encoding.to_str().unwrap_or_default() }}</dd>
-%% }
-  <dt>timestamp</dt>
-  <dd><time>{{ self.timestamp }}</time></dd>
-  <dt>genesis height</dt>
-  <dd><a href=/block/{{ self.genesis_height }}>{{ self.genesis_height }}</a></dd>
-  <dt>genesis fee</dt>
-  <dd>{{ self.genesis_fee }}</dd>
-  <dt>genesis transaction</dt>
-  <dd><a class=monospace href=/tx/{{ self.inscription_id.txid }}>{{ self.inscription_id.txid }}</a></dd>
-  <dt>location</dt>
-  <dd class=monospace>{{ self.satpoint }}</dd>
-  <dt>output</dt>
-  <dd><a class=monospace href=/output/{{ self.satpoint.outpoint }}>{{ self.satpoint.outpoint }}</a></dd>
-  <dt>offset</dt>
-  <dd>{{ self.satpoint.offset }}</dd>
-  <dt>ethereum teleburn address</dt>
-  <dd>{{ teleburn::Ethereum::from(self.inscription_id) }}</dd>
-%% if let Some(rune) = self.rune {
-  <dt>rune</dt>
-  <dd><a href=/rune/{{ rune }}>{{ rune }}</a></dd>
-%% }
-</dl>
+
+<script src=/static/inscription.js defer></script>
