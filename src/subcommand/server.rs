@@ -1423,6 +1423,7 @@ impl Server {
         content_type: info.inscription.content_type().map(|s| s.to_string()),
         content_length: info.inscription.content_length(),
         timestamp: timestamp(info.entry.timestamp).timestamp(),
+        traits: info.traits,
         previous: info.previous,
         next: info.next,
         rune: info.rune,
@@ -1446,6 +1447,7 @@ impl Server {
         sat: info.entry.sat,
         satpoint: info.satpoint,
         timestamp: timestamp(info.entry.timestamp),
+        traits: info.traits,
       }
       .page(server_config)
       .into_response()

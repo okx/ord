@@ -17,6 +17,7 @@ pub(crate) struct InscriptionHtml {
   pub(crate) sat: Option<Sat>,
   pub(crate) satpoint: SatPoint,
   pub(crate) timestamp: DateTime<Utc>,
+  pub(crate) traits: Option<Value>,
   pub(crate) charms: u16,
 }
 
@@ -64,6 +65,7 @@ mod tests {
         inscription_id: inscription_id(1),
         inscription_number: 1,
         satpoint: satpoint(1, 0),
+        traits: None,
         ..Default::default()
       },
       "
@@ -149,6 +151,7 @@ mod tests {
         output: Some(tx_out(1, address())),
         sat: Some(Sat(1)),
         satpoint: satpoint(1, 0),
+        traits: None,
         ..Default::default()
       },
       "
@@ -179,6 +182,7 @@ mod tests {
         output: Some(tx_out(1, address())),
         previous: Some(inscription_id(1)),
         satpoint: satpoint(1, 0),
+        traits: None,
         ..Default::default()
       },
       "

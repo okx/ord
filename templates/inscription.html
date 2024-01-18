@@ -37,18 +37,26 @@
       </div>
       <div class="content uppercase">{{ self.inscription_id }}</div>
     </div>
-    <!-- <div class="info">
-      <div class="title">License type</div>
-      <div class="content">Personal</div>
-    </div> -->
+    %% if let Some(traits) = &self.traits {
+    %% if let Some(license_type) = traits["license_type"].as_str() {
     <div class="info">
-      <div class="title">royalty percentage</div>
-      <div class="content">0%</div>
+      <div class="title">License type</div>
+      <div class="content">{{ license_type }}</div>
     </div>
-    <!-- <div class="info">
+    %% }
+    %% if let Some(royalty_percentage) = traits["royalty_percentage"].as_str() {
+    <div class="info">
+      <div class="title">Royalty Percentage</div>
+      <div class="content">{{ royalty_percentage }}</div>
+    </div>
+    %% }
+    %% if let Some(royalty_address) = traits["royalty_address"].as_str() {
+    <div class="info">
       <div class="title">royalty Must be paid to</div>
-      <div class="content">-</div>
-    </div> -->
+      <div class="content">{{ royalty_address }}</div>
+    </div>
+    %% }
+    %% }
     %% if let Some(content_type) = self.inscription.content_type() {
     <div class="info">
       <div class="title">File type</div>

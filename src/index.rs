@@ -2023,6 +2023,17 @@ impl Index {
       .get(sequence_number + 1)?
       .map(|guard| InscriptionEntry::load(guard.value()).id);
 
+    let metadata = inscription.metadata();
+    let mut traits = None;
+    if let Some(metadata) = metadata {
+      let metadata: Result<serde_json::Value, serde_json::Error> = serde_json::from_str(metadata);
+      if let Ok(metadata) = metadata {
+        traits = Some(metadata);
+      }
+    }
+
+    println!("{:#?}", traits);  
+
     let children = rtx
       .open_multimap_table(SEQUENCE_NUMBER_TO_CHILDREN)?
       .get(sequence_number)?
@@ -2079,6 +2090,7 @@ impl Index {
       next,
       rune,
       charms,
+      traits,
     }))
   }
 

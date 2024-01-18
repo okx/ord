@@ -73,7 +73,7 @@ pub(crate) struct Inscribe {
   pub(crate) destination: Option<Address<NetworkUnchecked>>,
   #[arg(long, help = "Don't sign or broadcast transactions.")]
   pub(crate) dry_run: bool,
-  #[arg(long, help = "Use fee rate of <FEE_RATE> sats/vB.")]
+  #[arg(long, default_value = "1.0", help = "Use fee rate of <FEE_RATE> sats/vB.")]
   pub(crate) fee_rate: FeeRate,
   #[arg(long, help = "Inscribe sat with contents of <FILE>.")]
   pub(crate) file: Option<PathBuf>,
