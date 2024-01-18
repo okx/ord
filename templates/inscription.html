@@ -41,7 +41,15 @@
     %% if let Some(license_type) = traits["jtc_licenseType"].as_str() {
     <div class="info">
       <div class="title">License type</div>
+      %% if let Some(inscription_id) = traits["jtc_licenseInscriptionId"].as_str() {
+      %% if inscription_id != "null" {
+      <a class="content" href="https://ordinals.jurat.io/inscription/{{ inscription_id }}">{{ license_type }}</a>
+      %% } else {
       <div class="content">{{ license_type }}</div>
+      %% }
+      %% } else {
+      <div class="content">{{ license_type }}</div>
+      %% }
     </div>
     %% }
     %% if let Some(royalty_percentage) = traits["jtc_royaltyAmountPercent"].as_str() {
