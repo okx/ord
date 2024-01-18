@@ -42,8 +42,18 @@
     <div class="info">
       <div class="title">License type</div>
       %% if let Some(inscription_id) = traits["jtc_licenseInscriptionId"].as_str() {
-      %% if inscription_id != "null" {
-      <a class="content" href="https://ordinals.jurat.io/inscription/{{ inscription_id }}">{{ license_type }}</a>
+      %% if inscription_id == "Personal" {
+      <a class="content"
+        href="https://ordinals.jurat.io/content/cc5c050f1e1a636f3c07e51572669e229fcf42720433e9af541358e598f3aacdi0">{{
+        license_type }}</a>
+      %% } else if inscription_id == "Custom" {
+      <a class="content"
+        href="https://ordinals.jurat.io/content/b3de73afffed219adf2e8b00f56733786918ebaaf258a93b4219dee3ebe25818i0">{{
+        license_type }}</a>
+      %% } else if inscription_id == "Commercial" {
+      <a class="content"
+        href="https://ordinals.jurat.io/content/46657effcaade2578eda42ec54490ad15da1029381dc446ae80f016593666273i0">{{
+        license_type }}</a>
       %% } else {
       <div class="content">{{ license_type }}</div>
       %% }
