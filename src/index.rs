@@ -37,6 +37,7 @@ use {
     sync::{Mutex, Once},
   },
 };
+use serde_json::Value;
 
 pub use self::entry::RuneEntry;
 pub(super) use self::entry::{
@@ -82,6 +83,7 @@ define_table! { OUTPOINT_TO_ENTRY, &OutPointValue, &[u8]}
 define_table! { RUNE_ID_TO_RUNE_ENTRY, RuneIdValue, RuneEntryValue }
 define_table! { RUNE_TO_RUNE_ID, u128, RuneIdValue }
 define_table! { SAT_TO_SATPOINT, u64, &SatPointValue }
+define_table! { SATPOINT_TO_INSCRIPTION_ID, &SatPointValue, InscriptionIdValue }
 define_table! { SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY, u32, InscriptionEntryValue }
 define_table! { SEQUENCE_NUMBER_TO_RUNE_ID, u32, RuneIdValue }
 define_table! { SEQUENCE_NUMBER_TO_SATPOINT, u32, &SatPointValue }
@@ -185,6 +187,7 @@ pub(crate) struct InscriptionInfo {
   pub(crate) next: Option<InscriptionId>,
   pub(crate) rune: Option<SpacedRune>,
   pub(crate) charms: u16,
+  pub(crate) traits: Option<Value>,
 }
 
 trait BitcoinCoreRpcResultExt<T> {
@@ -346,6 +349,7 @@ impl Index {
         tx.open_table(OUTPOINT_TO_ENTRY)?;
         tx.open_table(RUNE_ID_TO_RUNE_ENTRY)?;
         tx.open_table(RUNE_TO_RUNE_ID)?;
+        tx.open_table(SATPOINT_TO_INSCRIPTION_ID)?;
         tx.open_table(SAT_TO_SATPOINT)?;
         tx.open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?;
         tx.open_table(SEQUENCE_NUMBER_TO_RUNE_ID)?;
@@ -2044,7 +2048,7 @@ impl Index {
     let metadata = inscription.metadata();
     let mut traits = None;
     if let Some(metadata) = metadata {
-      let metadata: Result<serde_json::Value, serde_json::Error> = serde_json::from_str(metadata);
+      let metadata: Result<serde_json::Value, serde_json::Error> = serde_json::from_value(metadata);
       if let Ok(metadata) = metadata {
         traits = Some(metadata);
       }

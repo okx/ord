@@ -1,6 +1,6 @@
 <div class="container inscription-container">
   <div class=inscription>
-    <div class="inscription-id">Inscription #{{ self.number }}</div>
+    <div class="inscription-id">Inscription #{{ self.inscription_number }}</div>
     <div class="inscription-preview">
       %% if let Some(previous) = self.previous {
       <a class=prev href=/inscription/{{previous}}>❮</a>
@@ -94,7 +94,8 @@
         <div id="from-now"></div>
       </div>
     </div>
-    %% if let Ok(address) = self.chain.address_from_script(&self.output.script_pubkey ) {
+    %% if let Some(output) = &self.output {
+    %% if let Ok(address) = self.chain.address_from_script(&output.script_pubkey ) {
     <div class="info">
       <div class="title">
         <div>
@@ -109,6 +110,7 @@
       <div class="content" id="inscribed-by">{{ address }}</div>
     </div>
     %% }
+    %% }
     <div class="info">
       <div class="title">tags</div>
       <div class="content">No tags yet</div>
@@ -120,7 +122,8 @@
         <div class="title">hash</div>
         <div class="content uppercase" id="hash">{{ self.inscription_id.txid }}</div>
       </div>
-      %% if let Ok(address) = self.chain.address_from_script(&self.output.script_pubkey ) {
+      %% if let Some(output) = &self.output {
+      %% if let Ok(address) = self.chain.address_from_script(&output.script_pubkey ) {
       <div class="info">
         <div class="title">
           <div>
@@ -135,6 +138,7 @@
         <div class="content uppercase" id="address">{{ address }}</div>
       </div>
       %% }
+      && }
       <div class="info">
         <div class="title">
           <div>creation block</div>

@@ -13,6 +13,7 @@ use {
   io::{Cursor, Read, Write},
   std::str,
 };
+use serde_json::Value;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Eq, Default)]
 pub struct Inscription {

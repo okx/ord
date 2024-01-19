@@ -23,7 +23,7 @@ use {
     extract::{Extension, Json, Path, Query},
     headers::UserAgent,
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
-    response::{IntoResponse, Json, Redirect, Response},
+    response::{IntoResponse, Redirect, Response},
     routing::{get, post},
     Router, TypedHeader,
   },
@@ -799,10 +799,8 @@ impl Server {
     Extension(index): Extension<Arc<Index>>,
   ) -> ServerResult<PageHtml<HomeHtml>> {
     Ok(
-      HomeHtml {
-        inscriptions: index.get_home_inscriptions()?,
-      }
-      .page(server_config),
+      HomeHtml::new(index.blocks(100)?, index.get_home_inscriptions()?)
+        .page(server_config),
     )
   }
 
@@ -1160,31 +1158,27 @@ impl Server {
   }
 
   async fn faq(
-    Extension(page_config): Extension<Arc<PageConfig>>,
-    Extension(index): Extension<Arc<Index>>,
+    Extension(server_config): Extension<Arc<ServerConfig>>,
   ) -> ServerResult<PageHtml<FAQsHtml>> {
-    Ok(FAQsHtml {}.page(page_config, index.has_sat_index()?))
+    Ok(FAQsHtml {}.page(server_config))
   }
 
   async fn goats(
-    Extension(page_config): Extension<Arc<PageConfig>>,
-    Extension(index): Extension<Arc<Index>>,
+    Extension(server_config): Extension<Arc<ServerConfig>>,
   ) -> ServerResult<PageHtml<GoatsHtml>> {
-    Ok(GoatsHtml {}.page(page_config, index.has_sat_index()?))
+    Ok(GoatsHtml {}.page(server_config))
   }
 
   async fn custom_404_handler(
-    Extension(page_config): Extension<Arc<PageConfig>>,
-    Extension(index): Extension<Arc<Index>>,
+    Extension(server_config): Extension<Arc<ServerConfig>>,
   ) -> ServerResult<PageHtml<NotFoundHtml>> {
-    Ok(NotFoundHtml {}.page(page_config, index.has_sat_index()?))
+    Ok(NotFoundHtml {}.page(server_config))
   }
   
   async fn contact(
-    Extension(page_config): Extension<Arc<PageConfig>>,
-    Extension(index): Extension<Arc<Index>>,
+    Extension(server_config): Extension<Arc<ServerConfig>>,
   ) -> ServerResult<PageHtml<ContactHtml>> {
-    Ok(ContactHtml {}.page(page_config, index.has_sat_index()?))
+    Ok(ContactHtml {}.page(server_config))
   }
 
   async fn bounties() -> Redirect {

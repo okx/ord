@@ -2,7 +2,23 @@ use super::*;
 
 #[derive(Boilerplate)]
 pub(crate) struct HomeHtml {
+  last: u32,
+  blocks: Vec<BlockHash>,
   pub(crate) inscriptions: Vec<InscriptionId>,
+}
+
+impl HomeHtml {
+  pub(crate) fn new(blocks: Vec<(u32, BlockHash)>, inscriptions: Vec<InscriptionId>) -> Self {
+    Self {
+      last: blocks
+        .get(0)
+        .map(|(height, _)| height)
+        .cloned()
+        .unwrap_or(0),
+      blocks: blocks.into_iter().map(|(_, hash)| hash).collect(),
+      inscriptions,
+    }
+  }
 }
 
 impl PageContent for HomeHtml {

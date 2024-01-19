@@ -1,4 +1,5 @@
 use super::*;
+use serde_json::Value;
 
 #[derive(Boilerplate, Default)]
 pub(crate) struct InscriptionHtml {
@@ -17,8 +18,8 @@ pub(crate) struct InscriptionHtml {
   pub(crate) sat: Option<Sat>,
   pub(crate) satpoint: SatPoint,
   pub(crate) timestamp: DateTime<Utc>,
-  pub(crate) traits: Option<Value>,
   pub(crate) charms: u16,
+  pub(crate) traits: Option<Value>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -40,6 +41,7 @@ pub struct InscriptionJson {
   pub sat: Option<Sat>,
   pub satpoint: SatPoint,
   pub timestamp: i64,
+  pub traits: Option<Value>,
 }
 
 impl PageContent for InscriptionHtml {

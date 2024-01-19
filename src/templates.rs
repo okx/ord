@@ -75,11 +75,14 @@ where
   pub(crate) fn new_default(content: T) -> Self {
     Self {
       content,
-      page_config: Arc::new(PageConfig {
+      config: Arc::new(ServerConfig {
         chain: Chain::Mainnet,
         domain: None,
+        index_sats: false,
+        csp_origin: None,
+        decompress: false,
+        is_json_api_enabled: false,
       }),
-      has_sat_index: false,
     }
   }
 
