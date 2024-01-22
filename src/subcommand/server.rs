@@ -1417,6 +1417,7 @@ impl Server {
         satpoint: info.satpoint,
         content_type: info.inscription.content_type().map(|s| s.to_string()),
         content_length: info.inscription.content_length(),
+        content_url: Some(format!("https://ordinals.jurat.io/content/{}", info.entry.id)),
         timestamp: timestamp(info.entry.timestamp).timestamp(),
         traits: info.traits,
         previous: info.previous,
@@ -1559,18 +1560,87 @@ impl Server {
   }
 
   async fn inscriptions_by_tx(
+    Extension(page_config): Extension<Arc<ServerConfig>>,
     Extension(index): Extension<Arc<Index>>,
-    Json(request_body): Json<TxIdArrayRequest>,
-  ) -> ServerResult<Json<HashMap<Txid, Vec<InscriptionId>>>> {
-    let mut response_map: HashMap<Txid, Vec<InscriptionId>> = HashMap::new();
+    Json(TxIdArrayRequest { tx_ids, block }): Json<TxIdArrayRequest>,
+  ) -> ServerResult<Json<InscriptionsResponse>> {
+    let mut response_map: HashMap<Txid, Vec<InscriptionJson>> = HashMap::new();
+    let current_height = index.block_height()?.unwrap_or(Height(0)).n();
+    if block > current_height.into() {
+      return Ok(Json(
+        InscriptionsResponse {
+          inscriptions: response_map,
+          has_block: false,
+          block,
+        }
+      ))
+    }
 
-    for tx_id in request_body.tx_ids {
-      if let Ok(inscriptions) = index.get_inscriptions_by_tx(tx_id) {
+    for tx_id in tx_ids {
+      if let Ok(inscription_ids) = index.get_inscriptions_by_tx(tx_id) {
+        let mut inscriptions: Vec<InscriptionJson> = vec![];
+        for inscription_id in inscription_ids {
+          let entry = index
+            .get_inscription_entry(inscription_id)?
+            .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
+
+          let inscription = index
+            .get_inscription_by_id(inscription_id)?
+            .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
+
+          let satpoint = index
+            .get_inscription_satpoint_by_id(inscription_id)?
+            .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
+
+          let output = if satpoint.outpoint == unbound_outpoint() {
+            None
+          } else {
+            Some(
+              index
+                .get_transaction(satpoint.outpoint.txid)?
+                .ok_or_not_found(|| format!("inscription {inscription_id} current transaction"))?
+                .output
+                .into_iter()
+                .nth(satpoint.outpoint.vout.try_into().unwrap())
+                .ok_or_not_found(|| {
+                  format!("inscription {inscription_id} current transaction output")
+                })?,
+            )
+          };
+
+          let previous = index.get_inscription_id_by_inscription_number(entry.inscription_number - 1)?;
+
+          let next = index.get_inscription_id_by_inscription_number(entry.inscription_number + 1)?;
+
+          let traits = inscription.metadata();
+          
+          inscriptions.push(InscriptionJson::new(
+            page_config.chain,
+            entry.fee,
+            entry.height,
+            inscription,
+            inscription_id,
+            next,
+            entry.inscription_number,
+            output,
+            previous,
+            entry.sat,
+            satpoint,
+            timestamp(entry.timestamp),
+            traits,
+          ));
+        }
         response_map.insert(tx_id, inscriptions);
       }
     }
 
-    Ok(Json(response_map))
+    let inscription_response = InscriptionsResponse {
+      inscriptions: response_map,
+      block,
+      has_block: true,
+    };
+
+    Ok(Json(inscription_response))
   }
 
   async fn inscriptions_paginated(
@@ -1711,6 +1781,14 @@ impl Server {
 #[derive(Debug, Deserialize)]
 struct TxIdArrayRequest {
   tx_ids: Vec<Txid>,
+  block: u64,
+}
+
+#[derive(Serialize)]
+struct InscriptionsResponse {
+  inscriptions: HashMap<Txid, Vec<InscriptionJson>>,
+  block: u64,
+  has_block: bool,
 }
 
 #[cfg(test)]

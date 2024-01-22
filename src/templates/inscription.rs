@@ -29,6 +29,7 @@ pub struct InscriptionJson {
   pub children: Vec<InscriptionId>,
   pub content_length: Option<usize>,
   pub content_type: Option<String>,
+  pub content_url: Option<String>,
   pub genesis_fee: u64,
   pub genesis_height: u32,
   pub inscription_id: InscriptionId,
@@ -42,6 +43,49 @@ pub struct InscriptionJson {
   pub satpoint: SatPoint,
   pub timestamp: i64,
   pub traits: Option<Value>,
+}
+
+impl InscriptionJson {
+  pub fn new(
+    chain: Chain,
+    genesis_fee: u64,
+    genesis_height: u32,
+    inscription: Inscription,
+    inscription_id: InscriptionId,
+    next: Option<InscriptionId>,
+    inscription_number: i32,
+    output: Option<TxOut>,
+    previous: Option<InscriptionId>,
+    sat: Option<Sat>,
+    satpoint: SatPoint,
+    timestamp: DateTime<Utc>,
+    traits: Option<Value>,
+  ) -> Self {
+    Self {
+      inscription_id,
+      content_url: Some(format!("https://ordinals.jurat.io/content/{}", inscription_id)),
+      inscription_number,
+      genesis_height,
+      genesis_fee,
+      output_value: output.as_ref().map(|o| o.value),
+      address: output
+        .as_ref()
+        .and_then(|o| chain.address_from_script(&o.script_pubkey).ok())
+        .map(|address| address.to_string()),
+      sat,
+      satpoint,
+      content_type: inscription.content_type().map(|s| s.to_string()),
+      content_length: inscription.content_length(),
+      timestamp: timestamp.timestamp(),
+      previous,
+      next,
+      traits,
+      charms: vec![],
+      children: todo!(),
+      parent: todo!(),
+      rune: todo!(),
+    }
+  }
 }
 
 impl PageContent for InscriptionHtml {

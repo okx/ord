@@ -30,9 +30,10 @@
     %% } else {
     <i class="next arrow left"></i>
     %% }
-    %% if self.height < self.best_height { <a class="next arrow right" href=/block/{{self.height + 1}}></a>
-      %% } else {
+    %% if self.height < self.best_height { 
+      <a class="next arrow right" href="/block/{{self.height + 1}}"></a>
+    %% } else {
       <i class="next arrow right"></i>
-      %% }
+    %% }
   </div>
 </div>

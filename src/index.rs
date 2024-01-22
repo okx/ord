@@ -1895,20 +1895,22 @@ impl Index {
     ))
   }
 
-  pub(crate) fn get_inscriptions_by_tx(
-    &self,
-    txid: Txid,
-  ) -> Result<Vec<InscriptionId>> {
-    let inscriptions: Vec<InscriptionId> = self
-        .database.begin_read()?
-        .open_table(SATPOINT_TO_INSCRIPTION_ID)?
-        .range::<&[u8; 44]>(&[0; 44]..)?
-        .filter(|(_satpoint, id)| {
-            let inscription_id: InscriptionId = Entry::load(*id.value());
-            inscription_id.txid == txid
-        }) // Filter by txId
-        .map(|(_satpoint, id)| Entry::load(*id.value()))
-        .collect();
+  pub(crate) fn get_inscriptions_by_tx(&self, txid: Txid) -> Result<Vec<InscriptionId>> {
+    let rtx = self.database.begin_read()?;
+    let satpoint_to_sequence_number = rtx.open_multimap_table(SATPOINT_TO_SEQUENCE_NUMBER)?;
+
+    let sequence_number_to_inscription_entry =
+      rtx.open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?;
+    
+    // for utxo in utxos.keys() {
+    //   result.extend(Self::inscriptions_on_output(
+    //     &satpoint_to_sequence_number,
+    //     &sequence_number_to_inscription_entry,
+    //     *utxo,
+    //   )?);
+    // }
+    
+    let mut inscriptions: Vec<InscriptionId> = Vec::new();
 
     Ok(inscriptions)
   }

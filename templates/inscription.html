@@ -3,23 +3,22 @@
     <div class="inscription-id">Inscription #{{ self.inscription_number }}</div>
     <div class="inscription-preview">
       %% if let Some(previous) = self.previous {
-      <a class=prev href=/inscription/{{previous}}>❮</a>
+        <a class=prev href=/inscription/{{previous}}>❮</a>
       %% } else {
-      <div class="disabled">❮</div>
+        <div class="disabled">❮</div>
       %% }
       {{ Iframe::main(self.inscription_id) }}
       %% if let Some(next) = self.next {
-      <a class=next href=/inscription/{{next}}>❯</a>
+        <a class=next href=/inscription/{{next}}>❯</a>
       %% } else {
-      <div class="disabled">❯</div>
+        <div class="disabled">❯</div>
       %% }
     </div>
     <div class="links">
       <div class="copy-icon" data-copy="https://ordinals.jurat.io/inscription/{{self.inscription_id}}">
         <img src="/static/images/copy-icon.svg" width="19" height="19" />
       </div>
-      <a href="https://www.twitter.com/share?url=https://ordinals.jurat.io/inscription/{{self.inscription_id}}"
-        target="_blank">
+      <a href="https://www.twitter.com/share?url=https://ordinals.jurat.io/inscription/{{self.inscription_id}}" target="_blank">
         <img src="/static/images/twitter-icon.svg" width="21" height="18" />
       </a>
       <a href="/content/{{self.inscription_id}}" target="_blank">
@@ -33,47 +32,41 @@
         <div>Inscription iD</div>
         <div class="copy-icon" data-copy="{{ self.inscription_id  }}">
           <img src="/static/images/copy-icon.svg" />
-        </div>
+        </div> 
       </div>
-      <div class="content uppercase">{{ self.inscription_id }}</div>
+      <div class="content uppercase">{{ self.inscription_id  }}</div>
     </div>
-    %% if let Some(traits) = &self.traits {
-    %% if let Some(license_type) = traits["jtc_licenseType"].as_str() {
-    <div class="info">
-      <div class="title">License type</div>
-      %% if let Some(inscription_id) = traits["jtc_licenseInscriptionId"].as_str() {
-      %% if inscription_id == "Personal" {
-      <a class="content"
-        href="https://ordinals.jurat.io/content/cc5c050f1e1a636f3c07e51572669e229fcf42720433e9af541358e598f3aacdi0">{{
-        license_type }}</a>
-      %% } else if inscription_id == "Custom" {
-      <a class="content"
-        href="https://ordinals.jurat.io/content/b3de73afffed219adf2e8b00f56733786918ebaaf258a93b4219dee3ebe25818i0">{{
-        license_type }}</a>
-      %% } else if inscription_id == "Commercial" {
-      <a class="content"
-        href="https://ordinals.jurat.io/content/46657effcaade2578eda42ec54490ad15da1029381dc446ae80f016593666273i0">{{
-        license_type }}</a>
-      %% } else {
-      <div class="content">{{ license_type }}</div>
+    %% if let Some(traits) = &self.traits  {
+      %% if let Some(license_type) = traits["jtc_licenseType"].as_str() {
+      <div class="info">
+        <div class="title">License type</div>
+        %% if let Some(inscription_id) = traits["jtc_licenseInscriptionId"].as_str() {
+          %% if inscription_id == "Personal" {
+            <a class="content" href="https://ordinals.jurat.io/content/cc5c050f1e1a636f3c07e51572669e229fcf42720433e9af541358e598f3aacdi0">{{ license_type }}</a>
+          %% } else if inscription_id == "Custom" {
+            <a class="content" href="https://ordinals.jurat.io/content/b3de73afffed219adf2e8b00f56733786918ebaaf258a93b4219dee3ebe25818i0">{{ license_type }}</a>
+          %% } else if inscription_id == "Commercial" {
+            <a class="content" href="https://ordinals.jurat.io/content/46657effcaade2578eda42ec54490ad15da1029381dc446ae80f016593666273i0">{{ license_type }}</a>
+          %% } else {
+            <div class="content">{{ license_type }}</div>
+          %% }
+        %% } else {
+        <div class="content">{{ license_type }}</div>
+        %% }
+      </div>
       %% }
-      %% } else {
-      <div class="content">{{ license_type }}</div>
+      %% if let Some(royalty_percentage) = traits["jtc_royaltyAmountPercent"].as_str() {
+        <div class="info">
+          <div class="title">Royalty Percentage</div>
+          <div class="content">{{ royalty_percentage }}%</div>
+        </div>
       %% }
-    </div>
-    %% }
-    %% if let Some(royalty_percentage) = traits["jtc_royaltyAmountPercent"].as_str() {
-    <div class="info">
-      <div class="title">Royalty Percentage</div>
-      <div class="content">{{ royalty_percentage }}</div>
-    </div>
-    %% }
-    %% if let Some(royalty_address) = traits["jtc_royaltyPayToAddress"].as_str() {
-    <div class="info">
-      <div class="title">royalty Must be paid to</div>
-      <div class="content">{{ royalty_address }}</div>
-    </div>
-    %% }
+      %% if let Some(royalty_address) = traits["jtc_royaltyPayToAddress"].as_str() {
+        <div class="info">
+          <div class="title">royalty Must be paid to</div>
+          <div class="content">{{ royalty_address }}</div>
+        </div>
+      %% }
     %% }
     %% if let Some(content_type) = self.inscription.content_type() {
     <div class="info">
@@ -94,35 +87,28 @@
         <div id="from-now"></div>
       </div>
     </div>
-    %% if let Some(output) = &self.output {
-    %% if let Ok(address) = self.chain.address_from_script(&output.script_pubkey ) {
-    <div class="info">
-      <div class="title">
-        <div>
-          inscribed by
+    %% if let Some(ref output) = self.output {
+      %% if let Ok(address) = self.chain.address_from_script(&output.script_pubkey ) {
+      <div class="info">
+        <div class="title">
           <div>
+            inscribed by
+            <div>
+            </div>
+          </div>
+          <div class="copy-icon" data-copy="{{ address }}">
+            <img src="/static/images/copy-icon.svg" />
           </div>
         </div>
-        <div class="copy-icon" data-copy="{{ address }}">
-          <img src="/static/images/copy-icon.svg" />
-        </div>
+        <div class="content" id="inscribed-by">{{ address }}</div>
       </div>
-      <div class="content" id="inscribed-by">{{ address }}</div>
-    </div>
-    %% }
+      %% }
     %% }
     <div class="info">
       <div class="title">tags</div>
       <div class="content">No tags yet</div>
     </div>
-  </div>
-  <div class="hidden-panel">
-    <div class="second-infos hidden" id="second-infos">
-      <div class="info">
-        <div class="title">hash</div>
-        <div class="content uppercase" id="hash">{{ self.inscription_id.txid }}</div>
-      </div>
-      %% if let Some(output) = &self.output {
+    %% if let Some(ref output) = self.output {
       %% if let Ok(address) = self.chain.address_from_script(&output.script_pubkey ) {
       <div class="info">
         <div class="title">
@@ -138,11 +124,19 @@
         <div class="content uppercase" id="address">{{ address }}</div>
       </div>
       %% }
-      && }
+    %%}
+  </div>
+  <div class="hidden-panel">
+    <div class="second-infos hidden" id="second-infos">
+      <div class="info">
+        <div class="title">hash</div>
+        <div class="content uppercase" id="hash">{{ self.inscription_id.txid }}</div>
+      </div>
+      
       <div class="info">
         <div class="title">
           <div>creation block</div>
-          <div class="copy-icon" data-copy="{{ self.genesis_height }}">
+          <div class="copy-icon" data-copy="{{ self.genesis_height }}" >
             <img src="/static/images/copy-icon.svg" />
           </div>
         </div>
@@ -151,7 +145,7 @@
       <div class="info">
         <div class="title">
           <div>creation transaction</div>
-          <div class="copy-icon" data-copy="{{ self.inscription_id.txid }}">
+          <div class="copy-icon"  data-copy="{{ self.inscription_id.txid }}">
             <img src="/static/images/copy-icon.svg" />
           </div>
         </div>
@@ -166,7 +160,7 @@
         <div class="title">
           <div>sat</div>
           <div class="copy-icon" data-copy="{{ sat }}">
-            <img src="/static/images/copy-icon.svg" />
+            <img src="/static/images/copy-icon.svg"/>
           </div>
         </div>
         <div class="content">{{ sat }}</div>
@@ -180,7 +174,7 @@
         <div class="content" id="sat-block">{{ sat.height() }}</div>
       </div>
       %% }
-
+  
     </div>
     <button class="show-more-btn" id="show-more">Show More</button>
   </div>
