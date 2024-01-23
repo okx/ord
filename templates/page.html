@@ -1,65 +1,58 @@
 <!doctype html>
 <html lang=en>
+  <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-H0M9NG8FXC"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
 
-<head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-H0M9NG8FXC"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-
-    gtag('config', 'G-H0M9NG8FXC');
-  </script>
-  <meta charset=utf-8>
-  <meta name=format-detection content='telephone=no'>
-  <meta name=viewport content='width=device-width,initial-scale=1.0'>
-  <meta property=og:title content='Jurat JTC Ordinals - NFTs with Benefits'>
-  <meta property=og:description
-    content="Jurat JTC Ordinals are NFTs with Benefits that give ordinals legal rights that can be enforced on-chain">
-  <meta property=og:image content='/static/images/meta-image.png'>
-  <meta property=twitter:card content=summary>
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com;" <title>{{ self.content.title() }}
-  </title>
-  <link rel=alternate href=/feed.xml type=application/rss+xml title='Inscription RSS Feed'>
-  <link rel=stylesheet href=/static/index.css>
-  <link rel=stylesheet href=/static/modern-normalize.css>
-  <script src="/static/moment.min.js"></script>
-  <script src=/static/index.js defer></script>
-  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
-</head>
-
-<body>
+      gtag('config', 'G-H0M9NG8FXC');
+    </script>
+    <meta charset=utf-8>
+    <meta name=format-detection content='telephone=no'>
+    <meta name=viewport content='width=device-width,initial-scale=1.0'>
+    <meta property=og:title content='Jurat JTC Ordinals - NFTs with Benefits'>
+    <meta property=og:description content="Jurat JTC Ordinals are NFTs with Benefits that give ordinals legal rights that can be enforced on-chain">
+    <meta property=og:image content='/static/images/meta-image.png'>
+    <meta property=twitter:card content=summary>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com;">
+    <title>{{ self.content.title() }}</title>
+    <link rel=alternate href=/feed.xml type=application/rss+xml title='Inscription RSS Feed'>
+    <link rel=stylesheet href=/static/index.css>
+    <link rel=stylesheet href=/static/modern-normalize.css>
+    <script src="/static/moment.min.js"></script>
+    <script src=/static/index.js defer></script>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  </head>
+  <body>
   <header class="container">
-    <a href= /><img src=/static/images/logo.png alt=logo /></a>
+    <a href=/><img src=/static/images/logo.png alt=logo /></a>
     <nav>
+      <!-- <a href=/>Ordinals<sup>{{ self.superscript() }}</sup></a> -->
       <div class=nav-items-wrapper>
         <a href=/ class="nav-link">Explorer</a>
         <a href="https://minting.jurat.io/" target="_blank">Minting</a>
         <a href=/goats class="nav-link">Goats</a>
         <a href=/faq class="nav-link">How to Guide</a>
-        <a href=/contact class="nav-link">Contact</a>
+        <a href=/contact class="nav-link">Contact</a>        
       </div>
-      <a href=https://docs.ordinals.com/ title=handbook><img class=icon src=/static/book.svg></a>
-      <a href=https://github.com/ordinals/ord title=github><img class=icon src=/static/github.svg></a>
-      <a href=https://discord.com/invite/ordinals title=discord><img class=icon src=/static/discord.svg></a>
     </nav>
     <form action=/search method=get id="search-form">
-      <input type=text autocapitalize=off autocorrect=off name=query spellcheck=false
-        placeholder='Search Inscription ID'>
+      <input type=text autocapitalize=off autocorrect=off name=query spellcheck=false placeholder='Search Inscription ID'>
       <button class=search-icon></button>
     </form>
   </header>
   <main>
-    $$ Trusted(&self.content)
+$$ Trusted(&self.content)
   </main>
   <footer>
     <div class="container">
       <div class="top">
         <a href="https://jurat.io/" target="_blank">
           <img src="/static/images/footer-logo.svg" alt="" />
-        </a>>
+        </a>
         <div class="links">
           <a href="https://twitter.com/JuratNetwork" target="_blank">
             <img src="/static/images/twitter.svg" />
@@ -75,12 +68,10 @@
       <div class="terms">
         Powered by Jurat </br>
         <p>
-          <a href="https://jurat.io/privacy-policy/" target="_blank">Privacy Policy</a> and <a
-            href="https://jurat.io/terms-conditions/" target="_blank">Terms & Conditions</a>
+          <a href="https://jurat.io/privacy-policy/" target="_blank">Privacy Policy</a> and <a href="https://jurat.io/terms-conditions/" target="_blank">Terms & Conditions</a>
         </p>
       </div>
     </div>
   </footer>
-</body>
-
+  </body>
 </html>
