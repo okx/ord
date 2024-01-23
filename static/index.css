@@ -31,8 +31,10 @@ body {
 }
 
 main {
+  /* padding: 0 1rem 1rem; */
   max-width: 100%;
   min-height: calc(100vh - 308px);
+  /* width: 45rem; */
 }
 
 .container {
@@ -40,11 +42,12 @@ main {
   margin: auto;
 }
 
-main>.container {
+main > .container {
   margin: 0 auto;
   padding: 0 1rem 1rem;
   max-width: 45rem;
 }
+
 
 ol,
 ul {
@@ -77,14 +80,6 @@ h1 {
   text-overflow: ellipsis;
   white-space: nowrap;
   width: 100%;
-}
-
-h1 a {
-  color: var(--light-fg);
-}
-
-h1 a:visited {
-  color: var(--light-fg);
 }
 
 iframe {
@@ -122,7 +117,7 @@ header {
   align-items: center;
 }
 
-header>a {
+header > a {
   z-index: 1;
 }
 
@@ -172,15 +167,14 @@ nav a:active {
   nav .nav-items-wrapper {
     column-gap: 10px;
   }
-
   header {
     padding: 4px;
   }
-
   nav a {
     font-size: 14px;
   }
 }
+
 
 form {
   position: relative;
@@ -197,7 +191,7 @@ input[type=text] {
   flex-grow: 1;
   min-width: 0;
   height: 40px;
-  padding: 10px 36px 10px 12px;
+  padding: 10px 36px 10px 12px; 
 }
 
 textarea {
@@ -230,11 +224,11 @@ dl {
   margin-bottom: 40px;
 }
 
-dl>dt:first-child {
+dl > dt:first-child {
   margin-top: 0 !important;
 }
 
-dl>dd:last-child>a {
+dl > dd:last-child > a {
   text-decoration: none;
   color: var(--tx-link);
   font-weight: 700;
@@ -260,7 +254,7 @@ dd {
   list-style-type: none;
 }
 
-.transaction-box>li>a {
+.transaction-box > li > a {
   text-decoration: none;
   color: var(--tx-link);
   font-weight: 700;
@@ -301,8 +295,7 @@ dd {
   -webkit-transform: rotate(45deg);
 }
 
-ol,
-ul {
+ol, ul {
   overflow: hidden;
 }
 
@@ -310,22 +303,21 @@ ul {
   nav {
     position: relative;
   }
-
   header {
     flex-direction: column;
     gap: 8px;
   }
-
-  header>form {
+  header > form {
     margin: 0 auto;
   }
 }
 
-.block-list {
+.blocks {
   font-family: monospace, monospace;
   list-style-position: inside;
   padding-inline-start: 1rem;
   white-space: nowrap;
+
   display: flex;
   flex-direction: column;
   background: white;
@@ -333,13 +325,13 @@ ul {
   padding: 20px;
 }
 
-.block-list>li {
+.blocks > li {
   display: flex;
   justify-content: space-between;
   margin-bottom: 8px;
 }
 
-.block-list>li>a {
+.blocks > li > a {
   color: var(--tx-link);
   text-decoration: none;
   font-size: 1rem;
@@ -365,6 +357,9 @@ ul {
   margin: 1%;
 }
 
+.light-fg a {
+  color: var(--light-fg);
+}
 .center {
   text-align: center;
 }
@@ -373,12 +368,7 @@ ul {
   font-family: monospace, monospace;
 }
 
-span.common,
-span.uncommon,
-span.rare,
-span.epic,
-span.legendary,
-span.mythic {
+span.common, span.uncommon, span.rare, span.epic, span.legendary, span.mythic {
   border-radius: 0.25rem;
   color: white;
   padding: 0.125rem 0.25rem;
@@ -449,12 +439,12 @@ a.mythic {
   font-weight: 700;
 }
 
-.show-more>a {
+.show-more > a {
   color: var(--theme);
   text-decoration: none;
 }
 
-.thumbnails>a {
+.thumbnails > a {
   border-radius: 2%;
   margin: 1%;
   overflow: hidden;
@@ -484,8 +474,7 @@ a.mythic {
   margin-bottom: 20px;
 }
 
-.inscription-preview>*:nth-child(1),
-.inscription-preview>*:nth-child(3) {
+.inscription-preview > *:nth-child(1), .inscription-preview > *:nth-child(3) {
   color: var(--dark-bg);
   flex: 1;
   font-size: 200%;
@@ -495,8 +484,7 @@ a.mythic {
   align-items: center;
 }
 
-.inscription-preview>a:nth-child(1):hover,
-.inscription-preview>a:nth-child(3):hover {
+.inscription-preview > a:nth-child(1):hover, .inscription-preview > a:nth-child(3):hover {
   color: var(--dark-fg);
 }
 
@@ -504,37 +492,12 @@ a.mythic {
   color: gray;
 }
 
-.inscription-preview>*:nth-child(2) {
+.inscription-preview > *:nth-child(2) {
   flex: 0 85%;
 }
 
-.inscription-preview>a>iframe {
+.inscription-preview > a > iframe {
   width: 100%;
-}
-
-.tabs {
-  align-items: center;
-  display: flex;
-}
-
-.tabs>a {
-  color: var(--light-fg);
-  padding: 1rem;
-}
-
-.tabs>*:first-child {
-  flex: 1;
-  text-align: right;
-}
-
-.tabs>*:last-child {
-  flex: 1;
-  text-align: left;
-}
-
-.icon {
-  height: 1rem;
-  width: 1rem;
 }
 
 .faq-item {
@@ -546,7 +509,7 @@ a.mythic {
   cursor: pointer;
 }
 
-.faq-item>.faq-header {
+.faq-item > .faq-header {
   font-size: 20px;
   font-weight: 700;
 }
@@ -557,14 +520,13 @@ a.mythic {
   font-size: 1rem;
 }
 
-.faq-header>i {
+.faq-header > i {
   position: absolute;
   top: 1.5rem;
   right: 1.5rem;
 }
 
-
-.faq-item>.faq-body {
+.faq-item > .faq-body {
   font-size: 16px;
   font-weight: 400;
   line-height: 24px;
@@ -573,7 +535,7 @@ a.mythic {
   transition: all 0.5s ease-out;
 }
 
-.faq-item>.faq-body.active {
+.faq-item > .faq-body.active {
   margin-top: 20px;
   height: fit-content;
 }
@@ -582,8 +544,7 @@ a.mythic {
   max-width: 1536px;
 }
 
-.goats-page h1,
-.goats-page p {
+.goats-page h1, .goats-page p {
   margin: 0;
 }
 
@@ -608,7 +569,7 @@ a.mythic {
   border-radius: 8px;
 }
 
-.goats-page>.content {
+.goats-page > .content {
   margin-top: 132px;
   padding: 0 40px;
   display: grid;
@@ -618,7 +579,7 @@ a.mythic {
 
 
 @media screen and (max-width: 768px) {
-  .goats-page>.content {
+  .goats-page > .content {
     display: flex;
     flex-direction: column;
     gap: 40px;
@@ -661,7 +622,7 @@ a.mythic {
 
 a.base-button {
   text-decoration: none;
-
+  
 }
 
 .goats-page .mint-button {
@@ -696,8 +657,7 @@ a.base-button {
   font-size: 18px;
 }
 
-.contact-page p,
-.contact-page h1 {
+.contact-page p, .contact-page h1 {
   margin: 0;
 }
 
@@ -768,7 +728,7 @@ a.base-button {
 }
 
 .contact-form .names {
-  display: grid;
+  display: grid;  
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
@@ -798,20 +758,19 @@ a.base-button {
 }
 
 @media screen and (max-width: 992px) {
-  .container.inscription-container {
+  .container.inscription-container { 
     display: flex;
     flex-direction: column;
   }
 }
 
-.inscription>img {
+.inscription > img {
   border-radius: 8px;
   width: 100%;
   height: max-content;
 }
 
-.main-infos,
-.second-infos {
+.main-infos, .second-infos {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -914,7 +873,7 @@ footer .terms {
   font-size: 14px;
 }
 
-footer .terms>p {
+footer .terms > p {
   margin: 0;
   color: #4169e1;
 }
@@ -1066,7 +1025,7 @@ footer .links {
 .faqs-page .instructions-section .content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 12px; 
   margin-top: 32px;
 }
 
@@ -1140,7 +1099,7 @@ footer .links {
   margin-top: 32px;
 }
 
-.faqs-page .faqs .content>div:last-child {
+.faqs-page .faqs .content > div:last-child {
   margin-top: 24px;
 }
 
@@ -1192,89 +1151,70 @@ footer .links {
     flex-direction: column;
     align-items: center;
   }
-
   .faqs-page .title {
     text-align: center;
   }
-
   .faqs-page .mint-ordinals .left-content .description {
     text-align: center;
     margin-top: 12px;
   }
-
   .faqs-page .mint-button {
     margin-left: auto;
     margin-right: auto;
     margin-top: 40px;
   }
-
   .faqs-page .mint-ordinals .left-content .benefits {
     gap: 12px;
   }
-
   .faqs-page .mint-ordinals .goats-img {
     margin-top: 60px;
   }
-
   .faqs-page .take-ordinals {
     margin: 60px 0;
   }
-
   .faqs-page .instructions-section {
     background-color: #7E87E3;
     color: white;
   }
-
   .faqs-page .instructions-section .content {
     margin-top: 24px;
   }
-
   .faqs-page .instructions-section .mint-button {
     background-color: white;
     color: black;
   }
-
   .faqs-page .other-sections {
     gap: 60px;
     margin: 60px 0;
   }
-
   .faqs-page .claim-earn {
     display: flex;
     flex-direction: column;
     gap: 24px;
   }
-
   .faqs-page .claim-earn .card {
     padding: 32px 16px;
   }
-
   .faqs-page .claim-earn .description {
     margin-top: 12px;
   }
-
   .faqs-page .claim-earn .base-button {
     margin-top: 24px;
   }
-
   .faqs-page .digital-art .content {
     margin-top: 24px;
     text-align: center;
   }
-
   .faqs-page .faqs .content {
     margin-top: 24px;
   }
-
   .faqs-page .newsletter {
     flex-direction: column;
     gap: 32px;
   }
-
   .faqs-page .newsletter img {
     margin-top: 0;
   }
-
   .faqs-page .newsletter form {
     gap: 24px;
   }
