@@ -1896,23 +1896,31 @@ impl Index {
   }
 
   pub(crate) fn get_inscriptions_by_tx(&self, txid: Txid) -> Result<Vec<InscriptionId>> {
-    let rtx = self.database.begin_read()?;
-    let satpoint_to_sequence_number = rtx.open_multimap_table(SATPOINT_TO_SEQUENCE_NUMBER)?;
-
-    let sequence_number_to_inscription_entry =
-      rtx.open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?;
+     // Begin a read transaction
+     let rtx = self.database.begin_read()?;
     
-    // for utxo in utxos.keys() {
-    //   result.extend(Self::inscriptions_on_output(
-    //     &satpoint_to_sequence_number,
-    //     &sequence_number_to_inscription_entry,
-    //     *utxo,
-    //   )?);
-    // }
-    
-    let mut inscriptions: Vec<InscriptionId> = Vec::new();
-
-    Ok(inscriptions)
+     // Open the table for sequence number to inscription entry
+     let sequence_number_to_inscription_entry =
+         rtx.open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?;
+ 
+     // Retrieve all inscription IDs that match the given txId
+     let inscription_ids = sequence_number_to_inscription_entry
+        .iter()?
+        .flat_map(|result| match result {
+            Ok((_, entry)) => {
+                let inscription_entry = InscriptionEntry::load(entry.value());
+                if inscription_entry.id.txid == txid {
+                    Some(Ok(inscription_entry.id))
+                } else {
+                    None
+                }
+            }
+            Err(err) => Some(Err(anyhow!(err))),
+        })
+        .collect::<Result<Vec<InscriptionId>>>();
+ 
+     // Return the result
+     inscription_ids
   }
 
   pub(crate) fn get_home_inscriptions(&self) -> Result<Vec<InscriptionId>> {
