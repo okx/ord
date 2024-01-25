@@ -33,6 +33,15 @@ pub struct Output {
   pub total_fees: u64,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct OutputForOutsideSign {
+  pub unsigned_commit_raw_tx_hex: String,
+  pub inscriptions: Vec<InscriptionInfo>,
+  pub parent: Option<InscriptionId>,
+  pub signed_reveal_raw_tx_hex: String,
+  pub total_fees: u64,
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct ParentInfo {
   destination: Address,
@@ -43,18 +52,18 @@ pub(crate) struct ParentInfo {
 
 #[derive(Debug, Parser)]
 #[clap(
-  group = ArgGroup::new("source")
-      .required(true)
-      .args(&["file", "batch"]),
+group = ArgGroup::new("source")
+.required(true)
+.args(& ["file", "batch"]),
 )]
 pub(crate) struct Inscribe {
   #[arg(
     long,
     help = "Inscribe multiple inscriptions defined in a yaml <BATCH_FILE>.",
-    conflicts_with_all = &[
-      "cbor_metadata", "destination", "file", "json_metadata", "metaprotocol", "parent", "postage", "reinscribe", "satpoint"
+    conflicts_with_all = & [
+    "cbor_metadata", "destination", "file", "json_metadata", "metaprotocol", "parent", "postage", "reinscribe", "satpoint"
     ]
-  )]
+    )]
   pub(crate) batch: Option<PathBuf>,
   #[arg(
     long,
@@ -73,6 +82,8 @@ pub(crate) struct Inscribe {
   pub(crate) destination: Option<Address<NetworkUnchecked>>,
   #[arg(long, help = "Don't sign or broadcast transactions.")]
   pub(crate) dry_run: bool,
+  #[arg(long, help = "Sign by outside wallet.")]
+  pub(crate) sign_by_outside: bool,
   #[arg(long, help = "Use fee rate of <FEE_RATE> sats/vB.")]
   pub(crate) fee_rate: FeeRate,
   #[arg(long, help = "Inscribe sat with contents of <FILE>.")]
@@ -200,7 +211,7 @@ impl Inscribe {
       self.satpoint
     };
 
-    Batch {
+    let batch = Batch {
       commit_fee_rate: self.commit_fee_rate.unwrap_or(self.fee_rate),
       destinations,
       dry_run: self.dry_run,
@@ -213,8 +224,12 @@ impl Inscribe {
       reinscribe: self.reinscribe,
       reveal_fee_rate: self.fee_rate,
       satpoint,
+    };
+    if self.sign_by_outside {
+      batch.inscribe_for_outside_sign(chain, &index, &client, &locked_utxos, runic_utxos, &utxos)
+    } else {
+      batch.inscribe(chain, &index, &client, &locked_utxos, runic_utxos, &utxos)
     }
-    .inscribe(chain, &index, &client, &locked_utxos, runic_utxos, &utxos)
   }
 
   fn parse_metadata(cbor: Option<PathBuf>, json: Option<PathBuf>) -> Result<Option<Vec<u8>>> {
@@ -715,10 +730,10 @@ mod tests {
     .to_string();
 
     assert!(
-      error.contains(&format!("reveal transaction weight greater than {MAX_STANDARD_TX_WEIGHT} (MAX_STANDARD_TX_WEIGHT): 402799")),
-      "{}",
-      error
-    );
+            error.contains(&format!("reveal transaction weight greater than {MAX_STANDARD_TX_WEIGHT} (MAX_STANDARD_TX_WEIGHT): 402799")),
+            "{}",
+            error
+        );
   }
 
   #[test]
@@ -791,9 +806,9 @@ mod tests {
 
     let batch_path = tempdir.path().join("batch.yaml");
     fs::write(
-      &batch_path,
-      format!(
-        "mode: separate-outputs
+            &batch_path,
+            format!(
+                "mode: separate-outputs
 parent: {parent}
 inscriptions:
 - file: {}
@@ -803,11 +818,11 @@ inscriptions:
 - file: {}
   metaprotocol: brc-20
 ",
-        inscription_path.display(),
-        brc20_path.display()
-      ),
-    )
-    .unwrap();
+                inscription_path.display(),
+                brc20_path.display()
+            ),
+        )
+            .unwrap();
 
     let mut metadata = Mapping::new();
     metadata.insert(
@@ -829,7 +844,7 @@ inscriptions:
             file: brc20_path,
             metaprotocol: Some("brc-20".to_string()),
             ..Default::default()
-          }
+          },
         ],
         parent: Some(parent),
         ..Default::default()
@@ -1144,10 +1159,10 @@ inscriptions:
     .to_string();
 
     assert!(
-      error.contains(&format!("reveal transaction weight greater than {MAX_STANDARD_TX_WEIGHT} (MAX_STANDARD_TX_WEIGHT): 402841")),
-      "{}",
-      error
-    );
+            error.contains(&format!("reveal transaction weight greater than {MAX_STANDARD_TX_WEIGHT} (MAX_STANDARD_TX_WEIGHT): 402841")),
+            "{}",
+            error
+        );
   }
 
   #[test]
@@ -1368,11 +1383,11 @@ inscriptions:
   #[test]
   fn batch_or_file_is_required() {
     assert!(
-      Arguments::try_parse_from(["ord", "wallet", "inscribe", "--fee-rate", "1",])
-        .unwrap_err()
-        .to_string()
-        .contains("error: the following required arguments were not provided:\n  <--file <FILE>|--batch <BATCH>>")
-    );
+            Arguments::try_parse_from(["ord", "wallet", "inscribe", "--fee-rate", "1", ])
+                .unwrap_err()
+                .to_string()
+                .contains("error: the following required arguments were not provided:\n  <--file <FILE>|--batch <BATCH>>")
+        );
   }
 
   #[test]
