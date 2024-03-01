@@ -5,6 +5,15 @@ use {
   utoipa::ToSchema,
 };
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
+#[schema(as = ord::ApiContentEncoding)]
+#[serde(rename_all = "camelCase")]
+#[serde(tag = "type")]
+pub enum ApiContentEncoding {
+  Br { decode: String },
+  Unknown,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(as = ord::ApiInscription)]
 #[serde(rename_all = "camelCase")]
@@ -19,6 +28,18 @@ pub struct ApiInscription {
   pub content: Option<String>,
   /// The inscription content body length.
   pub content_length: Option<usize>,
+  /// Decode the content encoding if the message has a content encoding tag.
+  pub content_encoding: Option<ApiContentEncoding>,
+  /// The inscription metadata.
+  pub metadata: Option<String>,
+  /// The inscription metaprotocol.
+  pub metaprotocol: Option<String>,
+  /// The inscription parent inscription id.
+  pub parent: Option<InscriptionId>,
+  /// The delegate inscription id of the inscription.
+  pub delegate: Option<InscriptionId>,
+  /// The inscription pointer.
+  pub pointer: Option<u64>,
   /// The inscription owner.
   pub owner: Option<ScriptPubkey>,
   /// The inscription genesis block height.
@@ -163,9 +184,17 @@ fn ord_get_inscription_by_id(
   Ok(Json(ApiResponse::ok(ApiInscription {
     id: inscription_id.to_string(),
     number: inscription_entry.inscription_number,
-    content_type: inscription.content_type().map(String::from),
+    content_type: inscription.content_type().map(str::to_string),
     content: inscription.body().map(hex::encode),
     content_length: inscription.content_length(),
+    content_encoding: decompress_encoding_body(&inscription),
+    metaprotocol: inscription.metaprotocol().map(str::to_string),
+    metadata: inscription
+      .metadata()
+      .and_then(|_| inscription.metadata.as_deref().map(hex::encode)),
+    parent: inscription.parent(),
+    pointer: inscription.pointer(),
+    delegate: inscription.delegate(),
     owner: output.map(|vout| ScriptKey::from_script(&vout.script_pubkey, network).into()),
     genesis_height: inscription_entry.height,
     genesis_timestamp: inscription_entry.timestamp,
@@ -174,6 +203,26 @@ fn ord_get_inscription_by_id(
     charms: charms.iter().map(|c| c.title().into()).collect(),
     sat: inscription_entry.sat.map(|s| s.0),
   })))
+}
+
+fn decompress_encoding_body(inscription: &Inscription) -> Option<ApiContentEncoding> {
+  if let Some(header_value) = inscription.content_encoding() {
+    if header_value == "br" {
+      if let Some(body) = inscription.body() {
+        let mut decompressed = Vec::new();
+        if Decompressor::new(body, 4096)
+          .read_to_end(&mut decompressed)
+          .is_ok()
+        {
+          return Some(ApiContentEncoding::Br {
+            decode: hex::encode(decompressed),
+          });
+        }
+      }
+    }
+    return Some(ApiContentEncoding::Unknown);
+  }
+  None
 }
 
 // ord/debug/bitmap/district/:number
@@ -200,6 +249,12 @@ pub(crate) async fn ord_debug_bitmap_district(
 #[cfg(test)]
 mod tests {
   use super::*;
+  use brotli::{
+    enc::{backward_references::BrotliEncoderMode, BrotliEncoderParams},
+    CompressorWriter,
+  };
+  use std::io::Write;
+
   #[test]
   fn test_serialize_ord_inscription() {
     let mut ord_inscription = ApiInscription {
@@ -212,6 +267,20 @@ mod tests {
       content_type: Some("content_type".to_string()),
       content: Some("content".to_string()),
       content_length: Some("content".to_string().len()),
+      content_encoding: Some(ApiContentEncoding::Br {
+        decode: "content_encoding".to_string(),
+      }),
+      metaprotocol: Some("mata_protocol".to_string()),
+      metadata: Some("0123456789abcdef".to_string()),
+      parent: Some(InscriptionId {
+        txid: txid(1),
+        index: 0xFFFFFFFE,
+      }),
+      delegate: Some(InscriptionId {
+        txid: txid(1),
+        index: 0xFFFFFFFD,
+      }),
+      pointer: Some(0),
       owner: Some(
         ScriptKey::from_script(
           &Address::from_str("bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4")
@@ -244,6 +313,15 @@ mod tests {
   "contentType": "content_type",
   "content": "content",
   "contentLength": 7,
+  "contentEncoding": {
+    "type": "br",
+    "decode": "content_encoding"
+  },
+  "metadata": "0123456789abcdef",
+  "metaprotocol": "mata_protocol",
+  "parent": "1111111111111111111111111111111111111111111111111111111111111111i4294967294",
+  "delegate": "1111111111111111111111111111111111111111111111111111111111111111i4294967293",
+  "pointer": 0,
   "owner": {
     "address": "bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4"
   },
@@ -266,6 +344,15 @@ mod tests {
   "contentType": "content_type",
   "content": "content",
   "contentLength": 7,
+  "contentEncoding": {
+    "type": "br",
+    "decode": "content_encoding"
+  },
+  "metadata": "0123456789abcdef",
+  "metaprotocol": "mata_protocol",
+  "parent": "1111111111111111111111111111111111111111111111111111111111111111i4294967294",
+  "delegate": "1111111111111111111111111111111111111111111111111111111111111111i4294967293",
+  "pointer": 0,
   "owner": null,
   "genesisHeight": 1,
   "genesisTimestamp": 100,
@@ -276,6 +363,77 @@ mod tests {
   ],
   "sat": null
 }"#,
+    );
+  }
+
+  #[test]
+  fn test_decompress_encoding_body() {
+    let mut compressed = Vec::new();
+    let body = "ord".as_bytes();
+
+    CompressorWriter::with_params(
+      &mut compressed,
+      body.len(),
+      &BrotliEncoderParams {
+        lgblock: 24,
+        lgwin: 24,
+        mode: BrotliEncoderMode::BROTLI_MODE_TEXT,
+        quality: 11,
+        size_hint: body.len(),
+        ..Default::default()
+      },
+    )
+    .write_all(body)
+    .unwrap();
+
+    let inscription = Inscription {
+      content_encoding: Some("br".as_bytes().to_vec()),
+      ..inscription("text/plain;charset=utf-8", compressed)
+    };
+    assert_eq!(
+      decompress_encoding_body(&inscription),
+      Some(ApiContentEncoding::Br {
+        decode: hex::encode(body)
+      })
+    );
+  }
+
+  #[test]
+  fn test_except_decompress_encoding_body() {
+    let body = "ord".as_bytes();
+
+    let inscription1 = Inscription {
+      content_encoding: Some("br".as_bytes().to_vec()),
+      ..inscription("text/plain;charset=utf-8", body)
+    };
+    assert_eq!(
+      decompress_encoding_body(&inscription1),
+      Some(ApiContentEncoding::Unknown)
+    );
+    let body = Vec::new();
+
+    let inscription2 = Inscription {
+      content_encoding: Some("br".as_bytes().to_vec()),
+      ..inscription("text/plain;charset=utf-8", body)
+    };
+    assert_eq!(
+      decompress_encoding_body(&inscription2),
+      Some(ApiContentEncoding::Unknown)
+    );
+  }
+
+  #[test]
+  fn test_serialize_content_encoding() {
+    assert_eq!(
+      serde_json::to_string(&ApiContentEncoding::Br {
+        decode: "content_encoding".to_string(),
+      })
+      .unwrap(),
+      r#"{"type":"br","decode":"content_encoding"}"#
+    );
+    assert_eq!(
+      serde_json::to_string(&ApiContentEncoding::Unknown).unwrap(),
+      r#"{"type":"unknown"}"#
     );
   }
 }

@@ -247,6 +247,7 @@ impl Server {
 
       // Ord schemas
       ord::ApiInscription,
+      ord::ApiContentEncoding,
       ord::ApiInscriptionDigest,
       ord::ApiOutpointInscriptions,
       ord::ApiOutPointResult,
