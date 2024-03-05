@@ -1,19 +1,25 @@
-use crate::index::entry::Entry;
-use crate::index::{InscriptionIdValue, TxidValue};
-use crate::inscriptions::InscriptionId;
-use crate::okx::datastore::brc20::redb::{
-  max_script_tick_id_key, max_script_tick_key, min_script_tick_id_key, min_script_tick_key,
-  script_tick_id_key, script_tick_key,
+use crate::{
+  index::{
+    entry::{Entry, SatPointValue},
+    TxidValue,
+  },
+  okx::datastore::{
+    brc20::{
+      redb::{
+        max_script_tick_id_key, max_script_tick_key, min_script_tick_id_key, min_script_tick_key,
+        script_tick_key,
+      },
+      Balance, Receipt, Tick, TokenInfo, TransferableLog,
+    },
+    ScriptKey,
+  },
+  Result, SatPoint,
 };
-use crate::okx::datastore::brc20::{
-  Balance, Receipt, Tick, TokenInfo, TransferInfo, TransferableLog,
-};
-use crate::okx::datastore::ScriptKey;
-use bitcoin::Txid;
-use redb::{ReadableTable, Table};
+use bitcoin::{OutPoint, Txid};
+use redb::{MultimapTable, ReadableMultimapTable, ReadableTable, Table};
 
 // BRC20_BALANCES
-pub fn get_balances<T>(table: &T, script_key: &ScriptKey) -> crate::Result<Vec<Balance>>
+pub fn get_balances<T>(table: &T, script_key: &ScriptKey) -> Result<Vec<Balance>>
 where
   T: ReadableTable<&'static str, &'static [u8]>,
 {
@@ -28,11 +34,7 @@ where
 }
 
 // BRC20_BALANCES
-pub fn get_balance<T>(
-  table: &T,
-  script_key: &ScriptKey,
-  tick: &Tick,
-) -> crate::Result<Option<Balance>>
+pub fn get_balance<T>(table: &T, script_key: &ScriptKey, tick: &Tick) -> Result<Option<Balance>>
 where
   T: ReadableTable<&'static str, &'static [u8]>,
 {
@@ -44,7 +46,7 @@ where
 }
 
 // BRC20_TOKEN
-pub fn get_token_info<T>(table: &T, tick: &Tick) -> crate::Result<Option<TokenInfo>>
+pub fn get_token_info<T>(table: &T, tick: &Tick) -> Result<Option<TokenInfo>>
 where
   T: ReadableTable<&'static str, &'static [u8]>,
 {
@@ -56,7 +58,7 @@ where
 }
 
 // BRC20_TOKEN
-pub fn get_tokens_info<T>(table: &T) -> crate::Result<Vec<TokenInfo>>
+pub fn get_tokens_info<T>(table: &T) -> Result<Vec<TokenInfo>>
 where
   T: ReadableTable<&'static str, &'static [u8]>,
 {
@@ -71,7 +73,7 @@ where
 }
 
 // BRC20_EVENTS
-pub fn get_transaction_receipts<T>(table: &T, txid: &Txid) -> crate::Result<Option<Vec<Receipt>>>
+pub fn get_transaction_receipts<T>(table: &T, txid: &Txid) -> Result<Option<Vec<Receipt>>>
 where
   T: ReadableTable<&'static TxidValue, &'static [u8]>,
 {
@@ -82,73 +84,110 @@ where
   )
 }
 
-// BRC20_TRANSFERABLELOG
-pub fn get_transferable<T>(table: &T, script: &ScriptKey) -> crate::Result<Vec<TransferableLog>>
+// BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS
+// BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS
+pub fn get_transferable_assets_by_account<T, S>(
+  address_table: &T,
+  satpoint_table: &S,
+  script: &ScriptKey,
+) -> Result<Vec<(SatPoint, TransferableLog)>>
 where
-  T: ReadableTable<&'static str, &'static [u8]>,
+  T: ReadableMultimapTable<&'static str, &'static SatPointValue>,
+  S: ReadableTable<&'static SatPointValue, &'static [u8]>,
 {
-  Ok(
-    table
-      .range(min_script_tick_key(script).as_str()..max_script_tick_key(script).as_str())?
-      .flat_map(|result| {
-        result.map(|(_, v)| rmp_serde::from_slice::<TransferableLog>(v.value()).unwrap())
-      })
-      .collect(),
-  )
+  let mut transferable_assets = Vec::new();
+
+  for range in address_table
+    .range(min_script_tick_key(script).as_str()..max_script_tick_key(script).as_str())?
+  {
+    let (_, satpoints) = range?;
+    for satpoint_guard in satpoints {
+      let satpoint = SatPoint::load(*satpoint_guard?.value());
+      let entry = satpoint_table.get(&satpoint.store())?.unwrap();
+      transferable_assets.push((
+        satpoint,
+        rmp_serde::from_slice::<TransferableLog>(entry.value()).unwrap(),
+      ));
+    }
+  }
+  Ok(transferable_assets)
 }
 
-// BRC20_TRANSFERABLELOG
-pub fn get_transferable_by_tick<T>(
-  table: &T,
+// BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS
+// BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS
+pub fn get_transferable_assets_by_account_ticker<T, S>(
+  address_table: &T,
+  satpoint_table: &S,
   script: &ScriptKey,
   tick: &Tick,
-) -> crate::Result<Vec<TransferableLog>>
+) -> Result<Vec<(SatPoint, TransferableLog)>>
 where
-  T: ReadableTable<&'static str, &'static [u8]>,
+  T: ReadableMultimapTable<&'static str, &'static SatPointValue>,
+  S: ReadableTable<&'static SatPointValue, &'static [u8]>,
+{
+  let mut transferable_assets = Vec::new();
+
+  for range in address_table.range(
+    min_script_tick_id_key(script, tick).as_str()..max_script_tick_id_key(script, tick).as_str(),
+  )? {
+    let (_, satpoints) = range?;
+    for satpoint_guard in satpoints {
+      let satpoint = SatPoint::load(*satpoint_guard?.value());
+      let entry = satpoint_table.get(&satpoint.store())?.unwrap();
+      transferable_assets.push((
+        satpoint,
+        rmp_serde::from_slice::<TransferableLog>(entry.value()).unwrap(),
+      ));
+    }
+  }
+  Ok(transferable_assets)
+}
+
+// BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS
+pub fn get_transferable_assets_by_satpoint<T>(
+  table: &T,
+  satpoint: &SatPoint,
+) -> Result<Option<TransferableLog>>
+where
+  T: ReadableTable<&'static SatPointValue, &'static [u8]>,
 {
   Ok(
     table
-      .range(
-        min_script_tick_id_key(script, tick).as_str()
-          ..max_script_tick_id_key(script, tick).as_str(),
-      )?
-      .flat_map(|result| {
-        result.map(|(_, v)| rmp_serde::from_slice::<TransferableLog>(v.value()).unwrap())
-      })
-      .collect(),
+      .get(&satpoint.store())?
+      .map(|entry| rmp_serde::from_slice::<TransferableLog>(entry.value()).unwrap()),
   )
 }
 
-// BRC20_TRANSFERABLELOG
-pub fn get_transferable_by_id<T>(
+// BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS
+pub fn get_transferable_assets_by_outpoint<T>(
   table: &T,
-  script: &ScriptKey,
-  inscription_id: &InscriptionId,
-) -> crate::Result<Option<TransferableLog>>
+  outpoint: OutPoint,
+) -> Result<Vec<(SatPoint, TransferableLog)>>
 where
-  T: ReadableTable<&'static str, &'static [u8]>,
+  T: ReadableTable<&'static SatPointValue, &'static [u8]>,
 {
-  Ok(
-    get_transferable(table, script)?
-      .iter()
-      .find(|log| log.inscription_id == *inscription_id)
-      .cloned(),
-  )
-}
+  let start = SatPoint {
+    outpoint,
+    offset: 0,
+  }
+  .store();
 
-// BRC20_INSCRIBE_TRANSFER
-pub fn get_inscribe_transfer_inscription<T>(
-  table: &T,
-  inscription_id: &InscriptionId,
-) -> crate::Result<Option<TransferInfo>>
-where
-  T: ReadableTable<InscriptionIdValue, &'static [u8]>,
-{
-  Ok(
-    table
-      .get(&inscription_id.store())?
-      .map(|v| rmp_serde::from_slice::<TransferInfo>(v.value()).unwrap()),
-  )
+  let end = SatPoint {
+    outpoint,
+    offset: u64::MAX,
+  }
+  .store();
+
+  let mut transferable_assets = Vec::new();
+  for range in table.range::<&[u8; 44]>(&start..&end)? {
+    let (satpoint_guard, asset) = range?;
+    let satpoint = SatPoint::load(*satpoint_guard.value());
+    transferable_assets.push((
+      satpoint,
+      rmp_serde::from_slice::<TransferableLog>(asset.value()).unwrap(),
+    ));
+  }
+  Ok(transferable_assets)
 }
 
 // BRC20_BALANCES
@@ -156,7 +195,7 @@ pub fn update_token_balance(
   table: &mut Table<'_, '_, &'static str, &'static [u8]>,
   script_key: &ScriptKey,
   new_balance: Balance,
-) -> crate::Result<()> {
+) -> Result<()> {
   table.insert(
     script_tick_key(script_key, &new_balance.tick).as_str(),
     rmp_serde::to_vec(&new_balance).unwrap().as_slice(),
@@ -169,7 +208,7 @@ pub fn insert_token_info(
   table: &mut Table<'_, '_, &'static str, &'static [u8]>,
   tick: &Tick,
   new_info: &TokenInfo,
-) -> crate::Result<()> {
+) -> Result<()> {
   table.insert(
     tick.to_lowercase().hex().as_str(),
     rmp_serde::to_vec(new_info).unwrap().as_slice(),
@@ -183,7 +222,7 @@ pub fn update_mint_token_info(
   tick: &Tick,
   minted_amt: u128,
   minted_block_number: u32,
-) -> crate::Result<()> {
+) -> Result<()> {
   let mut info =
     get_token_info(table, tick)?.unwrap_or_else(|| panic!("token {} not exist", tick.as_str()));
 
@@ -202,7 +241,7 @@ pub fn save_transaction_receipts(
   table: &mut Table<'_, '_, &'static TxidValue, &'static [u8]>,
   txid: &Txid,
   receipts: &[Receipt],
-) -> crate::Result<()> {
+) -> Result<()> {
   table.insert(
     &txid.store(),
     rmp_serde::to_vec(receipts).unwrap().as_slice(),
@@ -210,49 +249,38 @@ pub fn save_transaction_receipts(
   Ok(())
 }
 
-// BRC20_TRANSFERABLELOG
-pub fn insert_transferable(
-  table: &mut Table<'_, '_, &'static str, &'static [u8]>,
-  script: &ScriptKey,
-  tick: &Tick,
-  inscription: &TransferableLog,
-) -> crate::Result<()> {
-  table.insert(
-    script_tick_id_key(script, tick, &inscription.inscription_id).as_str(),
-    rmp_serde::to_vec(&inscription).unwrap().as_slice(),
+// BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS
+// BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS
+pub fn insert_transferable_asset(
+  satpoint_table: &mut Table<'_, '_, &'static SatPointValue, &'static [u8]>,
+  address_table: &mut MultimapTable<'_, '_, &'static str, &'static SatPointValue>,
+  satpoint: SatPoint,
+  transferable_asset: &TransferableLog,
+) -> Result<()> {
+  satpoint_table.insert(
+    &satpoint.store(),
+    rmp_serde::to_vec(&transferable_asset).unwrap().as_slice(),
+  )?;
+  address_table.insert(
+    script_tick_key(&transferable_asset.owner, &transferable_asset.tick).as_str(),
+    &satpoint.store(),
   )?;
   Ok(())
 }
 
-// BRC20_TRANSFERABLELOG
-pub fn remove_transferable(
-  table: &mut Table<'_, '_, &'static str, &'static [u8]>,
-  script: &ScriptKey,
-  tick: &Tick,
-  inscription_id: &InscriptionId,
-) -> crate::Result<()> {
-  table.remove(script_tick_id_key(script, tick, inscription_id).as_str())?;
-  Ok(())
-}
-
-// BRC20_INSCRIBE_TRANSFER
-pub fn insert_inscribe_transfer_inscription(
-  table: &mut Table<'_, '_, InscriptionIdValue, &'static [u8]>,
-  inscription_id: &InscriptionId,
-  transfer_info: TransferInfo,
-) -> crate::Result<()> {
-  table.insert(
-    &inscription_id.store(),
-    rmp_serde::to_vec(&transfer_info).unwrap().as_slice(),
-  )?;
-  Ok(())
-}
-
-// BRC20_INSCRIBE_TRANSFER
-pub fn remove_inscribe_transfer_inscription(
-  table: &mut Table<'_, '_, InscriptionIdValue, &'static [u8]>,
-  inscription_id: &InscriptionId,
-) -> crate::Result<()> {
-  table.remove(&inscription_id.store())?;
+// BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS
+// BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS
+pub fn remove_transferable_asset(
+  satpoint_table: &mut Table<'_, '_, &'static SatPointValue, &'static [u8]>,
+  address_table: &mut MultimapTable<'_, '_, &'static str, &'static SatPointValue>,
+  satpoint: SatPoint,
+) -> Result<()> {
+  if let Some(guard) = satpoint_table.remove(&satpoint.store())? {
+    let transferable_asset = rmp_serde::from_slice::<TransferableLog>(guard.value()).unwrap();
+    address_table.remove(
+      script_tick_key(&transferable_asset.owner, &transferable_asset.tick).as_str(),
+      &satpoint.store(),
+    )?;
+  }
   Ok(())
 }

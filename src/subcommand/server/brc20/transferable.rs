@@ -1,9 +1,4 @@
-use {
-  super::*,
-  crate::okx::datastore::brc20::{self as brc20_store, Tick},
-  axum::Json,
-  utoipa::ToSchema,
-};
+use {super::*, crate::okx::datastore::brc20::Tick, axum::Json, utoipa::ToSchema};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[schema(as = brc20::TransferableInscription)]
@@ -20,18 +15,8 @@ pub struct TransferableInscription {
   pub tick: String,
   /// The address to which the transfer will be made.
   pub owner: String,
-}
-
-impl From<brc20_store::TransferableLog> for TransferableInscription {
-  fn from(trans: brc20_store::TransferableLog) -> Self {
-    Self {
-      inscription_id: trans.inscription_id.to_string(),
-      inscription_number: trans.inscription_number,
-      amount: trans.amount.to_string(),
-      tick: trans.tick.as_str().to_string(),
-      owner: trans.owner.to_string(),
-    }
-  }
+  /// The inscription location.
+  pub location: SatPoint,
 }
 
 /// Get the transferable inscriptions of the address.
@@ -64,20 +49,31 @@ pub(crate) async fn brc20_transferable(
   let script_key = utils::parse_and_validate_script_key_network(&address, network)
     .map_err(ApiError::bad_request)?;
 
-  let transferable_brc20_assets =
+  let brc20_transferable_assets =
     Index::get_brc20_transferable_utxo_by_tick_and_address(ticker, script_key, &rtx)?
       .ok_or(BRC20ApiError::UnknownTicker(tick.clone()))?;
 
   log::debug!(
     "rpc: get brc20_transferable: {tick} {address} {:?}",
-    transferable_brc20_assets
+    brc20_transferable_assets
   );
 
+  let mut api_transferable_assets = Vec::new();
+  for (satpoint, transferable_asset) in brc20_transferable_assets {
+    api_transferable_assets.push(TransferableInscription {
+      inscription_id: transferable_asset.inscription_id.to_string(),
+      inscription_number: transferable_asset.inscription_number,
+      amount: transferable_asset.amount.to_string(),
+      tick: transferable_asset.tick.as_str().to_string(),
+      owner: transferable_asset.owner.to_string(),
+      location: satpoint,
+    });
+  }
+
+  api_transferable_assets.sort_by(|a, b| a.inscription_number.cmp(&b.inscription_number));
+
   Ok(Json(ApiResponse::ok(TransferableInscriptions {
-    inscriptions: transferable_brc20_assets
-      .into_iter()
-      .map(|t| t.into())
-      .collect(),
+    inscriptions: api_transferable_assets,
   })))
 }
 
@@ -117,13 +113,27 @@ pub(crate) async fn brc20_all_transferable(
   let script_key = utils::parse_and_validate_script_key_network(&account, network)
     .map_err(ApiError::bad_request)?;
 
-  let transferable = rtx.brc20_get_all_transferable_by_address(script_key)?;
+  let brc20_transferable_assets = rtx.brc20_get_all_transferable_by_address(script_key)?;
   log::debug!(
     "rpc: get brc20_all_transferable: {account} {:?}",
-    transferable
+    brc20_transferable_assets
   );
 
+  let mut api_transferable_assets = Vec::new();
+  for (satpoint, transferable_asset) in brc20_transferable_assets {
+    api_transferable_assets.push(TransferableInscription {
+      inscription_id: transferable_asset.inscription_id.to_string(),
+      inscription_number: transferable_asset.inscription_number,
+      amount: transferable_asset.amount.to_string(),
+      tick: transferable_asset.tick.as_str().to_string(),
+      owner: transferable_asset.owner.to_string(),
+      location: satpoint,
+    });
+  }
+
+  api_transferable_assets.sort_by(|a, b| a.inscription_number.cmp(&b.inscription_number));
+
   Ok(Json(ApiResponse::ok(TransferableInscriptions {
-    inscriptions: transferable.into_iter().map(|t| t.into()).collect(),
+    inscriptions: api_transferable_assets,
   })))
 }

@@ -1,12 +1,19 @@
-use crate::inscriptions::ParsedEnvelope;
-use crate::okx::protocol::context::Context;
 use {
   super::*,
   crate::{
-    okx::{datastore::ord::operation::InscriptionOp, protocol::Message},
+    index::entry::{Entry, SatPointValue},
+    inscriptions::ParsedEnvelope,
+    okx::{
+      datastore::{
+        brc20::{redb::table::get_transferable_assets_by_outpoint, TransferableLog},
+        ord::operation::InscriptionOp,
+      },
+      protocol::{context::Context, Message},
+    },
     Inscription, Result,
   },
   bitcoin::Transaction,
+  std::collections::HashMap,
 };
 
 pub struct MsgResolveManager {
@@ -53,11 +60,18 @@ impl MsgResolveManager {
           .map(|height| context.chain.blockheight >= height)
           .unwrap_or(false)
         {
-          if let Some(msg) = brc20::Message::resolve(
-            context.BRC20_INSCRIBE_TRANSFER,
-            &new_inscriptions,
-            operation,
-          )? {
+          let satpoint_to_transfer_assets: HashMap<SatPointValue, TransferableLog> =
+            get_transferable_assets_by_outpoint(
+              context.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
+              input.previous_output,
+            )?
+            .into_iter()
+            .map(|(satpoint, asset)| (satpoint.store(), asset))
+            .collect();
+
+          if let Some(msg) =
+            brc20::Message::resolve(operation, &new_inscriptions, satpoint_to_transfer_assets)?
+          {
             log::debug!(
               "BRC20 resolved the message from {:?}, msg {:?}",
               operation,

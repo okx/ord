@@ -1,5 +1,6 @@
 use super::{types::ScriptPubkey, *};
 mod balance;
+mod outpoint;
 mod receipt;
 mod ticker;
 mod transferable;

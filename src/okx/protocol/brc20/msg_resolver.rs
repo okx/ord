@@ -1,26 +1,24 @@
 use super::*;
-use crate::index::InscriptionIdValue;
-use crate::okx::datastore::brc20::redb::table::get_inscribe_transfer_inscription;
 use crate::{
+  index::entry::{Entry, SatPointValue},
   inscriptions::Inscription,
   okx::{
-    datastore::ord::{Action, InscriptionOp},
+    datastore::{
+      brc20::TransferableLog,
+      ord::{Action, InscriptionOp},
+    },
     protocol::brc20::{deserialize_brc20_operation, Operation},
   },
   Result,
 };
-use anyhow::anyhow;
-use redb::ReadableTable;
+use std::collections::HashMap;
 
 impl Message {
-  pub(crate) fn resolve<T>(
-    table: &T,
-    new_inscriptions: &[Inscription],
+  pub(crate) fn resolve(
     op: &InscriptionOp,
-  ) -> Result<Option<Message>>
-  where
-    T: ReadableTable<InscriptionIdValue, &'static [u8]>,
-  {
+    new_inscriptions: &[Inscription],
+    transfer_assets_cache: HashMap<SatPointValue, TransferableLog>,
+  ) -> Result<Option<Message>> {
     log::debug!("BRC20 resolving the message from {:?}", op);
     let sat_in_outputs = op
       .new_satpoint
@@ -35,34 +33,27 @@ impl Message {
         vindicated: false,
         inscription: _,
       } if sat_in_outputs => {
-        match deserialize_brc20_operation(
+        let Ok(brc20_opteration) = deserialize_brc20_operation(
           new_inscriptions
             .get(usize::try_from(op.inscription_id.index).unwrap())
             .unwrap(),
           &op.action,
-        ) {
-          Ok(brc20_operation) => brc20_operation,
-          _ => return Ok(None),
-        }
+        ) else {
+          return Ok(None);
+        };
+        brc20_opteration
       }
       // Transfered inscription operation.
       // Attempt to retrieve the `InscribeTransfer` Inscription information from the data store of BRC20S.
-      Action::Transfer => match get_inscribe_transfer_inscription(table, &op.inscription_id) {
-        // Ignore non-first transfer operations.
-        Ok(Some(transfer_info)) if op.inscription_id.txid == op.old_satpoint.outpoint.txid => {
-          Operation::Transfer(Transfer {
-            tick: transfer_info.tick.as_str().to_string(),
-            amount: transfer_info.amt.to_string(),
-          })
-        }
-        Err(e) => {
-          return Err(anyhow!(
-            "failed to get inscribe transfer inscription for {}! error: {e}",
-            op.inscription_id,
-          ))
-        }
-        _ => return Ok(None),
-      },
+      Action::Transfer => {
+        let Some(transfer_info) = transfer_assets_cache.get(&op.old_satpoint.store()) else {
+          return Ok(None);
+        };
+        Operation::Transfer(Transfer {
+          tick: transfer_info.tick.as_str().to_string(),
+          amount: transfer_info.amount.to_string(),
+        })
+      }
       _ => return Ok(None),
     };
     Ok(Some(Self {
@@ -80,13 +71,9 @@ impl Message {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::index::BRC20_INSCRIBE_TRANSFER;
-  use crate::okx::datastore::brc20::redb::table::insert_inscribe_transfer_inscription;
-  use crate::okx::datastore::brc20::{Tick, TransferInfo};
-  use bitcoin::OutPoint;
-  use redb::Database;
+  use crate::okx::datastore::brc20::{Tick, TransferableLog};
+  use bitcoin::{Address, OutPoint};
   use std::str::FromStr;
-  use tempfile::NamedTempFile;
 
   fn create_inscription(str: &str) -> Inscription {
     Inscription::new(
@@ -158,23 +145,19 @@ mod tests {
 
   #[test]
   fn test_invalid_protocol() {
-    let db_file = NamedTempFile::new().unwrap();
-    let db = Database::create(db_file.path()).unwrap();
-    let wtx = db.begin_write().unwrap();
-    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
-
+    let transfer_assets_cache = HashMap::new();
     let (inscriptions, op) = create_inscribe_operation(
       r#"{ "p": "brc-20s","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
     );
-    assert_matches!(Message::resolve(&table, &inscriptions, &op), Ok(None));
+    assert_matches!(
+      Message::resolve(&op, &inscriptions, transfer_assets_cache),
+      Ok(None)
+    );
   }
 
   #[test]
   fn test_cursed_or_unbound_inscription() {
-    let db_file = NamedTempFile::new().unwrap();
-    let db = Database::create(db_file.path()).unwrap();
-    let wtx = db.begin_write().unwrap();
-    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+    let transfer_assets_cache = HashMap::new();
 
     let (inscriptions, op) = create_inscribe_operation(
       r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
@@ -188,7 +171,10 @@ mod tests {
       },
       ..op
     };
-    assert_matches!(Message::resolve(&table, &inscriptions, &op), Ok(None));
+    assert_matches!(
+      Message::resolve(&op, &inscriptions, transfer_assets_cache.clone()),
+      Ok(None)
+    );
 
     let op2 = InscriptionOp {
       action: Action::New {
@@ -199,7 +185,10 @@ mod tests {
       },
       ..op
     };
-    assert_matches!(Message::resolve(&table, &inscriptions, &op2), Ok(None));
+    assert_matches!(
+      Message::resolve(&op2, &inscriptions, transfer_assets_cache.clone()),
+      Ok(None)
+    );
     let op3 = InscriptionOp {
       action: Action::New {
         cursed: true,
@@ -209,16 +198,15 @@ mod tests {
       },
       ..op
     };
-    assert_matches!(Message::resolve(&table, &inscriptions, &op3), Ok(None));
+    assert_matches!(
+      Message::resolve(&op3, &inscriptions, transfer_assets_cache),
+      Ok(None)
+    );
   }
 
   #[test]
   fn test_valid_inscribe_operation() {
-    let db_file = NamedTempFile::new().unwrap();
-    let db = Database::create(db_file.path()).unwrap();
-    let wtx = db.begin_write().unwrap();
-    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
-
+    let transfer_assets_cache = HashMap::new();
     let (inscriptions, op) = create_inscribe_operation(
       r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
     );
@@ -237,21 +225,21 @@ mod tests {
       sat_in_outputs: true,
     };
     assert_matches!(
-      Message::resolve(&table, &inscriptions, &op),
+      Message::resolve(&op, &inscriptions, transfer_assets_cache),
       Ok(Some(_result_msg))
     );
   }
 
   #[test]
   fn test_invalid_transfer() {
-    let db_file = NamedTempFile::new().unwrap();
-    let db = Database::create(db_file.path()).unwrap();
-    let wtx = db.begin_write().unwrap();
-    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+    let transfer_assets_cache = HashMap::new();
 
     // inscribe transfer not found
     let op = create_transfer_operation();
-    assert_matches!(Message::resolve(&table, &[], &op), Ok(None));
+    assert_matches!(
+      Message::resolve(&op, &[], transfer_assets_cache.clone()),
+      Ok(None)
+    );
 
     // non-first transfer operations.
     let op1 = InscriptionOp {
@@ -265,28 +253,27 @@ mod tests {
       },
       ..op
     };
-    assert_matches!(Message::resolve(&table, &[], &op1), Ok(None));
+    assert_matches!(Message::resolve(&op1, &[], transfer_assets_cache), Ok(None));
   }
 
   #[test]
   fn test_valid_transfer() {
-    let db_file = NamedTempFile::new().unwrap();
-    let db = Database::create(db_file.path()).unwrap();
-    let wtx = db.begin_write().unwrap();
-    let mut table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
-
+    let mut transfer_assets_cache = HashMap::new();
     // inscribe transfer not found
     let op = create_transfer_operation();
-
-    insert_inscribe_transfer_inscription(
-      &mut table,
-      &op.inscription_id,
-      TransferInfo {
+    transfer_assets_cache.insert(
+      op.old_satpoint.store(),
+      TransferableLog {
         tick: Tick::from_str("ordi").unwrap(),
-        amt: 100,
+        amount: 100,
+        inscription_id: op.inscription_id,
+        inscription_number: op.inscription_number.unwrap(),
+        owner: ScriptKey::Address(
+          Address::from_str("bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4").unwrap(),
+        ),
       },
-    )
-    .unwrap();
+    );
+
     let _msg = Message {
       txid: op.txid,
       sequence_number: op.sequence_number,
@@ -300,6 +287,9 @@ mod tests {
       sat_in_outputs: true,
     };
 
-    assert_matches!(Message::resolve(&table, &[], &op), Ok(Some(_msg)));
+    assert_matches!(
+      Message::resolve(&op, &[], transfer_assets_cache),
+      Ok(Some(_msg))
+    );
   }
 }

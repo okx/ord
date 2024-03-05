@@ -1,31 +1,40 @@
-use crate::index::{InscriptionEntryValue, InscriptionIdValue, OutPointValue, TxidValue};
-use crate::inscriptions::InscriptionId;
-use crate::okx::datastore::brc20::redb::table::{
-  get_balance, get_balances, get_inscribe_transfer_inscription, get_token_info, get_tokens_info,
-  get_transaction_receipts, get_transferable, get_transferable_by_id, get_transferable_by_tick,
-  insert_inscribe_transfer_inscription, insert_token_info, insert_transferable,
-  remove_inscribe_transfer_inscription, remove_transferable, save_transaction_receipts,
-  update_mint_token_info, update_token_balance,
+use crate::{
+  index::{
+    entry::SatPointValue, InscriptionEntryValue, InscriptionIdValue, OutPointValue, TxidValue,
+  },
+  inscriptions::InscriptionId,
+  okx::{
+    datastore::{
+      brc20::{
+        redb::table::{
+          get_balance, get_balances, get_token_info, get_tokens_info, get_transaction_receipts,
+          get_transferable_assets_by_account, get_transferable_assets_by_account_ticker,
+          get_transferable_assets_by_outpoint, get_transferable_assets_by_satpoint,
+          insert_token_info, insert_transferable_asset, remove_transferable_asset,
+          save_transaction_receipts, update_mint_token_info, update_token_balance,
+        },
+        Balance, Brc20Reader, Brc20ReaderWriter, Receipt, Tick, TokenInfo, TransferableLog,
+      },
+      ord::{
+        collections::CollectionKind,
+        redb::table::{
+          get_collection_inscription_id, get_collections_of_inscription,
+          get_inscription_number_by_sequence_number, get_transaction_operations,
+          get_txout_by_outpoint, save_transaction_operations, set_inscription_attributes,
+          set_inscription_by_collection_key,
+        },
+        InscriptionOp, OrdReader, OrdReaderWriter,
+      },
+      ScriptKey,
+    },
+    lru::SimpleLru,
+    protocol::BlockContext,
+  },
+  SatPoint,
 };
-use crate::okx::datastore::brc20::{
-  Balance, Brc20Reader, Brc20ReaderWriter, Receipt, Tick, TokenInfo, TransferInfo, TransferableLog,
-};
-use crate::okx::datastore::ord::collections::CollectionKind;
-use crate::okx::datastore::ord::redb::table::{
-  get_collection_inscription_id, get_collections_of_inscription, get_transaction_operations,
-  get_txout_by_outpoint, set_inscription_attributes, set_inscription_by_collection_key,
-};
-use crate::okx::datastore::ord::redb::table::{
-  get_inscription_number_by_sequence_number, save_transaction_operations,
-};
-use crate::okx::datastore::ord::{InscriptionOp, OrdReader, OrdReaderWriter};
-use crate::okx::datastore::ScriptKey;
-use crate::okx::lru::SimpleLru;
-use crate::okx::protocol::BlockContext;
-use crate::SatPoint;
 use anyhow::anyhow;
 use bitcoin::{Network, OutPoint, TxOut, Txid};
-use redb::Table;
+use redb::{MultimapTable, Table};
 
 #[allow(non_snake_case)]
 pub struct Context<'a, 'db, 'txn> {
@@ -48,8 +57,10 @@ pub struct Context<'a, 'db, 'txn> {
   pub(crate) BRC20_BALANCES: &'a mut Table<'db, 'txn, &'static str, &'static [u8]>,
   pub(crate) BRC20_TOKEN: &'a mut Table<'db, 'txn, &'static str, &'static [u8]>,
   pub(crate) BRC20_EVENTS: &'a mut Table<'db, 'txn, &'static TxidValue, &'static [u8]>,
-  pub(crate) BRC20_TRANSFERABLELOG: &'a mut Table<'db, 'txn, &'static str, &'static [u8]>,
-  pub(crate) BRC20_INSCRIBE_TRANSFER: &'a mut Table<'db, 'txn, InscriptionIdValue, &'static [u8]>,
+  pub(crate) BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS:
+    &'a mut Table<'db, 'txn, &'static SatPointValue, &'static [u8]>,
+  pub(crate) BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS:
+    &'a mut MultimapTable<'db, 'txn, &'static str, &'static SatPointValue>,
 }
 
 impl<'a, 'db, 'txn> OrdReader for Context<'a, 'db, 'txn> {
@@ -172,34 +183,42 @@ impl<'a, 'db, 'txn> Brc20Reader for Context<'a, 'db, 'txn> {
     get_transaction_receipts(self.BRC20_EVENTS, txid)
   }
 
-  fn get_transferable(
+  fn get_transferable_assets_by_account(
     &self,
     script: &ScriptKey,
-  ) -> crate::Result<Vec<TransferableLog>, Self::Error> {
-    get_transferable(self.BRC20_TRANSFERABLELOG, script)
+  ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
+    get_transferable_assets_by_account(
+      self.BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS,
+      self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
+      script,
+    )
   }
 
-  fn get_transferable_by_tick(
+  fn get_transferable_assets_by_account_ticker(
     &self,
     script: &ScriptKey,
     tick: &Tick,
-  ) -> crate::Result<Vec<TransferableLog>, Self::Error> {
-    get_transferable_by_tick(self.BRC20_TRANSFERABLELOG, script, tick)
+  ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
+    get_transferable_assets_by_account_ticker(
+      self.BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS,
+      self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
+      script,
+      tick,
+    )
   }
 
-  fn get_transferable_by_id(
+  fn get_transferable_assets_by_satpoint(
     &self,
-    script: &ScriptKey,
-    inscription_id: &InscriptionId,
+    satpoint: &SatPoint,
   ) -> crate::Result<Option<TransferableLog>, Self::Error> {
-    get_transferable_by_id(self.BRC20_TRANSFERABLELOG, script, inscription_id)
+    get_transferable_assets_by_satpoint(self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS, satpoint)
   }
 
-  fn get_inscribe_transfer_inscription(
+  fn get_transferable_assets_by_outpoint(
     &self,
-    inscription_id: &InscriptionId,
-  ) -> crate::Result<Option<TransferInfo>, Self::Error> {
-    get_inscribe_transfer_inscription(self.BRC20_INSCRIBE_TRANSFER, inscription_id)
+    outpoint: OutPoint,
+  ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
+    get_transferable_assets_by_outpoint(self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS, outpoint)
   }
 }
 
@@ -237,40 +256,24 @@ impl<'a, 'db, 'txn> Brc20ReaderWriter for Context<'a, 'db, 'txn> {
     save_transaction_receipts(self.BRC20_EVENTS, txid, receipt)
   }
 
-  fn insert_transferable(
+  fn insert_transferable_asset(
     &mut self,
-    script: &ScriptKey,
-    tick: &Tick,
-    inscription: &TransferableLog,
+    satpoint: SatPoint,
+    transferable_asset: &TransferableLog,
   ) -> crate::Result<(), Self::Error> {
-    insert_transferable(self.BRC20_TRANSFERABLELOG, script, tick, inscription)
-  }
-
-  fn remove_transferable(
-    &mut self,
-    script: &ScriptKey,
-    tick: &Tick,
-    inscription_id: &InscriptionId,
-  ) -> crate::Result<(), Self::Error> {
-    remove_transferable(self.BRC20_TRANSFERABLELOG, script, tick, inscription_id)
-  }
-
-  fn insert_inscribe_transfer_inscription(
-    &mut self,
-    inscription_id: &InscriptionId,
-    transfer_info: TransferInfo,
-  ) -> crate::Result<(), Self::Error> {
-    insert_inscribe_transfer_inscription(
-      self.BRC20_INSCRIBE_TRANSFER,
-      inscription_id,
-      transfer_info,
+    insert_transferable_asset(
+      self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
+      self.BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS,
+      satpoint,
+      transferable_asset,
     )
   }
 
-  fn remove_inscribe_transfer_inscription(
-    &mut self,
-    inscription_id: &InscriptionId,
-  ) -> crate::Result<(), Self::Error> {
-    remove_inscribe_transfer_inscription(self.BRC20_INSCRIBE_TRANSFER, inscription_id)
+  fn remove_transferable_asset(&mut self, satpoint: SatPoint) -> crate::Result<(), Self::Error> {
+    remove_transferable_asset(
+      self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
+      self.BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS,
+      satpoint,
+    )
   }
 }

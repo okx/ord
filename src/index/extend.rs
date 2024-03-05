@@ -156,7 +156,7 @@ impl Index {
     tick: brc20::Tick,
     script_key: ScriptKey,
     rtx: &Rtx,
-  ) -> Result<Option<Vec<brc20::TransferableLog>>> {
+  ) -> Result<Option<Vec<(SatPoint, brc20::TransferableLog)>>> {
     let transferable_utxo_assets = rtx.brc20_get_tick_transferable_by_address(&tick, script_key)?;
 
     if transferable_utxo_assets.is_empty() {

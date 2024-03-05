@@ -2,17 +2,19 @@ use super::{
   params::{BIGDECIMAL_TEN, MAXIMUM_SUPPLY, MAX_DECIMAL_WIDTH},
   *,
 };
-
-use crate::okx::datastore::brc20::{Brc20Reader, Brc20ReaderWriter};
-use crate::okx::datastore::ord::OrdReader;
-use crate::okx::protocol::context::Context;
 use crate::{
   okx::{
-    datastore::brc20::{
-      BRC20Error, Balance, DeployEvent, Event, InscribeTransferEvent, MintEvent, Receipt, Tick,
-      TokenInfo, TransferEvent, TransferInfo, TransferableLog,
+    datastore::{
+      brc20::{
+        BRC20Error, Balance, Brc20Reader, Brc20ReaderWriter, DeployEvent, Event,
+        InscribeTransferEvent, MintEvent, Receipt, Tick, TokenInfo, TransferEvent, TransferableLog,
+      },
+      ord::OrdReader,
     },
-    protocol::brc20::{Message, Mint, Operation},
+    protocol::{
+      brc20::{Message, Mint, Operation},
+      context::Context,
+    },
   },
   Result,
 };
@@ -294,7 +296,7 @@ fn process_inscribe_transfer(
     .update_token_balance(&to_script_key, balance)
     .map_err(Error::LedgerError)?;
 
-  let inscription = TransferableLog {
+  let transferable_asset = TransferableLog {
     inscription_id: msg.inscription_id,
     inscription_number: msg.inscription_number,
     amount: amt,
@@ -303,28 +305,18 @@ fn process_inscribe_transfer(
   };
 
   context
-    .insert_transferable(&inscription.owner, &tick, &inscription)
-    .map_err(Error::LedgerError)?;
-
-  context
-    .insert_inscribe_transfer_inscription(
-      &msg.inscription_id,
-      TransferInfo {
-        tick: token_info.tick,
-        amt,
-      },
-    )
+    .insert_transferable_asset(msg.new_satpoint, &transferable_asset)
     .map_err(Error::LedgerError)?;
 
   Ok(Event::InscribeTransfer(InscribeTransferEvent {
-    tick: inscription.tick,
+    tick: transferable_asset.tick,
     amount: amt,
   }))
 }
 
 fn process_transfer(context: &mut Context, msg: &ExecutionMessage) -> Result<Event, Error> {
   let transferable = context
-    .get_transferable_by_id(&msg.from, &msg.inscription_id)
+    .get_transferable_assets_by_satpoint(&msg.old_satpoint)
     .map_err(Error::LedgerError)?
     .ok_or(BRC20Error::TransferableNotFound(msg.inscription_id))?;
 
@@ -387,11 +379,7 @@ fn process_transfer(context: &mut Context, msg: &ExecutionMessage) -> Result<Eve
     .map_err(Error::LedgerError)?;
 
   context
-    .remove_transferable(&msg.from, &tick, &msg.inscription_id)
-    .map_err(Error::LedgerError)?;
-
-  context
-    .remove_inscribe_transfer_inscription(&msg.inscription_id)
+    .remove_transferable_asset(msg.old_satpoint)
     .map_err(Error::LedgerError)?;
 
   Ok(Event::Transfer(TransferEvent {

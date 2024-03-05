@@ -4,16 +4,15 @@ pub(super) mod events;
 pub mod redb;
 pub(super) mod tick;
 pub(super) mod token_info;
-pub(super) mod transfer;
 pub(super) mod transferable_log;
 
 pub use self::{
   balance::Balance, errors::BRC20Error, events::Receipt, events::*, tick::*, token_info::TokenInfo,
-  transfer::TransferInfo, transferable_log::TransferableLog,
+  transferable_log::TransferableLog,
 };
 use super::ScriptKey;
-use crate::{InscriptionId, Result};
-use bitcoin::Txid;
+use crate::{Result, SatPoint};
+use bitcoin::{OutPoint, Txid};
 use std::fmt::{Debug, Display};
 
 pub trait Brc20Reader {
@@ -31,22 +30,23 @@ pub trait Brc20Reader {
 
   fn get_transaction_receipts(&self, txid: &Txid) -> Result<Option<Vec<Receipt>>, Self::Error>;
 
-  fn get_transferable(&self, script: &ScriptKey) -> Result<Vec<TransferableLog>, Self::Error>;
-  fn get_transferable_by_tick(
+  fn get_transferable_assets_by_satpoint(
+    &self,
+    satpoint: &SatPoint,
+  ) -> Result<Option<TransferableLog>, Self::Error>;
+  fn get_transferable_assets_by_account(
+    &self,
+    script: &ScriptKey,
+  ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
+  fn get_transferable_assets_by_account_ticker(
     &self,
     script: &ScriptKey,
     tick: &Tick,
-  ) -> Result<Vec<TransferableLog>, Self::Error>;
-  fn get_transferable_by_id(
+  ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
+  fn get_transferable_assets_by_outpoint(
     &self,
-    script: &ScriptKey,
-    inscription_id: &InscriptionId,
-  ) -> Result<Option<TransferableLog>, Self::Error>;
-
-  fn get_inscribe_transfer_inscription(
-    &self,
-    inscription_id: &InscriptionId,
-  ) -> Result<Option<TransferInfo>, Self::Error>;
+    outpoint: OutPoint,
+  ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
 }
 
 pub trait Brc20ReaderWriter: Brc20Reader {
@@ -71,28 +71,11 @@ pub trait Brc20ReaderWriter: Brc20Reader {
     receipt: &[Receipt],
   ) -> Result<(), Self::Error>;
 
-  fn insert_transferable(
+  fn insert_transferable_asset(
     &mut self,
-    script: &ScriptKey,
-    tick: &Tick,
+    satpoint: SatPoint,
     inscription: &TransferableLog,
   ) -> Result<(), Self::Error>;
 
-  fn remove_transferable(
-    &mut self,
-    script: &ScriptKey,
-    tick: &Tick,
-    inscription_id: &InscriptionId,
-  ) -> Result<(), Self::Error>;
-
-  fn insert_inscribe_transfer_inscription(
-    &mut self,
-    inscription_id: &InscriptionId,
-    transfer_info: TransferInfo,
-  ) -> Result<(), Self::Error>;
-
-  fn remove_inscribe_transfer_inscription(
-    &mut self,
-    inscription_id: &InscriptionId,
-  ) -> Result<(), Self::Error>;
+  fn remove_transferable_asset(&mut self, satpoint: SatPoint) -> Result<(), Self::Error>;
 }

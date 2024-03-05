@@ -219,16 +219,22 @@ impl Rtx<'_> {
     &self,
     tick: &brc20::Tick,
     script_key: ScriptKey,
-  ) -> Result<Vec<brc20::TransferableLog>> {
-    let table = self.0.open_table(BRC20_TRANSFERABLELOG)?;
-    get_transferable_by_tick(&table, &script_key, tick)
+  ) -> Result<Vec<(SatPoint, brc20::TransferableLog)>> {
+    let address_table = self
+      .0
+      .open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS)?;
+    let satpoint_table = self.0.open_table(BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS)?;
+    get_transferable_assets_by_account_ticker(&address_table, &satpoint_table, &script_key, tick)
   }
 
   pub(crate) fn brc20_get_all_transferable_by_address(
     &self,
     script_key: ScriptKey,
-  ) -> Result<Vec<brc20::TransferableLog>> {
-    let table = self.0.open_table(BRC20_TRANSFERABLELOG)?;
-    get_transferable(&table, &script_key)
+  ) -> Result<Vec<(SatPoint, brc20::TransferableLog)>> {
+    let address_table = self
+      .0
+      .open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS)?;
+    let satpoint_table = self.0.open_table(BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS)?;
+    get_transferable_assets_by_account(&address_table, &satpoint_table, &script_key)
   }
 }

@@ -1,16 +1,6 @@
 pub mod table;
 
 use super::{LowerTick, ScriptKey, Tick};
-use crate::inscriptions::InscriptionId;
-
-fn script_tick_id_key(script: &ScriptKey, tick: &Tick, inscription_id: &InscriptionId) -> String {
-  format!(
-    "{}_{}_{}",
-    script,
-    tick.to_lowercase().hex(),
-    inscription_id
-  )
-}
 
 fn min_script_tick_id_key(script: &ScriptKey, tick: &Tick) -> String {
   script_tick_key(script, tick)
