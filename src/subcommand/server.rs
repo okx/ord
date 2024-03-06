@@ -54,6 +54,7 @@ mod error;
 mod info;
 mod ord;
 mod response;
+mod sat;
 mod types;
 mod utils;
 
@@ -233,8 +234,8 @@ impl Server {
       brc20::ApiErrorEvent,
       brc20::ApiTxEvents,
       brc20::ApiBlockEvents,
-      brc20::TransferableInscription,
-      brc20::TransferableInscriptions,
+      brc20::ApiTransferableAsset,
+      brc20::ApiTransferableAssets,
 
       // BRC20 responses schemas
       response::ApiBRC20Tick,
@@ -326,10 +327,18 @@ impl Server {
           "/brc20/address/:address/transferable",
           get(brc20::brc20_all_transferable),
         )
+        .route(
+          "/brc20/outpoint/:outpoint/transferable",
+          get(brc20::brc20_outpoint),
+        )
         .route("/brc20/tx/:txid/events", get(brc20::brc20_tx_events))
         .route(
           "/brc20/block/:block_hash/events",
           get(brc20::brc20_block_events),
+        )
+        .route(
+          "/sat/outpoint/:outpoint/info",
+          get(sat::sat_range_by_outpoint),
         );
 
       let api_router = Router::new().nest("/v1", api_v1_router);

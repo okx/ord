@@ -5,6 +5,7 @@ use std::fmt::Display;
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum CollectionKind {
   BitMap,
+  BRC20,
 }
 impl Display for CollectionKind {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -13,6 +14,7 @@ impl Display for CollectionKind {
       "{}",
       match self {
         CollectionKind::BitMap => String::from("bitmap"),
+        CollectionKind::BRC20 => String::from("brc20"),
       }
     )
   }

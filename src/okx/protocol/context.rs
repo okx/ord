@@ -18,9 +18,9 @@ use crate::{
       ord::{
         collections::CollectionKind,
         redb::table::{
-          get_collection_inscription_id, get_collections_of_inscription,
-          get_inscription_number_by_sequence_number, get_transaction_operations,
-          get_txout_by_outpoint, save_transaction_operations, set_inscription_attributes,
+          add_inscription_attributes, get_collection_inscription_id,
+          get_collections_of_inscription, get_inscription_number_by_sequence_number,
+          get_transaction_operations, get_txout_by_outpoint, save_transaction_operations,
           set_inscription_by_collection_key,
         },
         InscriptionOp, OrdReader, OrdReaderWriter,
@@ -48,7 +48,7 @@ pub struct Context<'a, 'db, 'txn> {
   pub(crate) COLLECTIONS_KEY_TO_INSCRIPTION_ID:
     &'a mut Table<'db, 'txn, &'static str, InscriptionIdValue>,
   pub(crate) COLLECTIONS_INSCRIPTION_ID_TO_KINDS:
-    &'a mut Table<'db, 'txn, InscriptionIdValue, &'static [u8]>,
+    &'a mut MultimapTable<'db, 'txn, InscriptionIdValue, &'static [u8]>,
   pub(crate) SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY:
     &'a mut Table<'db, 'txn, u32, InscriptionEntryValue>,
   pub(crate) OUTPOINT_TO_ENTRY: &'a mut Table<'db, 'txn, &'static OutPointValue, &'static [u8]>,
@@ -140,12 +140,12 @@ impl<'a, 'db, 'txn> OrdReaderWriter for Context<'a, 'db, 'txn> {
     set_inscription_by_collection_key(self.COLLECTIONS_KEY_TO_INSCRIPTION_ID, key, inscription_id)
   }
 
-  fn set_inscription_attributes(
+  fn add_inscription_attributes(
     &mut self,
     inscription_id: &InscriptionId,
-    kind: &[CollectionKind],
+    kind: CollectionKind,
   ) -> crate::Result<(), Self::Error> {
-    set_inscription_attributes(
+    add_inscription_attributes(
       self.COLLECTIONS_INSCRIPTION_ID_TO_KINDS,
       inscription_id,
       kind,

@@ -267,4 +267,26 @@ impl Index {
       )
     }
   }
+
+  pub(crate) fn list_sat_range(
+    rtx: &Rtx,
+    outpoint: OutPoint,
+    index_sats: bool,
+  ) -> Result<Option<Vec<(u64, u64)>>> {
+    if !index_sats || outpoint == unbound_outpoint() {
+      return Ok(None);
+    }
+
+    let sat_ranges = rtx.list_sat_range(outpoint.store())?;
+
+    match sat_ranges {
+      Some(sat_ranges) => Ok(Some(
+        sat_ranges
+          .chunks_exact(11)
+          .map(|chunk| SatRange::load(chunk.try_into().unwrap()))
+          .collect(),
+      )),
+      None => Ok(None),
+    }
+  }
 }

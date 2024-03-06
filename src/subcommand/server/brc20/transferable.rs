@@ -1,9 +1,9 @@
 use {super::*, crate::okx::datastore::brc20::Tick, axum::Json, utoipa::ToSchema};
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(as = brc20::TransferableInscription)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
+#[schema(as = brc20::TransferableAsset)]
 #[serde(rename_all = "camelCase")]
-pub struct TransferableInscription {
+pub struct ApiTransferableAsset {
   /// The inscription id.
   pub inscription_id: String,
   /// The inscription number.
@@ -39,7 +39,7 @@ pub struct TransferableInscription {
 pub(crate) async fn brc20_transferable(
   Extension(index): Extension<Arc<Index>>,
   Path((tick, address)): Path<(String, String)>,
-) -> ApiResult<TransferableInscriptions> {
+) -> ApiResult<ApiTransferableAssets> {
   log::debug!("rpc: get brc20_transferable: {tick} {address}");
 
   let rtx = index.begin_read()?;
@@ -60,7 +60,7 @@ pub(crate) async fn brc20_transferable(
 
   let mut api_transferable_assets = Vec::new();
   for (satpoint, transferable_asset) in brc20_transferable_assets {
-    api_transferable_assets.push(TransferableInscription {
+    api_transferable_assets.push(ApiTransferableAsset {
       inscription_id: transferable_asset.inscription_id.to_string(),
       inscription_number: transferable_asset.inscription_number,
       amount: transferable_asset.amount.to_string(),
@@ -72,17 +72,17 @@ pub(crate) async fn brc20_transferable(
 
   api_transferable_assets.sort_by(|a, b| a.inscription_number.cmp(&b.inscription_number));
 
-  Ok(Json(ApiResponse::ok(TransferableInscriptions {
+  Ok(Json(ApiResponse::ok(ApiTransferableAssets {
     inscriptions: api_transferable_assets,
   })))
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(as = brc20::TransferableInscriptions)]
+#[schema(as = brc20::ApiTransferableAssets)]
 #[serde(rename_all = "camelCase")]
-pub struct TransferableInscriptions {
-  #[schema(value_type = Vec<brc20::TransferableInscription>)]
-  pub inscriptions: Vec<TransferableInscription>,
+pub struct ApiTransferableAssets {
+  #[schema(value_type = Vec<brc20::brc20::TransferableAsset>)]
+  pub inscriptions: Vec<brc20::ApiTransferableAsset>,
 }
 
 /// Get the balance of ticker of the address.
@@ -104,7 +104,7 @@ pub struct TransferableInscriptions {
 pub(crate) async fn brc20_all_transferable(
   Extension(index): Extension<Arc<Index>>,
   Path(account): Path<String>,
-) -> ApiResult<TransferableInscriptions> {
+) -> ApiResult<ApiTransferableAssets> {
   log::debug!("rpc: get brc20_all_transferable: {account}");
 
   let rtx = index.begin_read()?;
@@ -121,7 +121,7 @@ pub(crate) async fn brc20_all_transferable(
 
   let mut api_transferable_assets = Vec::new();
   for (satpoint, transferable_asset) in brc20_transferable_assets {
-    api_transferable_assets.push(TransferableInscription {
+    api_transferable_assets.push(ApiTransferableAsset {
       inscription_id: transferable_asset.inscription_id.to_string(),
       inscription_number: transferable_asset.inscription_number,
       amount: transferable_asset.amount.to_string(),
@@ -133,7 +133,7 @@ pub(crate) async fn brc20_all_transferable(
 
   api_transferable_assets.sort_by(|a, b| a.inscription_number.cmp(&b.inscription_number));
 
-  Ok(Json(ApiResponse::ok(TransferableInscriptions {
+  Ok(Json(ApiResponse::ok(ApiTransferableAssets {
     inscriptions: api_transferable_assets,
   })))
 }

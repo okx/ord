@@ -10,7 +10,7 @@ use {
   ApiBRC20AllBalance = ApiResponse<brc20::ApiBalances>,
   ApiBRC20TxEvents = ApiResponse<brc20::ApiTxEvents>,
   ApiBRC20BlockEvents = ApiResponse<brc20::ApiBlockEvents>,
-  ApiBRC20Transferable = ApiResponse<brc20::TransferableInscriptions>,
+  ApiBRC20Transferable = ApiResponse<brc20::ApiTransferableAssets>,
 
   ApiOrdInscription = ApiResponse<ord::ApiInscription>,
   ApiOrdOutPointData = ApiResponse<ord::ApiOutpointInscriptions>,

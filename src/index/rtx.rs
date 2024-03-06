@@ -159,7 +159,9 @@ impl Rtx<'_> {
     &self,
     inscription_id: InscriptionId,
   ) -> Result<Option<Vec<CollectionKind>>> {
-    let table = self.0.open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)?;
+    let table = self
+      .0
+      .open_multimap_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)?;
     get_collections_of_inscription(&table, &inscription_id)
   }
 
@@ -236,5 +238,23 @@ impl Rtx<'_> {
       .open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS)?;
     let satpoint_table = self.0.open_table(BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS)?;
     get_transferable_assets_by_account(&address_table, &satpoint_table, &script_key)
+  }
+
+  pub(crate) fn brc20_transferable_assets_on_output_with_satpoints(
+    &self,
+    outpoint: OutPoint,
+  ) -> Result<Vec<(SatPoint, brc20::TransferableLog)>> {
+    let satpoint_to_sequence_number = self.0.open_table(BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS)?;
+    get_transferable_assets_by_outpoint(&satpoint_to_sequence_number, outpoint)
+  }
+
+  pub(super) fn list_sat_range(&self, outpoint: OutPointValue) -> Result<Option<Vec<u8>>> {
+    Ok(
+      self
+        .0
+        .open_table(OUTPOINT_TO_SAT_RANGES)?
+        .get(&outpoint)?
+        .map(|outpoint| outpoint.value().to_vec()),
+    )
   }
 }

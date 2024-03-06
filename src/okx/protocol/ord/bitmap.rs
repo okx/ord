@@ -46,7 +46,7 @@ pub fn index_bitmap(
         {
           let key = district.to_collection_key();
           context.set_inscription_by_collection_key(&key, &inscription_id)?;
-          context.set_inscription_attributes(&inscription_id, &[CollectionKind::BitMap])?;
+          context.add_inscription_attributes(&inscription_id, CollectionKind::BitMap)?;
 
           count += 1;
         }

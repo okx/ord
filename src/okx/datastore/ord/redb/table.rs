@@ -5,7 +5,7 @@ use crate::okx::datastore::ord::collections::CollectionKind;
 use crate::okx::datastore::ord::InscriptionOp;
 use bitcoin::consensus::Decodable;
 use bitcoin::{OutPoint, TxOut, Txid};
-use redb::{ReadableTable, Table};
+use redb::{MultimapTable, ReadableMultimapTable, ReadableTable, Table};
 use std::io;
 
 // COLLECTIONS_INSCRIPTION_ID_TO_KINDS
@@ -14,13 +14,14 @@ pub fn get_collections_of_inscription<T>(
   inscription_id: &InscriptionId,
 ) -> crate::Result<Option<Vec<CollectionKind>>>
 where
-  T: ReadableTable<InscriptionIdValue, &'static [u8]>,
+  T: ReadableMultimapTable<InscriptionIdValue, &'static [u8]>,
 {
-  Ok(
-    table
-      .get(&inscription_id.store())?
-      .map(|v| rmp_serde::from_slice::<Vec<CollectionKind>>(v.value()).unwrap()),
-  )
+  let mut values = Vec::new();
+
+  for v in table.get(&inscription_id.store())? {
+    values.push(rmp_serde::from_slice::<CollectionKind>(v?.value()).unwrap());
+  }
+  Ok(Some(values))
 }
 
 // COLLECTIONS_KEY_TO_INSCRIPTION_ID
@@ -93,10 +94,10 @@ pub fn set_inscription_by_collection_key(
 }
 
 // COLLECTIONS_INSCRIPTION_ID_TO_KINDS
-pub fn set_inscription_attributes(
-  table: &mut Table<'_, '_, InscriptionIdValue, &'static [u8]>,
+pub fn add_inscription_attributes(
+  table: &mut MultimapTable<'_, '_, InscriptionIdValue, &'static [u8]>,
   inscription_id: &InscriptionId,
-  kind: &[CollectionKind],
+  kind: CollectionKind,
 ) -> crate::Result<()> {
   table.insert(
     inscription_id.store(),
@@ -108,7 +109,7 @@ pub fn set_inscription_attributes(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::index::ORD_TX_TO_OPERATIONS;
+  use crate::index::{COLLECTIONS_INSCRIPTION_ID_TO_KINDS, ORD_TX_TO_OPERATIONS};
   use crate::okx::datastore::ord::redb::table::{
     get_transaction_operations, save_transaction_operations,
   };
@@ -117,6 +118,37 @@ mod tests {
   use redb::Database;
   use std::str::FromStr;
   use tempfile::NamedTempFile;
+
+  #[test]
+  fn test_inscription_attributes() {
+    let dbfile = NamedTempFile::new().unwrap();
+    let db = Database::create(dbfile.path()).unwrap();
+    let wtx = db.begin_write().unwrap();
+    let mut table = wtx
+      .open_multimap_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)
+      .unwrap();
+    let inscription_id =
+      InscriptionId::from_str("b61b0172d95e266c18aea0c624db987e971a5d6d4ebc2aaed85da4642d635735i0")
+        .unwrap();
+
+    add_inscription_attributes(&mut table, &inscription_id, CollectionKind::BitMap).unwrap();
+    assert_eq!(
+      get_collections_of_inscription(&table, &inscription_id).unwrap(),
+      Some(vec![CollectionKind::BitMap])
+    );
+
+    add_inscription_attributes(&mut table, &inscription_id, CollectionKind::BRC20).unwrap();
+    assert_eq!(
+      get_collections_of_inscription(&table, &inscription_id).unwrap(),
+      Some(vec![CollectionKind::BRC20, CollectionKind::BitMap])
+    );
+
+    add_inscription_attributes(&mut table, &inscription_id, CollectionKind::BRC20).unwrap();
+    assert_eq!(
+      get_collections_of_inscription(&table, &inscription_id).unwrap(),
+      Some(vec![CollectionKind::BRC20, CollectionKind::BitMap])
+    );
+  }
 
   #[test]
   fn test_transaction_to_operations() {

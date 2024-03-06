@@ -1,6 +1,7 @@
 use crate::okx::datastore::brc20::redb::table::{
   get_balance, get_balances, get_token_info, get_tokens_info, get_transaction_receipts,
   get_transferable_assets_by_account, get_transferable_assets_by_account_ticker,
+  get_transferable_assets_by_outpoint,
 };
 use crate::okx::datastore::ord::redb::table::{
   get_collection_inscription_id, get_collections_of_inscription, get_transaction_operations,
@@ -95,7 +96,7 @@ define_table! { WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP, u32, u128 }
 // new
 define_table! { ORD_TX_TO_OPERATIONS, &TxidValue, &[u8] }
 define_table! { COLLECTIONS_KEY_TO_INSCRIPTION_ID, &str, InscriptionIdValue }
-define_table! { COLLECTIONS_INSCRIPTION_ID_TO_KINDS, InscriptionIdValue, &[u8] }
+define_multimap_table! { COLLECTIONS_INSCRIPTION_ID_TO_KINDS, InscriptionIdValue, &[u8] }
 
 define_table! { BRC20_BALANCES, &str, &[u8] }
 define_table! { BRC20_TOKEN, &str, &[u8] }
@@ -359,7 +360,7 @@ impl Index {
         // new ord tables
         tx.open_table(ORD_TX_TO_OPERATIONS)?;
         tx.open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)?;
-        tx.open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)?;
+        tx.open_multimap_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)?;
 
         // brc20 tables
         tx.open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS)?;
@@ -637,7 +638,7 @@ impl Index {
       total_bytes,
       COLLECTIONS_KEY_TO_INSCRIPTION_ID,
     );
-    insert_table_info(
+    insert_multimap_table_info(
       &mut tables,
       &wtx,
       total_bytes,

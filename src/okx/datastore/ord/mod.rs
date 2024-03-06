@@ -57,9 +57,9 @@ pub trait OrdReaderWriter: OrdReader {
     inscription_id: &InscriptionId,
   ) -> Result<(), Self::Error>;
 
-  fn set_inscription_attributes(
+  fn add_inscription_attributes(
     &mut self,
     inscription_id: &InscriptionId,
-    kind: &[CollectionKind],
+    kind: CollectionKind,
   ) -> Result<(), Self::Error>;
 }
