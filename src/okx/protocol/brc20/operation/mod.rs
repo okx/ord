@@ -212,7 +212,8 @@ mod tests {
           cursed: false,
           unbound: false,
           vindicated: false,
-          inscription: inscription.clone()
+          inscription: inscription.clone(),
+          transfer_to_coin_base: false
         },
       )
       .unwrap(),
@@ -235,7 +236,8 @@ mod tests {
           cursed: false,
           unbound: false,
           vindicated: false,
-          inscription: inscription.clone()
+          inscription: inscription.clone(),
+          transfer_to_coin_base: false,
         },
       )
       .unwrap(),
@@ -256,7 +258,8 @@ mod tests {
           cursed: false,
           unbound: false,
           vindicated: false,
-          inscription: inscription.clone()
+          inscription: inscription.clone(),
+          transfer_to_coin_base: false,
         },
       )
       .unwrap(),

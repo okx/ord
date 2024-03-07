@@ -50,6 +50,7 @@ mod reorg;
 mod rtx;
 pub(crate) mod updater;
 
+pub mod simulator;
 #[cfg(test)]
 pub(crate) mod testing;
 
@@ -100,6 +101,9 @@ define_table! { BRC20_TOKEN, &str, &[u8] }
 define_table! { BRC20_EVENTS, &TxidValue, &[u8] }
 define_table! { BRC20_TRANSFERABLELOG, &str, &[u8] }
 define_table! { BRC20_INSCRIBE_TRANSFER, InscriptionIdValue, &[u8] }
+
+// simulate
+define_table! { SIMULATE_TRACE_TABLE, &TxidValue, &[u8] }
 
 #[derive(Debug, PartialEq)]
 pub enum List {
@@ -268,6 +272,7 @@ impl Index {
     let once = Once::new();
     let progress_bar = Mutex::new(None);
 
+    #[allow(clippy::blocks_in_conditions)]
     let database = match Database::builder()
       .set_cache_size(db_cache_size)
       .set_repair_callback(move |progress: &mut RepairSession| {
@@ -788,11 +793,11 @@ impl Index {
     Ok(())
   }
 
-  fn begin_read(&self) -> Result<rtx::Rtx> {
+  pub fn begin_read(&self) -> Result<rtx::Rtx> {
     Ok(rtx::Rtx(self.database.begin_read()?))
   }
 
-  fn begin_write(&self) -> Result<WriteTransaction> {
+  pub fn begin_write(&self) -> Result<WriteTransaction> {
     let mut tx = self.database.begin_write()?;
     tx.set_durability(self.durability);
     Ok(tx)

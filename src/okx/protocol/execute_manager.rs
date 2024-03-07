@@ -1,5 +1,3 @@
-use crate::okx::datastore::brc20::Brc20ReaderWriter;
-use crate::okx::protocol::context::Context;
 use anyhow::anyhow;
 use bitcoin::Txid;
 use {
@@ -14,14 +12,19 @@ impl CallManager {
     Self {}
   }
 
-  pub fn execute_message(&self, context: &mut Context, txid: &Txid, msgs: &[Message]) -> Result {
+  pub fn execute_message<T: ContextTrait>(
+    &self,
+    context: &mut T,
+    txid: &Txid,
+    msgs: &[Message],
+  ) -> Result {
     let mut receipts = vec![];
     // execute message
     for msg in msgs {
       match msg {
         Message::BRC20(brc_msg) => {
           let msg =
-            brc20_proto::ExecutionMessage::from_message(context, brc_msg, context.chain.network)?;
+            brc20_proto::ExecutionMessage::from_message(context, brc_msg, context.network())?;
           let receipt = brc20_proto::execute(context, &msg)?;
           receipts.push(receipt);
         }

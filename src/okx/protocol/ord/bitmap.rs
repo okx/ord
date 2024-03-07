@@ -1,5 +1,4 @@
-use crate::okx::datastore::ord::{OrdReader, OrdReaderWriter};
-use crate::okx::protocol::context::Context;
+use crate::okx::protocol::ContextTrait;
 use {
   crate::{
     okx::datastore::ord::{
@@ -14,8 +13,8 @@ use {
   std::collections::HashMap,
 };
 
-pub fn index_bitmap(
-  context: &mut Context,
+pub fn index_bitmap<T: ContextTrait>(
+  context: &mut T,
   operations: &HashMap<Txid, Vec<InscriptionOp>>,
 ) -> Result<u64> {
   let mut count = 0;
@@ -40,13 +39,22 @@ pub fn index_bitmap(
         unbound: _,
         vindicated: _,
         inscription,
+        transfer_to_coin_base: _,
       } => {
         if let Some((inscription_id, district)) =
           index_district(context, inscription, op.inscription_id)?
         {
           let key = district.to_collection_key();
-          context.set_inscription_by_collection_key(&key, &inscription_id)?;
-          context.set_inscription_attributes(&inscription_id, &[CollectionKind::BitMap])?;
+          context.set_inscription_by_collection_key(&key, &inscription_id).map_err(|e|{
+                        anyhow!("failed to set inscription by collection key! key: {key} inscription_id: {inscription_id} error: {e}")
+                    })?;
+          context
+            .set_inscription_attributes(&inscription_id, &[CollectionKind::BitMap])
+            .map_err(|e| {
+              anyhow!(
+                "failed to set inscription attributes! inscription_id: {inscription_id} error: {e}"
+              )
+            })?;
 
           count += 1;
         }
@@ -57,14 +65,14 @@ pub fn index_bitmap(
   Ok(count)
 }
 
-fn index_district(
-  context: &mut Context,
+fn index_district<T: ContextTrait>(
+  context: &mut T,
   inscription: Inscription,
   inscription_id: InscriptionId,
 ) -> Result<Option<(InscriptionId, District)>> {
   if let Some(content) = inscription.body() {
     if let Ok(district) = District::parse(content) {
-      if district.number > context.chain.blockheight {
+      if district.number > context.block_height() {
         return Ok(None);
       }
       let collection_key = district.to_collection_key();

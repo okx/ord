@@ -8,7 +8,6 @@ pub struct SimpleLru<K, V> {
   new_cache: HashMap<K, V>,
   old_cache: HashMap<K, V>,
 }
-
 impl<K, V> SimpleLru<K, V>
 where
   K: Eq + Hash,

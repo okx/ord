@@ -1,6 +1,5 @@
 use super::*;
-use crate::index::InscriptionIdValue;
-use crate::okx::datastore::brc20::redb::table::get_inscribe_transfer_inscription;
+use crate::okx::datastore::brc20::Brc20ReaderWriter;
 use crate::{
   inscriptions::Inscription,
   okx::{
@@ -10,7 +9,6 @@ use crate::{
   Result,
 };
 use anyhow::anyhow;
-use redb::ReadableTable;
 
 impl Message {
   pub(crate) fn resolve<T>(
@@ -19,7 +17,7 @@ impl Message {
     op: &InscriptionOp,
   ) -> Result<Option<Message>>
   where
-    T: ReadableTable<InscriptionIdValue, &'static [u8]>,
+    T: Brc20ReaderWriter,
   {
     log::debug!("BRC20 resolving the message from {:?}", op);
     let sat_in_outputs = op
@@ -34,6 +32,7 @@ impl Message {
         unbound: false,
         vindicated: false,
         inscription: _,
+        ..
       } if sat_in_outputs => {
         match deserialize_brc20_operation(
           new_inscriptions
@@ -47,7 +46,7 @@ impl Message {
       }
       // Transfered inscription operation.
       // Attempt to retrieve the `InscribeTransfer` Inscription information from the data store of BRC20S.
-      Action::Transfer => match get_inscribe_transfer_inscription(table, &op.inscription_id) {
+      Action::Transfer => match table.get_inscribe_transfer_inscription(&op.inscription_id) {
         // Ignore non-first transfer operations.
         Ok(Some(transfer_info)) if op.inscription_id.txid == op.old_satpoint.outpoint.txid => {
           Operation::Transfer(Transfer {
@@ -80,10 +79,17 @@ impl Message {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::index::BRC20_INSCRIBE_TRANSFER;
+  use crate::index::{
+    BRC20_BALANCES, BRC20_EVENTS, BRC20_INSCRIBE_TRANSFER, BRC20_TOKEN, BRC20_TRANSFERABLELOG,
+    COLLECTIONS_INSCRIPTION_ID_TO_KINDS, COLLECTIONS_KEY_TO_INSCRIPTION_ID, ORD_TX_TO_OPERATIONS,
+    OUTPOINT_TO_ENTRY, SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY,
+  };
   use crate::okx::datastore::brc20::redb::table::insert_inscribe_transfer_inscription;
   use crate::okx::datastore::brc20::{Tick, TransferInfo};
-  use bitcoin::OutPoint;
+  use crate::okx::lru::SimpleLru;
+  use crate::okx::protocol::context::Context;
+  use crate::okx::protocol::BlockContext;
+  use bitcoin::{Network, OutPoint};
   use redb::Database;
   use std::str::FromStr;
   use tempfile::NamedTempFile;
@@ -105,6 +111,7 @@ mod tests {
         cursed: false,
         unbound: false,
         inscription: inscriptions.first().unwrap().clone(),
+        transfer_to_coin_base: false,
         vindicated: false,
       },
       sequence_number: 1,
@@ -161,12 +168,36 @@ mod tests {
     let db_file = NamedTempFile::new().unwrap();
     let db = Database::create(db_file.path()).unwrap();
     let wtx = db.begin_write().unwrap();
-    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
-
+    let context = Context {
+      chain: BlockContext {
+        network: Network::Regtest,
+        blockheight: 0,
+        blocktime: 0,
+      },
+      tx_out_cache: &mut SimpleLru::new(10),
+      hit: 0,
+      miss: 0,
+      ORD_TX_TO_OPERATIONS: &mut wtx.open_table(ORD_TX_TO_OPERATIONS).unwrap(),
+      COLLECTIONS_KEY_TO_INSCRIPTION_ID: &mut wtx
+        .open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)
+        .unwrap(),
+      COLLECTIONS_INSCRIPTION_ID_TO_KINDS: &mut wtx
+        .open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)
+        .unwrap(),
+      SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY: &mut wtx
+        .open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)
+        .unwrap(),
+      OUTPOINT_TO_ENTRY: &mut wtx.open_table(OUTPOINT_TO_ENTRY).unwrap(),
+      BRC20_BALANCES: &mut wtx.open_table(BRC20_BALANCES).unwrap(),
+      BRC20_TOKEN: &mut wtx.open_table(BRC20_TOKEN).unwrap(),
+      BRC20_EVENTS: &mut wtx.open_table(BRC20_EVENTS).unwrap(),
+      BRC20_TRANSFERABLELOG: &mut wtx.open_table(BRC20_TRANSFERABLELOG).unwrap(),
+      BRC20_INSCRIBE_TRANSFER: &mut wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap(),
+    };
     let (inscriptions, op) = create_inscribe_operation(
       r#"{ "p": "brc-20s","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
     );
-    assert_matches!(Message::resolve(&table, &inscriptions, &op), Ok(None));
+    assert_matches!(Message::resolve(&context, &inscriptions, &op), Ok(None));
   }
 
   #[test]
@@ -174,7 +205,32 @@ mod tests {
     let db_file = NamedTempFile::new().unwrap();
     let db = Database::create(db_file.path()).unwrap();
     let wtx = db.begin_write().unwrap();
-    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+    let context = Context {
+      chain: BlockContext {
+        network: Network::Regtest,
+        blockheight: 0,
+        blocktime: 0,
+      },
+      tx_out_cache: &mut SimpleLru::new(10),
+      hit: 0,
+      miss: 0,
+      ORD_TX_TO_OPERATIONS: &mut wtx.open_table(ORD_TX_TO_OPERATIONS).unwrap(),
+      COLLECTIONS_KEY_TO_INSCRIPTION_ID: &mut wtx
+        .open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)
+        .unwrap(),
+      COLLECTIONS_INSCRIPTION_ID_TO_KINDS: &mut wtx
+        .open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)
+        .unwrap(),
+      SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY: &mut wtx
+        .open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)
+        .unwrap(),
+      OUTPOINT_TO_ENTRY: &mut wtx.open_table(OUTPOINT_TO_ENTRY).unwrap(),
+      BRC20_BALANCES: &mut wtx.open_table(BRC20_BALANCES).unwrap(),
+      BRC20_TOKEN: &mut wtx.open_table(BRC20_TOKEN).unwrap(),
+      BRC20_EVENTS: &mut wtx.open_table(BRC20_EVENTS).unwrap(),
+      BRC20_TRANSFERABLELOG: &mut wtx.open_table(BRC20_TRANSFERABLELOG).unwrap(),
+      BRC20_INSCRIBE_TRANSFER: &mut wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap(),
+    };
 
     let (inscriptions, op) = create_inscribe_operation(
       r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
@@ -184,32 +240,35 @@ mod tests {
         cursed: true,
         unbound: false,
         inscription: inscriptions.first().unwrap().clone(),
+        transfer_to_coin_base: false,
         vindicated: false,
       },
       ..op
     };
-    assert_matches!(Message::resolve(&table, &inscriptions, &op), Ok(None));
+    assert_matches!(Message::resolve(&context, &inscriptions, &op), Ok(None));
 
     let op2 = InscriptionOp {
       action: Action::New {
         cursed: false,
         unbound: true,
         inscription: inscriptions.first().unwrap().clone(),
+        transfer_to_coin_base: false,
         vindicated: false,
       },
       ..op
     };
-    assert_matches!(Message::resolve(&table, &inscriptions, &op2), Ok(None));
+    assert_matches!(Message::resolve(&context, &inscriptions, &op2), Ok(None));
     let op3 = InscriptionOp {
       action: Action::New {
         cursed: true,
         unbound: true,
         inscription: inscriptions.first().unwrap().clone(),
+        transfer_to_coin_base: false,
         vindicated: false,
       },
       ..op
     };
-    assert_matches!(Message::resolve(&table, &inscriptions, &op3), Ok(None));
+    assert_matches!(Message::resolve(&context, &inscriptions, &op3), Ok(None));
   }
 
   #[test]
@@ -217,7 +276,32 @@ mod tests {
     let db_file = NamedTempFile::new().unwrap();
     let db = Database::create(db_file.path()).unwrap();
     let wtx = db.begin_write().unwrap();
-    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+    let context = Context {
+      chain: BlockContext {
+        network: Network::Regtest,
+        blockheight: 0,
+        blocktime: 0,
+      },
+      tx_out_cache: &mut SimpleLru::new(10),
+      hit: 0,
+      miss: 0,
+      ORD_TX_TO_OPERATIONS: &mut wtx.open_table(ORD_TX_TO_OPERATIONS).unwrap(),
+      COLLECTIONS_KEY_TO_INSCRIPTION_ID: &mut wtx
+        .open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)
+        .unwrap(),
+      COLLECTIONS_INSCRIPTION_ID_TO_KINDS: &mut wtx
+        .open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)
+        .unwrap(),
+      SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY: &mut wtx
+        .open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)
+        .unwrap(),
+      OUTPOINT_TO_ENTRY: &mut wtx.open_table(OUTPOINT_TO_ENTRY).unwrap(),
+      BRC20_BALANCES: &mut wtx.open_table(BRC20_BALANCES).unwrap(),
+      BRC20_TOKEN: &mut wtx.open_table(BRC20_TOKEN).unwrap(),
+      BRC20_EVENTS: &mut wtx.open_table(BRC20_EVENTS).unwrap(),
+      BRC20_TRANSFERABLELOG: &mut wtx.open_table(BRC20_TRANSFERABLELOG).unwrap(),
+      BRC20_INSCRIBE_TRANSFER: &mut wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap(),
+    };
 
     let (inscriptions, op) = create_inscribe_operation(
       r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
@@ -237,7 +321,7 @@ mod tests {
       sat_in_outputs: true,
     };
     assert_matches!(
-      Message::resolve(&table, &inscriptions, &op),
+      Message::resolve(&context, &inscriptions, &op),
       Ok(Some(_result_msg))
     );
   }
@@ -247,11 +331,36 @@ mod tests {
     let db_file = NamedTempFile::new().unwrap();
     let db = Database::create(db_file.path()).unwrap();
     let wtx = db.begin_write().unwrap();
-    let table = wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap();
+    let context = Context {
+      chain: BlockContext {
+        network: Network::Regtest,
+        blockheight: 0,
+        blocktime: 0,
+      },
+      tx_out_cache: &mut SimpleLru::new(10),
+      hit: 0,
+      miss: 0,
+      ORD_TX_TO_OPERATIONS: &mut wtx.open_table(ORD_TX_TO_OPERATIONS).unwrap(),
+      COLLECTIONS_KEY_TO_INSCRIPTION_ID: &mut wtx
+        .open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)
+        .unwrap(),
+      COLLECTIONS_INSCRIPTION_ID_TO_KINDS: &mut wtx
+        .open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)
+        .unwrap(),
+      SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY: &mut wtx
+        .open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)
+        .unwrap(),
+      OUTPOINT_TO_ENTRY: &mut wtx.open_table(OUTPOINT_TO_ENTRY).unwrap(),
+      BRC20_BALANCES: &mut wtx.open_table(BRC20_BALANCES).unwrap(),
+      BRC20_TOKEN: &mut wtx.open_table(BRC20_TOKEN).unwrap(),
+      BRC20_EVENTS: &mut wtx.open_table(BRC20_EVENTS).unwrap(),
+      BRC20_TRANSFERABLELOG: &mut wtx.open_table(BRC20_TRANSFERABLELOG).unwrap(),
+      BRC20_INSCRIBE_TRANSFER: &mut wtx.open_table(BRC20_INSCRIBE_TRANSFER).unwrap(),
+    };
 
     // inscribe transfer not found
     let op = create_transfer_operation();
-    assert_matches!(Message::resolve(&table, &[], &op), Ok(None));
+    assert_matches!(Message::resolve(&context, &[], &op), Ok(None));
 
     // non-first transfer operations.
     let op1 = InscriptionOp {
@@ -265,7 +374,7 @@ mod tests {
       },
       ..op
     };
-    assert_matches!(Message::resolve(&table, &[], &op1), Ok(None));
+    assert_matches!(Message::resolve(&context, &[], &op1), Ok(None));
   }
 
   #[test]
@@ -300,6 +409,33 @@ mod tests {
       sat_in_outputs: true,
     };
 
-    assert_matches!(Message::resolve(&table, &[], &op), Ok(Some(_msg)));
+    let context = Context {
+      chain: BlockContext {
+        network: Network::Regtest,
+        blockheight: 0,
+        blocktime: 0,
+      },
+      tx_out_cache: &mut SimpleLru::new(10),
+      hit: 0,
+      miss: 0,
+      ORD_TX_TO_OPERATIONS: &mut wtx.open_table(ORD_TX_TO_OPERATIONS).unwrap(),
+      COLLECTIONS_KEY_TO_INSCRIPTION_ID: &mut wtx
+        .open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)
+        .unwrap(),
+      COLLECTIONS_INSCRIPTION_ID_TO_KINDS: &mut wtx
+        .open_table(COLLECTIONS_INSCRIPTION_ID_TO_KINDS)
+        .unwrap(),
+      SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY: &mut wtx
+        .open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)
+        .unwrap(),
+      OUTPOINT_TO_ENTRY: &mut wtx.open_table(OUTPOINT_TO_ENTRY).unwrap(),
+      BRC20_BALANCES: &mut wtx.open_table(BRC20_BALANCES).unwrap(),
+      BRC20_TOKEN: &mut wtx.open_table(BRC20_TOKEN).unwrap(),
+      BRC20_EVENTS: &mut wtx.open_table(BRC20_EVENTS).unwrap(),
+      BRC20_TRANSFERABLELOG: &mut wtx.open_table(BRC20_TRANSFERABLELOG).unwrap(),
+      BRC20_INSCRIBE_TRANSFER: &mut table,
+    };
+
+    assert_matches!(Message::resolve(&context, &[], &op), Ok(Some(_msg)));
   }
 }

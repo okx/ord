@@ -11,8 +11,10 @@ use {
 pub(crate) mod inscription_updater;
 use crate::okx::lru::SimpleLru;
 
+pub mod pending_updater;
 mod rune_updater;
 
+#[derive(Clone)]
 pub(crate) struct BlockData {
   pub(crate) header: Header,
   pub(crate) txdata: Vec<(Transaction, Txid)>,

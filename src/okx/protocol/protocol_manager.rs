@@ -1,5 +1,4 @@
-use crate::okx::datastore::ord::OrdReaderWriter;
-use crate::okx::protocol::context::Context;
+use anyhow::anyhow;
 use {
   super::*,
   crate::{
@@ -27,9 +26,9 @@ impl ProtocolManager {
     }
   }
 
-  pub(crate) fn index_block(
+  pub(crate) fn index_block<T: ContextTrait>(
     &self,
-    context: &mut Context,
+    context: &mut T,
     block: &BlockData,
     operations: HashMap<Txid, Vec<InscriptionOp>>,
   ) -> Result {
@@ -54,10 +53,12 @@ impl ProtocolManager {
       if let Some(tx_operations) = operations.get(txid) {
         // save all transaction operations to ord database.
         if self.config.enable_ord_receipts
-          && context.chain.blockheight >= self.config.first_inscription_height
+          && context.block_height() >= self.config.first_inscription_height
         {
           let start = Instant::now();
-          context.save_transaction_operations(txid, tx_operations)?;
+          context
+            .save_transaction_operations(txid, tx_operations)
+            .map_err(|e| anyhow!("failed to save transaction operations! error: {}", e))?;
           inscriptions_size += tx_operations.len();
           cost1 += start.elapsed().as_micros();
         }
@@ -85,7 +86,7 @@ impl ProtocolManager {
 
     log::info!(
       "Protocol Manager indexed block {} with ord inscriptions {}, messages {}, bitmap {} in {} ms, {}/{}/{}/{}",
-      context.chain.blockheight,
+      context.block_height(),
       inscriptions_size,
       messages_size,
       bitmap_count,

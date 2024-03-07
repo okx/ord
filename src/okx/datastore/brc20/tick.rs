@@ -4,7 +4,7 @@ use std::{fmt::Formatter, str::FromStr};
 
 pub const TICK_BYTE_COUNT: usize = 4;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Tick([u8; TICK_BYTE_COUNT]);
 
 impl FromStr for Tick {

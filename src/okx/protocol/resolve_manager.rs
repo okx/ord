@@ -1,5 +1,4 @@
 use crate::inscriptions::ParsedEnvelope;
-use crate::okx::protocol::context::Context;
 use {
   super::*,
   crate::{
@@ -18,9 +17,9 @@ impl MsgResolveManager {
     Self { config }
   }
 
-  pub fn resolve_message(
+  pub fn resolve_message<T: ContextTrait>(
     &self,
-    context: &Context,
+    context: &T,
     tx: &Transaction,
     operations: &[InscriptionOp],
   ) -> Result<Vec<Message>> {
@@ -50,14 +49,10 @@ impl MsgResolveManager {
         if self
           .config
           .first_brc20_height
-          .map(|height| context.chain.blockheight >= height)
+          .map(|height| context.block_height() >= height)
           .unwrap_or(false)
         {
-          if let Some(msg) = brc20::Message::resolve(
-            context.BRC20_INSCRIBE_TRANSFER,
-            &new_inscriptions,
-            operation,
-          )? {
+          if let Some(msg) = brc20::Message::resolve(context, &new_inscriptions, operation)? {
             log::debug!(
               "BRC20 resolved the message from {:?}, msg {:?}",
               operation,

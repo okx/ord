@@ -89,6 +89,26 @@ pub struct Options {
     help = "Don't look for BRC20 messages below <FIRST_BRC20_HEIGHT>."
   )]
   pub(crate) first_brc20_height: Option<u32>,
+
+  #[arg(
+    long,
+    default_value = "false",
+    help = "simulate tx flag, default is false"
+  )]
+  pub(crate) simulate_enable: bool,
+  #[arg(long, help = "bitcoin zmq url.")]
+  pub(crate) simulate_zmq_url: Option<String>,
+  #[arg(long, help = "bitcoin rpc url.")]
+  pub(crate) simulate_bitcoin_rpc_url: Option<String>,
+  #[arg(long, help = "bitcoin rpc password .")]
+  pub(crate) simulate_bitcoin_rpc_pass: Option<String>,
+  #[arg(long, help = "bitcoin rpc user.")]
+  pub(crate) simulate_bitcoin_rpc_user: Option<String>,
+  #[arg(long, help = "Simulate Use index at <INDEX>.")]
+  pub(crate) simulate_index: Option<PathBuf>,
+
+  #[clap(skip)]
+  pub rx: Option<async_channel::Receiver<tokio::sync::oneshot::Sender<()>>>,
   #[clap(long, default_value = "200", help = "DB commit interval.")]
   pub(crate) commit_height_interval: u64,
   #[clap(

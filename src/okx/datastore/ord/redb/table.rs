@@ -128,6 +128,7 @@ mod tests {
         unbound: false,
         vindicated: false,
         inscription: inscription("text/plain;charset=utf-8", "foobar"),
+        transfer_to_coin_base: false,
       },
       sequence_number: 100,
       inscription_number: Some(100),

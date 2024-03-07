@@ -21,7 +21,7 @@ use crate::okx::datastore::ord::redb::table::{
 use crate::okx::datastore::ord::{InscriptionOp, OrdReader, OrdReaderWriter};
 use crate::okx::datastore::ScriptKey;
 use crate::okx::lru::SimpleLru;
-use crate::okx::protocol::BlockContext;
+use crate::okx::protocol::{BlockContext, ContextTrait};
 use crate::SatPoint;
 use anyhow::anyhow;
 use bitcoin::{Network, OutPoint, TxOut, Txid};
@@ -269,5 +269,19 @@ impl<'a, 'db, 'txn> Brc20ReaderWriter for Context<'a, 'db, 'txn> {
     inscription_id: &InscriptionId,
   ) -> crate::Result<(), Self::Error> {
     remove_inscribe_transfer_inscription(self.BRC20_INSCRIBE_TRANSFER, inscription_id)
+  }
+}
+
+impl<'a, 'db, 'txn> ContextTrait for Context<'a, 'db, 'txn> {
+  fn block_height(&self) -> u32 {
+    self.chain.blockheight
+  }
+
+  fn network(&self) -> Network {
+    self.chain.network
+  }
+
+  fn block_time(&self) -> u32 {
+    self.chain.blocktime
   }
 }

@@ -5,9 +5,13 @@ pub(crate) mod message;
 pub(crate) mod ord;
 pub(crate) mod protocol_manager;
 pub(crate) mod resolve_manager;
+pub mod simulate;
+pub mod trace;
 
 pub use self::protocol_manager::ProtocolManager;
 
+use crate::okx::datastore::brc20::Brc20ReaderWriter;
+use crate::okx::datastore::ord::OrdReaderWriter;
 use {
   self::{execute_manager::CallManager, message::Message, resolve_manager::MsgResolveManager},
   crate::Options,
@@ -20,6 +24,7 @@ pub struct BlockContext {
   pub blockheight: u32,
   pub blocktime: u32,
 }
+
 #[derive(Debug, Clone, Copy)]
 pub struct ProtocolConfig {
   first_inscription_height: u32,
@@ -41,4 +46,10 @@ impl ProtocolConfig {
       enable_index_bitmap: options.enable_index_bitmap,
     }
   }
+}
+
+pub trait ContextTrait: Brc20ReaderWriter + OrdReaderWriter {
+  fn block_height(&self) -> u32;
+  fn network(&self) -> Network;
+  fn block_time(&self) -> u32;
 }
