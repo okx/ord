@@ -339,6 +339,10 @@ impl Server {
         .route(
           "/sat/outpoint/:outpoint/info",
           get(sat::sat_range_by_outpoint),
+        )
+        .route(
+          "/sat/outpoint/:outpoint/rarity",
+          get(sat::sat_range_with_rarity_by_outpoint),
         );
 
       let api_router = Router::new().nest("/v1", api_v1_router);
