@@ -272,7 +272,7 @@ impl Index {
     rtx: &Rtx,
     outpoint: OutPoint,
     index_sats: bool,
-  ) -> Result<Option<Vec<(u64, u64)>>> {
+  ) -> Result<Option<Vec<SatRange>>> {
     if !index_sats || outpoint == unbound_outpoint() {
       return Ok(None);
     }
@@ -288,5 +288,93 @@ impl Index {
       )),
       None => Ok(None),
     }
+  }
+
+  pub(crate) fn calculate_rarity_for_sat_range(sat_range: SatRange) -> Vec<(Sat, Rarity)> {
+    let start_sat = Sat(sat_range.0);
+    let end_sat = Sat(sat_range.1);
+
+    let start_height = if start_sat.third() > 0 {
+      start_sat.height().0 + 1
+    } else {
+      start_sat.height().0
+    };
+    let end_height = if end_sat.third() > 0 {
+      end_sat.height().0
+    } else {
+      end_sat.height().0 - 1
+    };
+
+    let mut result = Vec::new();
+    for height in start_height..=end_height {
+      let sat = Height(height).starting_sat();
+      let rarity = sat.rarity();
+      result.push((sat, rarity));
+    }
+    result
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  #[test]
+  fn test_calculate_rarity_for_sat_range_mythic() {
+    let sat_range: SatRange = (0, 100);
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(rarity, vec![(Sat(0), Rarity::Mythic)]);
+    let sat_range: SatRange = (1, 100);
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(rarity, vec![]);
+  }
+  #[test]
+  fn test_legendary_sat() {
+    let sat_range: SatRange = (
+      Height(SUBSIDY_HALVING_INTERVAL * 6).starting_sat().0,
+      Height(SUBSIDY_HALVING_INTERVAL * 6).starting_sat().0 + 1,
+    );
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(rarity, vec![(Sat(2067187500000000), Rarity::Legendary)]);
+  }
+  #[test]
+  fn test_epic_sat() {
+    let sat_range: SatRange = (
+      Height(SUBSIDY_HALVING_INTERVAL).starting_sat().0,
+      Height(SUBSIDY_HALVING_INTERVAL).starting_sat().0 + 1,
+    );
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(rarity, vec![(Sat(1050000000000000), Rarity::Epic)]);
+  }
+
+  #[test]
+  fn test_rare_sat() {
+    let sat_range: SatRange = (
+      Height(DIFFCHANGE_INTERVAL).starting_sat().0,
+      Height(DIFFCHANGE_INTERVAL).starting_sat().0 + 1,
+    );
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(rarity, vec![(Sat(10080000000000), Rarity::Rare)]);
+  }
+
+  #[test]
+  fn test_two_rarity_sat() {
+    let sat_range: SatRange = (0, 4999999999);
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(rarity, vec![(Sat(0), Rarity::Mythic)]);
+    let sat_range: SatRange = (0, 5000000000);
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(rarity, vec![(Sat(0), Rarity::Mythic)]);
+    let sat_range: SatRange = (0, 5000000001);
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(
+      rarity,
+      vec![
+        (Sat(0), Rarity::Mythic),
+        (Sat(5000000000), Rarity::Uncommon)
+      ]
+    );
+    let sat_range: SatRange = (1, 5000000001);
+    let rarity = Index::calculate_rarity_for_sat_range(sat_range);
+    assert_eq!(rarity, vec![(Sat(5000000000), Rarity::Uncommon)]);
   }
 }
