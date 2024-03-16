@@ -49,6 +49,10 @@ impl Message {
         let Some(transfer_info) = transfer_assets_cache.get(&op.old_satpoint.store()) else {
           return Ok(None);
         };
+        // If the inscription_id of the transfer operation is different from the inscription_id of the transferable log, it is invalid.
+        if transfer_info.inscription_id != op.inscription_id {
+          return Ok(None);
+        }
         Operation::Transfer(Transfer {
           tick: transfer_info.tick.as_str().to_string(),
           amount: transfer_info.amount.to_string(),

@@ -76,10 +76,7 @@ pub(crate) async fn sat_range_by_outpoint(
   Ok(Json(ApiResponse::ok(ApiOutPointResult {
     result: sat_ranges.map(|ranges| ApiSatRanges {
       outpoint,
-      sat_ranges: ranges
-        .into_iter()
-        .map(ApiSatRange::Sketchy)
-        .collect(),
+      sat_ranges: ranges.into_iter().map(ApiSatRange::Sketchy).collect(),
     }),
     latest_height: latest_height.n(),
     latest_blockhash: latest_blockhash.to_string(),
@@ -145,10 +142,7 @@ mod tests {
     let sat_ranges = vec![(0, 100), (100, 200)];
     let api_outpoint_sat_ranges = ApiSatRanges {
       outpoint,
-      sat_ranges: sat_ranges
-        .into_iter()
-        .map(ApiSatRange::Sketchy)
-        .collect(),
+      sat_ranges: sat_ranges.into_iter().map(ApiSatRange::Sketchy).collect(),
     };
     let json = serde_json::to_string(&api_outpoint_sat_ranges).unwrap();
     assert_eq!(
