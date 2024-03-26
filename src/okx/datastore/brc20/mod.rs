@@ -65,6 +65,8 @@ pub trait Brc20ReaderWriter: Brc20Reader {
     minted_block_number: u32,
   ) -> Result<(), Self::Error>;
 
+  fn update_burned_token_info(&mut self, tick: &Tick, burned_amt: u128) -> Result<(), Self::Error>;
+
   fn save_transaction_receipts(
     &mut self,
     txid: &Txid,

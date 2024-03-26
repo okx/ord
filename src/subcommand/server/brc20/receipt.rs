@@ -109,6 +109,8 @@ pub struct ApiDeployEvent {
   pub limit_per_mint: String,
   /// The decimal of the deployed ticker.
   pub decimal: u8,
+  /// Whether the ticker is self minted.
+  pub self_mint: bool,
   /// The message sender which is an address or script pubkey hash.
   pub from: ScriptPubkey,
   /// The message receiver which is an address or script pubkey hash.
@@ -130,6 +132,7 @@ impl ApiDeployEvent {
       supply: deploy_event.supply.to_string(),
       limit_per_mint: deploy_event.limit_per_mint.to_string(),
       decimal: deploy_event.decimal,
+      self_mint: deploy_event.self_mint,
       from: event.from.clone().into(),
       to: event.to.clone().into(),
       valid: true,

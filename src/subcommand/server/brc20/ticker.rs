@@ -23,6 +23,11 @@ pub struct ApiTickInfo {
   /// We represent u64 values as a string to ensure compatibility with languages such as JavaScript that do not parse u64s in JSON natively.
   #[schema(format = "uint64")]
   pub supply: String,
+  /// The amount of the ticker that has been burned.
+  #[schema(format = "uint64")]
+  pub burned_supply: String,
+  /// Whether the ticker is self minted.
+  pub self_mint: bool,
   /// The maximum amount of each mining.
   #[schema(format = "uint64")]
   pub limit_per_mint: String,
@@ -59,9 +64,11 @@ impl From<TokenInfo> for ApiTickInfo {
       inscription_id: tick_info.inscription_id.to_string(),
       inscription_number: tick_info.inscription_number,
       supply: tick_info.supply.to_string(),
+      burned_supply: tick_info.burned_supply.to_string(),
       limit_per_mint: tick_info.limit_per_mint.to_string(),
       minted: tick_info.minted.to_string(),
       decimal: tick_info.decimal,
+      self_mint: tick_info.is_self_mint,
       deploy_by: tick_info.deploy_by.clone().into(),
       txid: tick_info.inscription_id.txid.to_string(),
       deploy_height: tick_info.deployed_number,

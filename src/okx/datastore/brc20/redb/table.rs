@@ -236,6 +236,21 @@ pub fn update_mint_token_info(
   Ok(())
 }
 
+pub fn update_burned_token_info(
+  table: &mut Table<'_, '_, &'static str, &'static [u8]>,
+  tick: &Tick,
+  burned_amt: u128,
+) -> Result<()> {
+  let mut info =
+    get_token_info(table, tick)?.unwrap_or_else(|| panic!("token {} not exist", tick.as_str()));
+  info.burned_supply = burned_amt;
+  table.insert(
+    tick.to_lowercase().hex().as_str(),
+    rmp_serde::to_vec(&info).unwrap().as_slice(),
+  )?;
+  Ok(())
+}
+
 // BRC20_EVENTS
 pub fn save_transaction_receipts(
   table: &mut Table<'_, '_, &'static TxidValue, &'static [u8]>,

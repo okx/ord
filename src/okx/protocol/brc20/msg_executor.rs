@@ -160,6 +160,7 @@ fn process_deploy(
     tick: tick.clone(),
     decimal: dec,
     supply,
+    burned_supply: 0u128,
     limit_per_mint: limit,
     minted: 0u128,
     deploy_by: to_script_key,
@@ -177,6 +178,7 @@ fn process_deploy(
     limit_per_mint: limit,
     decimal: dec,
     tick: new_info.tick,
+    self_mint: is_self_mint,
   }))
 }
 
@@ -410,6 +412,23 @@ fn process_transfer(context: &mut Context, msg: &ExecutionMessage) -> Result<Eve
   context
     .remove_transferable_asset(msg.old_satpoint)
     .map_err(Error::LedgerError)?;
+
+  // update burned supply if transfer to op_return.
+  match to_script_key {
+    ScriptKey::ScriptHash { is_op_return, .. } if is_op_return => {
+      let burned_amt = Into::<Num>::into(token_info.burned_supply)
+        .checked_add(&amt)?
+        .checked_to_u128()?;
+      context
+        .update_burned_token_info(&tick, burned_amt)
+        .map_err(Error::LedgerError)?;
+      out_msg = Some(format!(
+        "transfer to op_return, burned supply increased: {}",
+        amt
+      ));
+    }
+    _ => (),
+  }
 
   Ok(Event::Transfer(TransferEvent {
     msg: out_msg,

@@ -11,7 +11,8 @@ use crate::{
           get_transferable_assets_by_account, get_transferable_assets_by_account_ticker,
           get_transferable_assets_by_outpoint, get_transferable_assets_by_satpoint,
           insert_token_info, insert_transferable_asset, remove_transferable_asset,
-          save_transaction_receipts, update_mint_token_info, update_token_balance,
+          save_transaction_receipts, update_burned_token_info, update_mint_token_info,
+          update_token_balance,
         },
         Balance, Brc20Reader, Brc20ReaderWriter, Receipt, Tick, TokenInfo, TransferableLog,
       },
@@ -246,6 +247,14 @@ impl<'a, 'db, 'txn> Brc20ReaderWriter for Context<'a, 'db, 'txn> {
     minted_block_number: u32,
   ) -> crate::Result<(), Self::Error> {
     update_mint_token_info(self.BRC20_TOKEN, tick, minted_amt, minted_block_number)
+  }
+
+  fn update_burned_token_info(
+    &mut self,
+    tick: &Tick,
+    burned_amt: u128,
+  ) -> crate::Result<(), Self::Error> {
+    update_burned_token_info(self.BRC20_TOKEN, tick, burned_amt)
   }
 
   fn save_transaction_receipts(

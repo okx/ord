@@ -12,7 +12,10 @@ pub(crate) fn parse_and_validate_script_key_with_chain(
       Err(_) => Err(anyhow!("invalid chain: {} for address: {}", chain, key)),
     }
   } else if let Ok(script_hash) = ScriptHash::from_str(key) {
-    Ok(ScriptKey::ScriptHash(script_hash))
+    Ok(ScriptKey::ScriptHash {
+      script_hash,
+      is_op_return: false,
+    })
   } else {
     Err(anyhow!("invalid script key: {}", key))
   }
