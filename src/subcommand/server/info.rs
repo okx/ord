@@ -85,7 +85,7 @@ pub(crate) async fn node_info(
     commit_hash: Some(build::SHORT_COMMIT.into()),
     build_time: Some(build::BUILD_TIME.into()),
     chain_info: ChainInfo {
-      network: Some(index.get_chain_network().to_string()),
+      network: Some(index.get_chain().to_string()),
       ord_block_height: latest_height.0,
       ord_block_hash: latest_blockhash.to_string(),
       chain_block_height,

@@ -34,7 +34,7 @@ mod tests {
         .unwrap()
         .assume_checked()
         .script_pubkey(),
-      Network::Bitcoin,
+      Chain::Mainnet,
     )
     .into();
     assert_eq!(
@@ -49,7 +49,7 @@ mod tests {
         .unwrap()
         .as_slice(),
       ),
-      Network::Bitcoin,
+      Chain::Mainnet,
     )
     .into();
 

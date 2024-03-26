@@ -58,14 +58,14 @@ impl ApiTxInscription {
     operation: InscriptionOp,
     rtx: &Rtx,
     client: &Client,
-    network: Network,
+    chain: Chain,
     index_transactions: bool,
   ) -> Result<Self> {
     let prevout = Index::fetch_vout(
       rtx,
       client,
       operation.old_satpoint.outpoint,
-      network,
+      chain,
       index_transactions,
     )?
     .ok_or(OrdApiError::Internal(format!(
@@ -78,15 +78,15 @@ impl ApiTxInscription {
         rtx,
         client,
         new_satpoint.outpoint,
-        network,
+        chain,
         index_transactions,
       )?,
       _ => None,
     };
 
     Ok(ApiTxInscription {
-      from: ScriptKey::from_script(&prevout.script_pubkey, network).into(),
-      to: output.map(|v| ScriptKey::from_script(&v.script_pubkey, network).into()),
+      from: ScriptKey::from_script(&prevout.script_pubkey, chain).into(),
+      to: output.map(|v| ScriptKey::from_script(&v.script_pubkey, chain).into()),
       action: operation.action.into(),
       inscription_number: operation.inscription_number,
       inscription_id: operation.inscription_id.to_string(),
@@ -148,7 +148,7 @@ pub(crate) async fn ord_txid_inscriptions(
       operation,
       &rtx,
       &client,
-      index.get_chain_network(),
+      index.get_chain(),
       index_transactions,
     )?;
     api_tx_inscriptions.push(tx_inscription);
@@ -197,7 +197,7 @@ pub(crate) async fn ord_block_inscriptions(
         operation,
         &rtx,
         &client,
-        index.get_chain_network(),
+        index.get_chain(),
         index_transactions,
       )?;
       api_tx_operations.push(tx_inscription);
@@ -227,7 +227,7 @@ mod tests {
           .unwrap()
           .assume_checked()
           .script_pubkey(),
-        Network::Bitcoin,
+        Chain::Mainnet,
       )
       .into(),
       to: Some(
@@ -236,7 +236,7 @@ mod tests {
             .unwrap()
             .assume_checked()
             .script_pubkey(),
-          Network::Bitcoin,
+          Chain::Mainnet,
         )
         .into(),
       ),

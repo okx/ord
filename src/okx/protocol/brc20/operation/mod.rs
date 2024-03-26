@@ -12,7 +12,10 @@ pub use self::{deploy::Deploy, mint::Mint, transfer::Transfer};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Operation {
   Deploy(Deploy),
-  Mint(Mint),
+  Mint {
+    mint: Mint,
+    parent: Option<InscriptionId>,
+  },
   InscribeTransfer(Transfer),
   Transfer(Transfer),
 }
@@ -21,7 +24,7 @@ impl Operation {
   pub fn op_type(&self) -> OperationType {
     match self {
       Operation::Deploy(_) => OperationType::Deploy,
-      Operation::Mint(_) => OperationType::Mint,
+      Operation::Mint { .. } => OperationType::Mint,
       Operation::InscribeTransfer(_) => OperationType::InscribeTransfer,
       Operation::Transfer(_) => OperationType::Transfer,
     }
@@ -70,7 +73,10 @@ pub(crate) fn deserialize_brc20_operation(
   match action {
     Action::New { .. } => match raw_operation {
       RawOperation::Deploy(deploy) => Ok(Operation::Deploy(deploy)),
-      RawOperation::Mint(mint) => Ok(Operation::Mint(mint)),
+      RawOperation::Mint(mint) => Ok(Operation::Mint {
+        mint,
+        parent: inscription.parent(),
+      }),
       RawOperation::Transfer(transfer) => Ok(Operation::InscribeTransfer(transfer)),
     },
     Action::Transfer => match raw_operation {
@@ -115,7 +121,8 @@ mod tests {
         tick: "ordi".to_string(),
         max_supply,
         mint_limit: Some(mint_limit),
-        decimals: None
+        decimals: None,
+        self_mint: None,
       })
     );
   }
@@ -221,6 +228,7 @@ mod tests {
         max_supply: "12000".to_string(),
         mint_limit: Some("12".to_string()),
         decimals: Some("11".to_string()),
+        self_mint: None,
       }),
     );
     let inscription = crate::inscription(
@@ -239,10 +247,13 @@ mod tests {
         },
       )
       .unwrap(),
-      Operation::Mint(Mint {
-        tick: "abcd".to_string(),
-        amount: "12000".to_string()
-      })
+      Operation::Mint {
+        mint: Mint {
+          tick: "abcd".to_string(),
+          amount: "12000".to_string()
+        },
+        parent: None
+      }
     );
     let inscription = crate::inscription(
       content_type,

@@ -16,11 +16,10 @@ use crate::{
       context::Context,
     },
   },
-  Result,
+  Chain, Result,
 };
 use anyhow::anyhow;
 use bigdecimal::num_bigint::Sign;
-use bitcoin::Network;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,7 +35,7 @@ pub struct ExecutionMessage {
 }
 
 impl ExecutionMessage {
-  pub fn from_message(context: &mut Context, msg: &Message, network: Network) -> Result<Self> {
+  pub fn from_message(context: &mut Context, msg: &Message, chain: Chain) -> Result<Self> {
     Ok(Self {
       txid: msg.txid,
       inscription_id: msg.inscription_id,
@@ -45,9 +44,9 @@ impl ExecutionMessage {
       new_satpoint: msg
         .new_satpoint
         .ok_or(anyhow!("new satpoint cannot be None"))?,
-      from: context.get_script_key_on_satpoint(&msg.old_satpoint, network)?,
+      from: context.get_script_key_on_satpoint(&msg.old_satpoint, chain)?,
       to: if msg.sat_in_outputs {
-        Some(context.get_script_key_on_satpoint(msg.new_satpoint.as_ref().unwrap(), network)?)
+        Some(context.get_script_key_on_satpoint(msg.new_satpoint.as_ref().unwrap(), chain)?)
       } else {
         None
       },
@@ -60,7 +59,7 @@ pub fn execute(context: &mut Context, msg: &ExecutionMessage) -> Result<Receipt>
   log::debug!("BRC20 execute message: {:?}", msg);
   let event = match &msg.op {
     Operation::Deploy(deploy) => process_deploy(context, msg, deploy.clone()),
-    Operation::Mint(mint) => process_mint(context, msg, mint.clone()),
+    Operation::Mint { mint, parent } => process_mint(context, msg, mint.clone(), *parent),
     Operation::InscribeTransfer(transfer) => {
       process_inscribe_transfer(context, msg, transfer.clone())
     }
@@ -96,6 +95,25 @@ fn process_deploy(
   let to_script_key = msg.to.clone().ok_or(BRC20Error::InscribeToCoinbase)?;
 
   let tick = deploy.tick.parse::<Tick>()?;
+  let mut max_supply = deploy.max_supply.clone();
+  let mut is_self_mint = false;
+
+  // proposal for issuance self mint token.
+  // https://l1f.discourse.group/t/brc-20-proposal-for-issuance-and-burn-enhancements-brc20-ip-1/621
+  if tick.self_issuance_tick() {
+    if context.chain_conf.blockheight
+      < policies::HardForks::self_issuance_activation_height(context.chain_conf.chain)
+    {
+      return Err(Error::BRC20Error(BRC20Error::SelfIssuanceNotActivated));
+    }
+    if !deploy.self_mint.unwrap_or_default() {
+      return Err(Error::BRC20Error(BRC20Error::SelfIssuanceCheckedFailed));
+    }
+    if deploy.max_supply == u64::MIN.to_string() {
+      max_supply = u64::MAX.to_string();
+    }
+    is_self_mint = true;
+  }
 
   if let Some(stored_tick_info) = context.get_token_info(&tick).map_err(Error::LedgerError)? {
     return Err(Error::BRC20Error(BRC20Error::DuplicateTick(
@@ -110,7 +128,7 @@ fn process_deploy(
   }
   let base = BIGDECIMAL_TEN.checked_powu(u64::from(dec))?;
 
-  let supply = Num::from_str(&deploy.max_supply)?;
+  let supply = Num::from_str(&max_supply)?;
 
   if supply.sign() == Sign::NoSign
     || supply > MAXIMUM_SUPPLY.to_owned()
@@ -121,7 +139,7 @@ fn process_deploy(
     )));
   }
 
-  let limit = Num::from_str(&deploy.mint_limit.map_or(deploy.max_supply, |v| v))?;
+  let limit = Num::from_str(&deploy.mint_limit.map_or(max_supply, |v| v))?;
 
   if limit.sign() == Sign::NoSign
     || limit > MAXIMUM_SUPPLY.to_owned()
@@ -145,9 +163,10 @@ fn process_deploy(
     limit_per_mint: limit,
     minted: 0u128,
     deploy_by: to_script_key,
-    deployed_number: context.chain.blockheight,
-    latest_mint_number: context.chain.blockheight,
-    deployed_timestamp: context.chain.blocktime,
+    is_self_mint,
+    deployed_number: context.chain_conf.blockheight,
+    latest_mint_number: context.chain_conf.blockheight,
+    deployed_timestamp: context.chain_conf.blocktime,
   };
   context
     .insert_token_info(&tick, &new_info)
@@ -161,22 +180,32 @@ fn process_deploy(
   }))
 }
 
-fn process_mint(context: &mut Context, msg: &ExecutionMessage, mint: Mint) -> Result<Event, Error> {
+fn process_mint(
+  context: &mut Context,
+  msg: &ExecutionMessage,
+  mint: Mint,
+  parent: Option<InscriptionId>,
+) -> Result<Event, Error> {
   // ignore inscribe inscription to coinbase.
   let to_script_key = msg.to.clone().ok_or(BRC20Error::InscribeToCoinbase)?;
 
   let tick = mint.tick.parse::<Tick>()?;
 
-  let token_info = context
+  let tick_info = context
     .get_token_info(&tick)
     .map_err(Error::LedgerError)?
     .ok_or(BRC20Error::TickNotFound(tick.to_string()))?;
 
-  let base = BIGDECIMAL_TEN.checked_powu(u64::from(token_info.decimal))?;
+  // check if self mint is allowed.
+  if tick_info.is_self_mint && !parent.is_some_and(|parent| parent == tick_info.inscription_id) {
+    return Err(Error::BRC20Error(BRC20Error::SelfMintPermissionDenied));
+  }
+
+  let base = BIGDECIMAL_TEN.checked_powu(u64::from(tick_info.decimal))?;
 
   let mut amt = Num::from_str(&mint.amount)?;
 
-  if amt.scale() > i64::from(token_info.decimal) {
+  if amt.scale() > i64::from(tick_info.decimal) {
     return Err(Error::BRC20Error(BRC20Error::AmountOverflow(
       amt.to_string(),
     )));
@@ -186,17 +215,17 @@ fn process_mint(context: &mut Context, msg: &ExecutionMessage, mint: Mint) -> Re
   if amt.sign() == Sign::NoSign {
     return Err(Error::BRC20Error(BRC20Error::InvalidZeroAmount));
   }
-  if amt > Into::<Num>::into(token_info.limit_per_mint) {
+  if amt > Into::<Num>::into(tick_info.limit_per_mint) {
     return Err(Error::BRC20Error(BRC20Error::AmountExceedLimit(
       amt.to_string(),
     )));
   }
-  let minted = Into::<Num>::into(token_info.minted);
-  let supply = Into::<Num>::into(token_info.supply);
+  let minted = Into::<Num>::into(tick_info.minted);
+  let supply = Into::<Num>::into(tick_info.supply);
 
   if minted >= supply {
     return Err(Error::BRC20Error(BRC20Error::TickMinted(
-      token_info.tick.to_string(),
+      tick_info.tick.to_string(),
     )));
   }
 
@@ -232,11 +261,11 @@ fn process_mint(context: &mut Context, msg: &ExecutionMessage, mint: Mint) -> Re
   // update token minted.
   let minted = minted.checked_add(&amt)?.checked_to_u128()?;
   context
-    .update_mint_token_info(&tick, minted, context.chain.blockheight)
+    .update_mint_token_info(&tick, minted, context.chain_conf.blockheight)
     .map_err(Error::LedgerError)?;
 
   Ok(Event::Mint(MintEvent {
-    tick: token_info.tick,
+    tick: tick_info.tick,
     amount: amt.checked_to_u128()?,
     msg: out_msg,
   }))

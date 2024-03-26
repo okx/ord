@@ -80,13 +80,13 @@ pub(crate) async fn ord_inscription_id(
   log::debug!("rpc: get ord_inscription_id: {id}");
 
   let rtx = index.begin_read()?;
-  let network = index.get_chain_network();
+  let chain = index.get_chain();
   let client = index.bitcoin_rpc_client()?;
   let index_transactions = index.has_transactions_index();
 
   let id = InscriptionId::from_str(&id).map_err(ApiError::bad_request)?;
 
-  ord_get_inscription_by_id(id, &rtx, client, network, index_transactions)
+  ord_get_inscription_by_id(id, &rtx, client, chain, index_transactions)
 }
 
 // /ord/number/:number/inscription
@@ -111,34 +111,29 @@ pub(crate) async fn ord_inscription_number(
   log::debug!("rpc: get ord_inscription_number: {number}");
 
   let rtx = index.begin_read()?;
-  let network = index.get_chain_network();
+  let chain = index.get_chain();
   let client = index.bitcoin_rpc_client()?;
   let index_transactions = index.has_transactions_index();
 
   let inscription_id = Index::get_inscription_id_by_inscription_number_with_rtx(number, &rtx)?
     .ok_or(OrdApiError::UnknownInscriptionNumber(number))?;
 
-  ord_get_inscription_by_id(inscription_id, &rtx, client, network, index_transactions)
+  ord_get_inscription_by_id(inscription_id, &rtx, client, chain, index_transactions)
 }
 
 fn ord_get_inscription_by_id(
   inscription_id: InscriptionId,
   rtx: &Rtx,
   client: Client,
-  network: Network,
+  chain: Chain,
   index_transactions: bool,
 ) -> ApiResult<ApiInscription> {
   let inscription_entry = Index::get_inscription_entry_with_rtx(inscription_id, rtx)?
     .ok_or(OrdApiError::UnknownInscriptionId(inscription_id))?;
 
-  let tx = Index::get_transaction_with_rtx(
-    inscription_id.txid,
-    rtx,
-    &client,
-    network,
-    index_transactions,
-  )?
-  .ok_or(OrdApiError::TransactionNotFound(inscription_id.txid))?;
+  let tx =
+    Index::get_transaction_with_rtx(inscription_id.txid, rtx, &client, chain, index_transactions)?
+      .ok_or(OrdApiError::TransactionNotFound(inscription_id.txid))?;
 
   let inscription = ParsedEnvelope::from_transaction(&tx)
     .get(usize::try_from(inscription_id.index).unwrap())
@@ -168,7 +163,7 @@ fn ord_get_inscription_by_id(
         location_outpoint.txid,
         rtx,
         &client,
-        network,
+        chain,
         index_transactions,
       )?
       .ok_or(OrdApiError::TransactionNotFound(location_outpoint.txid))?
@@ -195,7 +190,7 @@ fn ord_get_inscription_by_id(
     parent: inscription.parent(),
     pointer: inscription.pointer(),
     delegate: inscription.delegate(),
-    owner: output.map(|vout| ScriptKey::from_script(&vout.script_pubkey, network).into()),
+    owner: output.map(|vout| ScriptKey::from_script(&vout.script_pubkey, chain).into()),
     genesis_height: inscription_entry.height,
     genesis_timestamp: inscription_entry.timestamp,
     location: sat_point.to_string(),
@@ -287,7 +282,7 @@ mod tests {
             .unwrap()
             .assume_checked()
             .script_pubkey(),
-          Network::Bitcoin,
+          Chain::Mainnet,
         )
         .into(),
       ),

@@ -2,10 +2,12 @@ use super::*;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Formatter, str::FromStr};
 
-pub const TICK_BYTE_COUNT: usize = 4;
+pub const ORIGINAL_TICK_LENGTH: usize = 4;
+pub const SELF_ISSUANCE_TICK_LENGTH: usize = 5;
+pub const MAX_TICK_BYTE_COUNT: usize = SELF_ISSUANCE_TICK_LENGTH;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Tick([u8; TICK_BYTE_COUNT]);
+pub struct Tick(Box<[u8]>);
 
 impl FromStr for Tick {
   type Err = BRC20Error;
@@ -13,23 +15,27 @@ impl FromStr for Tick {
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     let bytes = s.as_bytes();
 
-    if bytes.len() != TICK_BYTE_COUNT {
+    if bytes.len() < ORIGINAL_TICK_LENGTH || bytes.len() > SELF_ISSUANCE_TICK_LENGTH {
       return Err(BRC20Error::InvalidTickLen(s.to_string()));
     }
 
-    Ok(Self(bytes.try_into().unwrap()))
+    Ok(Self(bytes.into()))
   }
 }
 
 impl Tick {
-  pub fn as_str(&self) -> &str {
+  pub fn as_str(&self) -> String {
     // NOTE: Tick comes from &str by from_str,
     // so it could be calling unwrap when convert to str
-    std::str::from_utf8(self.0.as_slice()).unwrap()
+    String::from_utf8(self.0.to_vec()).unwrap()
   }
 
   pub fn to_lowercase(&self) -> LowerTick {
     LowerTick::new(&self.as_str().to_lowercase())
+  }
+
+  pub fn self_issuance_tick(&self) -> bool {
+    self.0.len() == SELF_ISSUANCE_TICK_LENGTH
   }
 }
 
@@ -71,17 +77,17 @@ impl LowerTick {
   }
 
   pub fn hex(&self) -> String {
-    let mut data = [0u8; TICK_BYTE_COUNT * 4];
+    let mut data = [0u8; MAX_TICK_BYTE_COUNT * 4];
     data[..self.0.len()].copy_from_slice(&self.0);
     hex::encode(data)
   }
 
   pub fn min_hex() -> String {
-    hex::encode([0u8; TICK_BYTE_COUNT * 4])
+    hex::encode([0u8; MAX_TICK_BYTE_COUNT * 4])
   }
 
   pub fn max_hex() -> String {
-    hex::encode([0xffu8; TICK_BYTE_COUNT * 4])
+    hex::encode([0xffu8; MAX_TICK_BYTE_COUNT * 4])
   }
 }
 
@@ -106,22 +112,22 @@ mod tests {
     assert!(Tick::from_str("aBc1").is_ok());
     assert!("aBc1".parse::<Tick>().is_ok());
     assert!("ατ".parse::<Tick>().is_ok());
-    assert!("∑ii".parse::<Tick>().is_err());
+    assert!("∑ii".parse::<Tick>().is_ok()); // when self issuance is enabled
     assert!("∑i".parse::<Tick>().is_ok());
     assert!("⊢i".parse::<Tick>().is_ok());
-    assert!("⊢ii".parse::<Tick>().is_err());
+    assert!("⊢ii".parse::<Tick>().is_ok()); // when self issuance is enabled
     assert!("≯a".parse::<Tick>().is_ok());
-    assert!("a≯a".parse::<Tick>().is_err());
+    assert!("a≯a".parse::<Tick>().is_ok()); // when self issuance is enabled
   }
   #[test]
   fn test_tick_hex() {
     assert_eq!(
       Tick::from_str("XAİ").unwrap().to_lowercase().hex(),
-      "786169cc870000000000000000000000"
+      "786169cc87000000000000000000000000000000"
     );
     assert_eq!(
       Tick::from_str("aBc1").unwrap().to_lowercase().hex(),
-      "61626331000000000000000000000000"
+      "6162633100000000000000000000000000000000"
     );
   }
 

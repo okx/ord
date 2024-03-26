@@ -1,4 +1,4 @@
-use crate::okx::protocol::{context::Context, BlockContext, ProtocolConfig, ProtocolManager};
+use crate::okx::protocol::{context::Context, ChainContext, ProtocolConfig, ProtocolManager};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use {
   self::{inscription_updater::InscriptionUpdater, rune_updater::RuneUpdater},
@@ -621,8 +621,8 @@ impl<'index> Updater<'_> {
     inscription_updater.flush_cache()?;
 
     let mut context = Context {
-      chain: BlockContext {
-        network: index.get_chain_network(),
+      chain_conf: ChainContext {
+        chain: self.index.options.chain(),
         blockheight: self.height,
         blocktime: block.header.time,
       },

@@ -41,10 +41,10 @@ pub(crate) async fn brc20_balance(
   log::debug!("rpc: get brc20_balance: {} {}", tick, address);
 
   let rtx = index.begin_read()?;
-  let network = index.get_chain_network();
+  let chain = index.get_chain();
 
   let ticker = Tick::from_str(&tick).map_err(|_| BRC20ApiError::InvalidTicker(tick.clone()))?;
-  let script_key = utils::parse_and_validate_script_key_network(&address, network)
+  let script_key = utils::parse_and_validate_script_key_with_chain(&address, chain)
     .map_err(ApiError::bad_request)?;
 
   let balance = Index::get_brc20_balance_by_tick_and_address(ticker, script_key, &rtx)?
@@ -93,9 +93,9 @@ pub(crate) async fn brc20_all_balance(
   log::debug!("rpc: get brc20_all_balance: {}", account);
 
   let rtx = index.begin_read()?;
-  let network = index.get_chain_network();
+  let chain = index.get_chain();
 
-  let script_key = utils::parse_and_validate_script_key_network(&account, network)
+  let script_key = utils::parse_and_validate_script_key_with_chain(&account, chain)
     .map_err(ApiError::bad_request)?;
 
   let all_balance = rtx.brc20_get_all_balance_by_address(script_key)?;

@@ -425,8 +425,8 @@ impl Index {
     })
   }
 
-  pub(crate) fn get_chain_network(&self) -> Network {
-    self.options.chain().network()
+  pub(crate) fn get_chain(&self) -> Chain {
+    self.options.chain()
   }
 
   #[cfg(test)]

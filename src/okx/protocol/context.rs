@@ -28,17 +28,17 @@ use crate::{
       ScriptKey,
     },
     lru::SimpleLru,
-    protocol::BlockContext,
+    protocol::ChainContext,
   },
-  SatPoint,
+  Chain, SatPoint,
 };
 use anyhow::anyhow;
-use bitcoin::{Network, OutPoint, TxOut, Txid};
+use bitcoin::{OutPoint, TxOut, Txid};
 use redb::{MultimapTable, Table};
 
 #[allow(non_snake_case)]
 pub struct Context<'a, 'db, 'txn> {
-  pub(crate) chain: BlockContext,
+  pub(crate) chain_conf: ChainContext,
   pub(crate) tx_out_cache: &'a mut SimpleLru<OutPoint, TxOut>,
   pub(crate) hit: u64,
   pub(crate) miss: u64,
@@ -84,15 +84,15 @@ impl<'a, 'db, 'txn> OrdReader for Context<'a, 'db, 'txn> {
   fn get_script_key_on_satpoint(
     &mut self,
     satpoint: &SatPoint,
-    network: Network,
+    chain: Chain,
   ) -> crate::Result<ScriptKey, Self::Error> {
     if let Some(tx_out) = self.tx_out_cache.get(&satpoint.outpoint) {
       self.hit += 1;
-      Ok(ScriptKey::from_script(&tx_out.script_pubkey, network))
+      Ok(ScriptKey::from_script(&tx_out.script_pubkey, chain))
     } else if let Some(tx_out) = get_txout_by_outpoint(self.OUTPOINT_TO_ENTRY, &satpoint.outpoint)?
     {
       self.miss += 1;
-      Ok(ScriptKey::from_script(&tx_out.script_pubkey, network))
+      Ok(ScriptKey::from_script(&tx_out.script_pubkey, chain))
     } else {
       Err(anyhow!(
         "failed to get tx out! error: outpoint {} not found",

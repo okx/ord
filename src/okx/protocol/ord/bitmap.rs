@@ -64,7 +64,7 @@ fn index_district(
 ) -> Result<Option<(InscriptionId, District)>> {
   if let Some(content) = inscription.body() {
     if let Ok(district) = District::parse(content) {
-      if district.number > context.chain.blockheight {
+      if district.number > context.chain_conf.blockheight {
         return Ok(None);
       }
       let collection_key = district.to_collection_key();

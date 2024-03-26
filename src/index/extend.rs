@@ -43,10 +43,10 @@ impl Index {
     txid: Txid,
     rtx: &Rtx,
     client: &Client,
-    network: Network,
+    chain: Chain,
     index_transactions: bool,
   ) -> Result<Option<Transaction>> {
-    let genesis_block = bitcoin::blockdata::constants::genesis_block(network);
+    let genesis_block = chain.genesis_block();
     let genesis_block_coinbase_transaction = genesis_block.coinbase().unwrap();
 
     if txid == genesis_block_coinbase_transaction.txid() {
@@ -248,7 +248,7 @@ impl Index {
     rtx: &Rtx,
     client: &Client,
     outpoint: OutPoint,
-    network: Network,
+    chain: Chain,
     index_transactions: bool,
   ) -> Result<Option<TxOut>> {
     // Try to get the txout from the database store at first.
@@ -257,13 +257,14 @@ impl Index {
     } else {
       // Try to get the txout from the transaction table or the RPC request.
       Ok(
-        Self::get_transaction_with_rtx(outpoint.txid, rtx, client, network, index_transactions)?
-          .map(|tx| {
+        Self::get_transaction_with_rtx(outpoint.txid, rtx, client, chain, index_transactions)?.map(
+          |tx| {
             tx.output
               .get(usize::try_from(outpoint.vout).unwrap())
               .unwrap()
               .to_owned()
-          }),
+          },
+        ),
       )
     }
   }

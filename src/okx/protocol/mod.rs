@@ -10,13 +10,12 @@ pub use self::protocol_manager::ProtocolManager;
 
 use {
   self::{execute_manager::CallManager, message::Message, resolve_manager::MsgResolveManager},
-  crate::Options,
-  bitcoin::Network,
+  crate::{Chain, Options},
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct BlockContext {
-  pub network: Network,
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct ChainContext {
+  pub chain: Chain,
   pub blockheight: u32,
   pub blocktime: u32,
 }
