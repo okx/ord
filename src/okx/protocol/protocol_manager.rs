@@ -54,7 +54,7 @@ impl ProtocolManager {
       if let Some(tx_operations) = operations.get(txid) {
         // save all transaction operations to ord database.
         if self.config.enable_ord_receipts
-          && context.chain.blockheight >= self.config.first_inscription_height
+          && context.chain_conf.blockheight >= self.config.first_inscription_height
         {
           let start = Instant::now();
           context.save_transaction_operations(txid, tx_operations)?;
@@ -85,7 +85,7 @@ impl ProtocolManager {
 
     log::info!(
       "Protocol Manager indexed block {} with ord inscriptions {}, messages {}, bitmap {} in {} ms, {}/{}/{}/{}",
-      context.chain.blockheight,
+      context.chain_conf.blockheight,
       inscriptions_size,
       messages_size,
       bitmap_count,

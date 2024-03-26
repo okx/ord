@@ -225,6 +225,7 @@ mod tests {
         max_supply: "1000".to_string(),
         mint_limit: Some("10".to_string()),
         decimals: None,
+        self_mint: None,
       }),
       sat_in_outputs: true,
     };

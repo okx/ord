@@ -43,10 +43,10 @@ pub(crate) async fn brc20_transferable(
   log::debug!("rpc: get brc20_transferable: {tick} {address}");
 
   let rtx = index.begin_read()?;
-  let network = index.get_chain_network();
+  let chain = index.get_chain();
 
   let ticker = Tick::from_str(&tick).map_err(|_| BRC20ApiError::InvalidTicker(tick.clone()))?;
-  let script_key = utils::parse_and_validate_script_key_network(&address, network)
+  let script_key = utils::parse_and_validate_script_key_with_chain(&address, chain)
     .map_err(ApiError::bad_request)?;
 
   let brc20_transferable_assets =
@@ -108,9 +108,9 @@ pub(crate) async fn brc20_all_transferable(
   log::debug!("rpc: get brc20_all_transferable: {account}");
 
   let rtx = index.begin_read()?;
-  let network = index.get_chain_network();
+  let chain = index.get_chain();
 
-  let script_key = utils::parse_and_validate_script_key_network(&account, network)
+  let script_key = utils::parse_and_validate_script_key_with_chain(&account, chain)
     .map_err(ApiError::bad_request)?;
 
   let brc20_transferable_assets = rtx.brc20_get_all_transferable_by_address(script_key)?;

@@ -57,7 +57,7 @@ impl MsgResolveManager {
         if self
           .config
           .first_brc20_height
-          .map(|height| context.chain.blockheight >= height)
+          .map(|height| context.chain_conf.blockheight >= height)
           .unwrap_or(false)
         {
           let satpoint_to_transfer_assets: HashMap<SatPointValue, TransferableLog> =

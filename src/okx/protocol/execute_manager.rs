@@ -26,8 +26,11 @@ impl CallManager {
     for msg in msgs {
       match msg {
         Message::BRC20(brc_msg) => {
-          let msg =
-            brc20_proto::ExecutionMessage::from_message(context, brc_msg, context.chain.network)?;
+          let msg = brc20_proto::ExecutionMessage::from_message(
+            context,
+            brc_msg,
+            context.chain_conf.chain,
+          )?;
           let receipt = brc20_proto::execute(context, &msg)?;
           receipts.push(receipt);
         }

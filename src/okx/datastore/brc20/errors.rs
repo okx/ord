@@ -48,6 +48,15 @@ pub enum BRC20Error {
   #[error("transferable owner not match {0}")]
   TransferableOwnerNotMatch(InscriptionId),
 
+  #[error("self issuance not activated")]
+  SelfIssuanceNotActivated,
+
+  #[error("'self_mint' must be set to 'true', when deploying 5 bytes tick")]
+  SelfIssuanceCheckedFailed,
+
+  #[error("self mint permission denied")]
+  SelfMintPermissionDenied,
+
   /// an InternalError is an error that happens exceed our expect
   /// and should not happen under normal circumstances
   #[error("internal error: {0}")]

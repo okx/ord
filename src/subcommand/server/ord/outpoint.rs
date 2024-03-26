@@ -75,6 +75,7 @@ pub(crate) async fn ord_outpoint(
   })?;
 
   let inscriptions_with_satpoints = rtx.inscriptions_on_output_with_satpoints(outpoint)?;
+  let chain = index.get_chain();
 
   // If there are no inscriptions on the output, return None and parsed block states.
   if inscriptions_with_satpoints.is_empty() {
@@ -102,7 +103,7 @@ pub(crate) async fn ord_outpoint(
     &rtx,
     &index.bitcoin_rpc_client()?,
     outpoint,
-    index.get_chain_network(),
+    chain,
     index.has_transactions_index(),
   )?
   .ok_or(OrdApiError::TransactionNotFound(outpoint.txid))?;
@@ -111,7 +112,7 @@ pub(crate) async fn ord_outpoint(
     result: Some(ApiOutpointInscriptions {
       txid: outpoint.txid.to_string(),
       script_pub_key: vout.script_pubkey.to_asm_string(),
-      owner: ScriptKey::from_script(&vout.script_pubkey, index.get_chain_network()).into(),
+      owner: ScriptKey::from_script(&vout.script_pubkey, chain).into(),
       value: vout.value,
       inscription_digest: inscription_digests,
     }),

@@ -1,4 +1,5 @@
-use bitcoin::{address, Address, Network, Script, ScriptHash};
+use crate::Chain;
+use bitcoin::{address, Address, Script, ScriptHash};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
@@ -13,11 +14,11 @@ impl ScriptKey {
   pub fn from_address(address: Address) -> Self {
     ScriptKey::Address(Address::new(address.network, address.payload))
   }
-  pub fn from_script(script: &Script, network: Network) -> Self {
-    match Address::from_script(script, network) {
-      Ok(address) => ScriptKey::Address(Address::new(address.network, address.payload)),
-      Err(_) => ScriptKey::ScriptHash(script.script_hash()),
-    }
+  pub fn from_script(script: &Script, chain: Chain) -> Self {
+    chain
+      .address_from_script(script)
+      .map(|address| Self::Address(Address::new(address.network, address.payload)))
+      .unwrap_or(Self::ScriptHash(script.script_hash()))
   }
 }
 
@@ -57,7 +58,7 @@ mod tests {
       .payload
       .script_pubkey();
     assert_eq!(
-      ScriptKey::from_script(&script, Network::Bitcoin),
+      ScriptKey::from_script(&script, Chain::Mainnet),
       ScriptKey::Address(Address::from_str("bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4").unwrap())
     );
     let binding = hex::decode(
@@ -66,7 +67,7 @@ mod tests {
     .unwrap();
     let script = Script::from_bytes(binding.as_slice());
     assert_eq!(
-      ScriptKey::from_script(script, Network::Bitcoin),
+      ScriptKey::from_script(script, Chain::Mainnet),
       ScriptKey::ScriptHash(
         ScriptHash::from_str("df65c8a338dce7900824e7bd18c336656ca19e57").unwrap()
       )
