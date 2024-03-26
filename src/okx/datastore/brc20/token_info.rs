@@ -7,6 +7,7 @@ pub struct TokenInfo {
   pub inscription_id: InscriptionId,
   pub inscription_number: i32,
   pub supply: u128,
+  pub burned_supply: u128,
   pub minted: u128,
   pub limit_per_mint: u128,
   pub decimal: u8,

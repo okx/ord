@@ -6,7 +6,10 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub enum ScriptKey {
   Address(Address<address::NetworkUnchecked>),
-  ScriptHash(ScriptHash),
+  ScriptHash {
+    script_hash: ScriptHash,
+    is_op_return: bool,
+  },
 }
 
 impl ScriptKey {
@@ -18,7 +21,10 @@ impl ScriptKey {
     chain
       .address_from_script(script)
       .map(|address| Self::Address(Address::new(address.network, address.payload)))
-      .unwrap_or(Self::ScriptHash(script.script_hash()))
+      .unwrap_or(ScriptKey::ScriptHash {
+        script_hash: script.script_hash(),
+        is_op_return: script.is_op_return(),
+      })
   }
 }
 
@@ -29,7 +35,7 @@ impl Display for ScriptKey {
       "{}",
       match self {
         ScriptKey::Address(address) => address.clone().assume_checked().to_string(),
-        ScriptKey::ScriptHash(script_hash) => script_hash.to_string(),
+        ScriptKey::ScriptHash { script_hash, .. } => script_hash.to_string(),
       }
     )
   }
@@ -68,48 +74,10 @@ mod tests {
     let script = Script::from_bytes(binding.as_slice());
     assert_eq!(
       ScriptKey::from_script(script, Chain::Mainnet),
-      ScriptKey::ScriptHash(
-        ScriptHash::from_str("df65c8a338dce7900824e7bd18c336656ca19e57").unwrap()
-      )
-    );
-  }
-  #[test]
-  fn test_script_key_serialize() {
-    let script_key =
-      ScriptKey::Address(Address::from_str("bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4").unwrap());
-    assert_eq!(
-      serde_json::to_string(&script_key).unwrap(),
-      r#"{"Address":"bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4"}"#
-    );
-    let script_key = ScriptKey::ScriptHash(
-      ScriptHash::from_str("df65c8a338dce7900824e7bd18c336656ca19e57").unwrap(),
-    );
-    assert_eq!(
-      serde_json::to_string(&script_key).unwrap(),
-      r#"{"ScriptHash":"df65c8a338dce7900824e7bd18c336656ca19e57"}"#
-    );
-  }
-
-  #[test]
-  fn test_script_key_deserialize() {
-    let script_key =
-      ScriptKey::Address(Address::from_str("bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4").unwrap());
-    assert_eq!(
-      script_key,
-      serde_json::from_str::<ScriptKey>(
-        r#"{"Address":"bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4"}"#
-      )
-      .unwrap()
-    );
-    let script_key = ScriptKey::ScriptHash(
-      ScriptHash::from_str("df65c8a338dce7900824e7bd18c336656ca19e57").unwrap(),
-    );
-    assert_eq!(
-      serde_json::from_str::<ScriptKey>(
-        r#"{"ScriptHash":"df65c8a338dce7900824e7bd18c336656ca19e57"}"#
-      )
-      .unwrap(),
-      script_key
+      ScriptKey::ScriptHash {
+        script_hash: ScriptHash::from_str("df65c8a338dce7900824e7bd18c336656ca19e57").unwrap(),
+        is_op_return: false,
+      },
     );
   }
 }

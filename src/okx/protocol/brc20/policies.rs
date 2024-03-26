@@ -8,7 +8,7 @@ impl HardForks {
   pub fn self_issuance_activation_height(chain: Chain) -> u32 {
     match chain {
       Chain::Mainnet => 837090,  // decided by community
-      Chain::Testnet => 2583000, // decided by the ourselves
+      Chain::Testnet => 2413343, // decided by the ourselves
       Chain::Regtest => 0,
       Chain::Signet => 0,
     }

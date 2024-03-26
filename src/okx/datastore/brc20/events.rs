@@ -36,6 +36,7 @@ pub struct DeployEvent {
   pub limit_per_mint: u128,
   pub decimal: u8,
   pub tick: Tick,
+  pub self_mint: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
