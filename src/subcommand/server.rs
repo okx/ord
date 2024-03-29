@@ -55,6 +55,7 @@ mod info;
 mod ord;
 mod response;
 mod types;
+mod wallet;
 
 use self::api::*;
 use self::response::ApiResponse;
@@ -210,6 +211,8 @@ impl Server {
       brc20::brc20_transferable,
       brc20::brc20_all_transferable,
 
+      wallet::available_unspent_outputs,
+
       ord::ord_inscription_id,
       ord::ord_inscription_number,
       ord::ord_outpoint,
@@ -243,6 +246,12 @@ impl Server {
       response::BRC20TxEvents,
       response::BRC20BlockEvents,
       response::BRC20Transferable,
+
+      // Wallet schemas
+      wallet::AvailableUnspentOutputs,
+
+      // Wallet responses schemas
+      response::WalletAvailableUnspentOutputs,
 
       // Ord schemas
       ord::OrdInscription,
@@ -328,6 +337,10 @@ impl Server {
         .route(
           "/brc20/block/:block_hash/events",
           get(brc20::brc20_block_events),
+        )
+        .route(
+          "/wallet/:address/available_unspent_outputs",
+          get(wallet::available_unspent_outputs),
         );
 
       let api_router = Router::new().nest("/v1", api_v1_router);

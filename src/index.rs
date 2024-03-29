@@ -7,7 +7,9 @@ use crate::okx::datastore::ord::redb::table::{
   get_txout_by_outpoint,
 };
 use crate::okx::datastore::{brc20, ScriptKey};
+use bitcoin::address::NetworkChecked;
 use bitcoincore_rpc::bitcoincore_rpc_json::GetBlockResult;
+use bitcoincore_rpc::json::ListUnspentResultEntry;
 use {
   self::{
     entry::{Entry, HeaderValue, RuneEntryValue, RuneIdValue, SatPointValue, SatRange},
@@ -1159,6 +1161,17 @@ impl Index {
 
   pub(crate) fn get_block_info_by_hash(&self, hash: BlockHash) -> Result<Option<GetBlockResult>> {
     self.client.get_block_info(&hash).into_option()
+  }
+
+  pub(crate) fn list_unspent(
+    &self,
+    addresses: Option<&[&Address<NetworkChecked>]>,
+  ) -> Result<Vec<ListUnspentResultEntry>> {
+    Ok(
+      self
+        .client
+        .list_unspent(None, None, addresses, None, None)?,
+    )
   }
 
   pub(crate) fn get_collections_paginated(

@@ -10,3 +10,6 @@
 /target
 /test-times.txt
 /tmp
+/data/
+/logs/
+.DS_Store

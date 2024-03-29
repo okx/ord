@@ -12,6 +12,8 @@ use {
   BRC20BlockEvents = ApiResponse<brc20::BlockEvents>,
   BRC20Transferable = ApiResponse<brc20::TransferableInscriptions>,
 
+  WalletAvailableUnspentOutputs = ApiResponse<wallet::AvailableUnspentOutputs>,
+
   OrdOrdInscription = ApiResponse<ord::OrdInscription>,
   OrdOutPointData = ApiResponse<ord::OutPointData>,
   OrdOutPointResult = ApiResponse<ord::OutPointResult>,
