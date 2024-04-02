@@ -23,9 +23,9 @@ pub enum Action {
   New {
     cursed: bool,
     unbound: bool,
-    #[serde(skip)]
+    #[serde(default)]
     inscription: Inscription,
-    #[serde(skip)]
+    #[serde(default)]
     vindicated: bool,
     #[serde(skip)]
     parent: Option<InscriptionId>,
