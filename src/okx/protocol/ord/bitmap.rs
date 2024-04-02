@@ -35,12 +35,7 @@ pub fn index_bitmap(
 
   for op in positive_inscriptions.into_iter() {
     match op.action {
-      Action::New {
-        cursed: _,
-        unbound: _,
-        vindicated: _,
-        inscription,
-      } => {
+      Action::New { inscription, .. } => {
         if let Some((inscription_id, district)) =
           index_district(context, inscription, op.inscription_id)?
         {

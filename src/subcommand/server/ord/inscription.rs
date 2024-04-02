@@ -147,6 +147,13 @@ fn ord_get_inscription_by_id(
     .ord_inscription_id_to_collections(inscription_id)?
     .unwrap_or_default();
 
+  let parent_inscription_id = match inscription_entry.parent {
+    Some(parent) => rtx
+      .sequence_number_to_inscription_entry(parent)?
+      .map(|entry| entry.id),
+    None => None,
+  };
+
   let charms: Vec<Charm> = Charm::ALL
     .iter()
     .filter(|charm| charm.is_set(inscription_entry.charms))
@@ -187,7 +194,7 @@ fn ord_get_inscription_by_id(
     metadata: inscription
       .metadata()
       .and_then(|_| inscription.metadata.as_deref().map(hex::encode)),
-    parent: inscription.parent(),
+    parent: parent_inscription_id,
     pointer: inscription.pointer(),
     delegate: inscription.delegate(),
     owner: output.map(|vout| ScriptKey::from_script(&vout.script_pubkey, chain).into()),

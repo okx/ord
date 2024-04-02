@@ -71,11 +71,11 @@ pub(crate) fn deserialize_brc20_operation(
   };
 
   match action {
-    Action::New { .. } => match raw_operation {
+    Action::New { parent, .. } => match raw_operation {
       RawOperation::Deploy(deploy) => Ok(Operation::Deploy(deploy)),
       RawOperation::Mint(mint) => Ok(Operation::Mint {
         mint,
-        parent: inscription.parent(),
+        parent: *parent,
       }),
       RawOperation::Transfer(transfer) => Ok(Operation::InscribeTransfer(transfer)),
     },
@@ -219,6 +219,7 @@ mod tests {
           cursed: false,
           unbound: false,
           vindicated: false,
+          parent: None,
           inscription: inscription.clone()
         },
       )
@@ -243,6 +244,7 @@ mod tests {
           cursed: false,
           unbound: false,
           vindicated: false,
+          parent: None,
           inscription: inscription.clone()
         },
       )
@@ -267,6 +269,7 @@ mod tests {
           cursed: false,
           unbound: false,
           vindicated: false,
+          parent: None,
           inscription: inscription.clone()
         },
       )

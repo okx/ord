@@ -2,7 +2,6 @@ use {
   super::*,
   crate::{
     index::entry::{Entry, SatPointValue},
-    inscriptions::ParsedEnvelope,
     okx::{
       datastore::{
         brc20::{redb::table::get_transferable_assets_by_outpoint, TransferableLog},
@@ -10,7 +9,7 @@ use {
       },
       protocol::{context::Context, Message},
     },
-    Inscription, Result,
+    Result,
   },
   bitcoin::Transaction,
   std::collections::HashMap,
@@ -39,10 +38,6 @@ impl MsgResolveManager {
     );
     let mut messages = Vec::new();
     let mut operation_iter = operations.iter().peekable();
-    let new_inscriptions = ParsedEnvelope::from_transaction(tx)
-      .into_iter()
-      .map(|v| v.payload)
-      .collect::<Vec<Inscription>>();
 
     for input in &tx.input {
       // "operations" is a list of all the operations in the current block, and they are ordered.
@@ -69,9 +64,7 @@ impl MsgResolveManager {
             .map(|(satpoint, asset)| (satpoint.store(), asset))
             .collect();
 
-          if let Some(msg) =
-            brc20::Message::resolve(operation, &new_inscriptions, satpoint_to_transfer_assets)?
-          {
+          if let Some(msg) = brc20::Message::resolve(operation, satpoint_to_transfer_assets)? {
             log::debug!(
               "BRC20 resolved the message from {:?}, msg {:?}",
               operation,

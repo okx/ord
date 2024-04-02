@@ -1,7 +1,6 @@
 use super::*;
 use crate::{
   index::entry::{Entry, SatPointValue},
-  inscriptions::Inscription,
   okx::{
     datastore::{
       brc20::TransferableLog,
@@ -16,7 +15,6 @@ use std::collections::HashMap;
 impl Message {
   pub(crate) fn resolve(
     op: &InscriptionOp,
-    new_inscriptions: &[Inscription],
     transfer_assets_cache: HashMap<SatPointValue, TransferableLog>,
   ) -> Result<Option<Message>> {
     log::debug!("BRC20 resolving the message from {:?}", op);
@@ -25,20 +23,16 @@ impl Message {
       .map(|satpoint| satpoint.outpoint.txid == op.txid)
       .unwrap_or(false);
 
-    let brc20_operation = match op.action {
+    let brc20_operation = match &op.action {
       // New inscription is not `cursed` or `unbound`.
       Action::New {
         cursed: false,
         unbound: false,
         vindicated: false,
-        inscription: _,
+        inscription,
+        ..
       } if sat_in_outputs => {
-        let Ok(brc20_opteration) = deserialize_brc20_operation(
-          new_inscriptions
-            .get(usize::try_from(op.inscription_id.index).unwrap())
-            .unwrap(),
-          &op.action,
-        ) else {
+        let Ok(brc20_opteration) = deserialize_brc20_operation(inscription, &op.action) else {
           return Ok(None);
         };
         brc20_opteration
@@ -75,7 +69,10 @@ impl Message {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::okx::datastore::brc20::{Tick, TransferableLog};
+  use crate::{
+    okx::datastore::brc20::{Tick, TransferableLog},
+    Inscription,
+  };
   use bitcoin::{Address, OutPoint};
   use std::str::FromStr;
 
@@ -96,6 +93,7 @@ mod tests {
         cursed: false,
         unbound: false,
         inscription: inscriptions.first().unwrap().clone(),
+        parent: None,
         vindicated: false,
       },
       sequence_number: 1,
@@ -150,13 +148,10 @@ mod tests {
   #[test]
   fn test_invalid_protocol() {
     let transfer_assets_cache = HashMap::new();
-    let (inscriptions, op) = create_inscribe_operation(
+    let (_inscriptions, op) = create_inscribe_operation(
       r#"{ "p": "brc-20s","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
     );
-    assert_matches!(
-      Message::resolve(&op, &inscriptions, transfer_assets_cache),
-      Ok(None)
-    );
+    assert_matches!(Message::resolve(&op, transfer_assets_cache), Ok(None));
   }
 
   #[test]
@@ -171,12 +166,13 @@ mod tests {
         cursed: true,
         unbound: false,
         inscription: inscriptions.first().unwrap().clone(),
+        parent: None,
         vindicated: false,
       },
       ..op
     };
     assert_matches!(
-      Message::resolve(&op, &inscriptions, transfer_assets_cache.clone()),
+      Message::resolve(&op, transfer_assets_cache.clone()),
       Ok(None)
     );
 
@@ -185,12 +181,13 @@ mod tests {
         cursed: false,
         unbound: true,
         inscription: inscriptions.first().unwrap().clone(),
+        parent: None,
         vindicated: false,
       },
       ..op
     };
     assert_matches!(
-      Message::resolve(&op2, &inscriptions, transfer_assets_cache.clone()),
+      Message::resolve(&op2, transfer_assets_cache.clone()),
       Ok(None)
     );
     let op3 = InscriptionOp {
@@ -198,20 +195,18 @@ mod tests {
         cursed: true,
         unbound: true,
         inscription: inscriptions.first().unwrap().clone(),
+        parent: None,
         vindicated: false,
       },
       ..op
     };
-    assert_matches!(
-      Message::resolve(&op3, &inscriptions, transfer_assets_cache),
-      Ok(None)
-    );
+    assert_matches!(Message::resolve(&op3, transfer_assets_cache), Ok(None));
   }
 
   #[test]
   fn test_valid_inscribe_operation() {
     let transfer_assets_cache = HashMap::new();
-    let (inscriptions, op) = create_inscribe_operation(
+    let (_inscriptions, op) = create_inscribe_operation(
       r#"{ "p": "brc-20","op": "deploy", "tick": "ordi", "max": "1000", "lim": "10" }"#,
     );
     let _result_msg = Message {
@@ -230,7 +225,7 @@ mod tests {
       sat_in_outputs: true,
     };
     assert_matches!(
-      Message::resolve(&op, &inscriptions, transfer_assets_cache),
+      Message::resolve(&op, transfer_assets_cache),
       Ok(Some(_result_msg))
     );
   }
@@ -242,7 +237,7 @@ mod tests {
     // inscribe transfer not found
     let op = create_transfer_operation();
     assert_matches!(
-      Message::resolve(&op, &[], transfer_assets_cache.clone()),
+      Message::resolve(&op, transfer_assets_cache.clone()),
       Ok(None)
     );
 
@@ -258,7 +253,7 @@ mod tests {
       },
       ..op
     };
-    assert_matches!(Message::resolve(&op1, &[], transfer_assets_cache), Ok(None));
+    assert_matches!(Message::resolve(&op1, transfer_assets_cache), Ok(None));
   }
 
   #[test]
@@ -292,9 +287,6 @@ mod tests {
       sat_in_outputs: true,
     };
 
-    assert_matches!(
-      Message::resolve(&op, &[], transfer_assets_cache),
-      Ok(Some(_msg))
-    );
+    assert_matches!(Message::resolve(&op, transfer_assets_cache), Ok(Some(_msg)));
   }
 }

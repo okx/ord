@@ -164,6 +164,7 @@ mod tests {
         cursed: false,
         unbound: false,
         vindicated: false,
+        parent: None,
         inscription: inscription("text/plain;charset=utf-8", "foobar"),
       },
       sequence_number: 100,
