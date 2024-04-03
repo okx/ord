@@ -1,6 +1,9 @@
+use crate::okx::datastore::brc20::SELF_ISSUANCE_TICK_LENGTH;
 use serde::{de, Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use std::str::FromStr;
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub struct Deploy {
   #[serde(rename = "tick")]
   pub tick: String,
@@ -14,20 +17,47 @@ pub struct Deploy {
     default,
     rename = "self_mint",
     skip_serializing_if = "Option::is_none",
-    deserialize_with = "de_from_str",
     serialize_with = "ser_to_str"
   )]
   pub self_mint: Option<bool>,
 }
 
-fn de_from_str<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
-where
-  D: Deserializer<'de>,
-{
-  let s = Option::<String>::deserialize(deserializer)?;
-  match s {
-    Some(s) => bool::from_str(&s).map_err(de::Error::custom).map(Some),
-    None => Ok(None),
+impl<'de> Deserialize<'de> for Deploy {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    #[derive(Deserialize)]
+    struct DeployFields {
+      tick: String,
+      max: String,
+      lim: Option<String>,
+      dec: Option<String>,
+      self_mint: Option<Value>,
+    }
+    let deploy = DeployFields::deserialize(deserializer)?;
+    let self_mint = if deploy.tick.len() == SELF_ISSUANCE_TICK_LENGTH {
+      match deploy.self_mint {
+        Some(v) => Some(
+          bool::from_str(
+            serde_json::from_value::<String>(v)
+              .map_err(de::Error::custom)?
+              .as_str(),
+          )
+          .map_err(de::Error::custom)?,
+        ),
+        None => return Err(de::Error::missing_field("self_mint")),
+      }
+    } else {
+      None
+    };
+    Ok(Deploy {
+      tick: deploy.tick.clone(),
+      max_supply: deploy.max,
+      mint_limit: deploy.lim,
+      decimals: deploy.dec,
+      self_mint,
+    })
   }
 }
 
@@ -45,6 +75,125 @@ where
 mod tests {
   use super::super::*;
   use super::*;
+
+  #[test]
+  fn test_five_bytes_ticker_self_mint_deserialize() {
+    let json_str = r#"{"p":"brc-20","op":"deploy","tick":"abcde","max":"100","lim":"10","dec":"10","self_mint":"true"}"#;
+    assert_eq!(
+      deserialize_brc20(json_str).unwrap(),
+      RawOperation::Deploy(Deploy {
+        tick: "abcde".to_string(),
+        max_supply: "100".to_string(),
+        mint_limit: Some("10".to_string()),
+        decimals: Some("10".to_string()),
+        self_mint: Some(true),
+      })
+    );
+
+    let json_str = r#"{"self_mint":"true","p":"brc-20","op":"deploy","tick":"abcde","max":"100","lim":"10","dec":"10"}"#;
+    assert_eq!(
+      deserialize_brc20(json_str).unwrap(),
+      RawOperation::Deploy(Deploy {
+        tick: "abcde".to_string(),
+        max_supply: "100".to_string(),
+        mint_limit: Some("10".to_string()),
+        decimals: Some("10".to_string()),
+        self_mint: Some(true),
+      })
+    );
+  }
+
+  #[test]
+  fn test_self_mint_deserialize_with_error_value() {
+    assert_eq!(
+      deserialize_brc20(
+        r#"{"p":"brc-20","op":"deploy","tick":"abcde","max":"12000","lim":"12","dec":"11","self_mint":"True"}"#
+      )
+      .unwrap_err(),
+      JSONError::ParseOperationJsonError("provided string was not `true` or `false`".to_string())
+    );
+    assert_eq!(
+      deserialize_brc20(
+        r#"{"p":"brc-20","op":"deploy","tick":"abcde","max":"12000","lim":"12","dec":"11","self_mint":"t"}"#
+      )
+      .unwrap_err(),
+      JSONError::ParseOperationJsonError("provided string was not `true` or `false`".to_string())
+    );
+    assert_eq!(
+      deserialize_brc20(
+        r#"{"p":"brc-20","op":"deploy","tick":"abcde","max":"12000","lim":"12","dec":"11","self_mint":true}"#
+      )
+      .unwrap_err(),
+      JSONError::ParseOperationJsonError("invalid type: boolean `true`, expected a string".to_string())
+    );
+  }
+
+  #[test]
+  fn test_loss_self_mint() {
+    assert_eq!(
+      deserialize_brc20(
+        r#"{"p":"brc-20","op":"deploy","tick":"1234","max":"100","lim":"22","dec":"11"}"#
+      )
+      .unwrap(),
+      RawOperation::Deploy(Deploy {
+        tick: "1234".to_string(),
+        max_supply: "100".to_string(),
+        mint_limit: Some("22".to_string()),
+        decimals: Some("11".to_string()),
+        self_mint: None,
+      })
+    );
+    assert_eq!(
+      deserialize_brc20(
+        r#"{"p":"brc-20","op":"deploy","tick":"12345","max":"100","lim":"22","dec":"11"}"#
+      )
+      .unwrap_err(),
+      JSONError::ParseOperationJsonError("missing field `self_mint`".to_string())
+    );
+  }
+
+  #[test]
+  fn test_ignore_self_mint() {
+    assert_eq!(
+      deserialize_brc20(
+        r#"{"p":"brc-20","op":"deploy","tick":"1234","max":"100","lim":"22","dec":"11","self_mint":"true"}"#
+      )
+      .unwrap(),
+      RawOperation::Deploy(Deploy {
+        tick: "1234".to_string(),
+        max_supply: "100".to_string(),
+        mint_limit: Some("22".to_string()),
+        decimals: Some("11".to_string()),
+        self_mint: None,
+      })
+    );
+    assert_eq!(
+      deserialize_brc20(
+        r#"{"p":"brc-20","op":"deploy","tick":"1234","max":"100","lim":"22","dec":"11","self_mint":true}"#
+      )
+      .unwrap(),
+      RawOperation::Deploy(Deploy {
+        tick: "1234".to_string(),
+        max_supply: "100".to_string(),
+        mint_limit: Some("22".to_string()),
+        decimals: Some("11".to_string()),
+        self_mint: None,
+      })
+    );
+    assert_eq!(
+      deserialize_brc20(
+        r#"{"p":"brc-20","op":"deploy","tick":"1234","max":"100","lim":"22","dec":"11","self_mint":"True"}"#
+      )
+      .unwrap(),
+      RawOperation::Deploy(Deploy {
+        tick: "1234".to_string(),
+        max_supply: "100".to_string(),
+        mint_limit: Some("22".to_string()),
+        decimals: Some("11".to_string()),
+        self_mint: None,
+      })
+    );
+  }
 
   #[test]
   fn test_serialize() {
@@ -138,75 +287,6 @@ mod tests {
         obj.self_mint.as_ref().unwrap()
       )
     )
-  }
-
-  #[test]
-  fn test_self_mint_deserialize() {
-    assert_eq!(
-      deserialize_brc20(
-        r#"{"p":"brc-20","op":"deploy","tick":"abcd","max":"12000","lim":"12","dec":"11"}"#
-      )
-      .unwrap(),
-      RawOperation::Deploy(Deploy {
-        tick: "abcd".to_string(),
-        max_supply: "12000".to_string(),
-        mint_limit: Some("12".to_string()),
-        decimals: Some("11".to_string()),
-        self_mint: None,
-      })
-    );
-
-    assert_eq!(
-      deserialize_brc20(
-        r#"{"p":"brc-20","op":"deploy","tick":"abcd","max":"12000","lim":"12","dec":"11","self_mint":"true"}"#
-      )
-      .unwrap(),
-      RawOperation::Deploy(Deploy {
-        tick: "abcd".to_string(),
-        max_supply: "12000".to_string(),
-        mint_limit: Some("12".to_string()),
-        decimals: Some("11".to_string()),
-        self_mint: Some(true),
-      })
-    );
-    assert_eq!(
-      deserialize_brc20(
-        r#"{"p":"brc-20","op":"deploy","tick":"abcd","max":"12000","lim":"12","dec":"11","self_mint":"false"}"#
-      )
-      .unwrap(),
-      RawOperation::Deploy(Deploy {
-        tick: "abcd".to_string(),
-        max_supply: "12000".to_string(),
-        mint_limit: Some("12".to_string()),
-        decimals: Some("11".to_string()),
-        self_mint: Some(false),
-      })
-    );
-  }
-
-  #[test]
-  fn test_self_mint_deserialize_with_error_value() {
-    assert_eq!(
-      deserialize_brc20(
-        r#"{"p":"brc-20","op":"deploy","tick":"abcd","max":"12000","lim":"12","dec":"11","self_mint":"True"}"#
-      )
-      .unwrap_err(),
-      JSONError::ParseOperationJsonError("provided string was not `true` or `false`".to_string())
-    );
-    assert_eq!(
-      deserialize_brc20(
-        r#"{"p":"brc-20","op":"deploy","tick":"abcd","max":"12000","lim":"12","dec":"11","self_mint":"t"}"#
-      )
-      .unwrap_err(),
-      JSONError::ParseOperationJsonError("provided string was not `true` or `false`".to_string())
-    );
-    assert_eq!(
-      deserialize_brc20(
-        r#"{"p":"brc-20","op":"deploy","tick":"abcd","max":"12000","lim":"12","dec":"11","self_mint":true}"#
-      )
-      .unwrap_err(),
-      JSONError::ParseOperationJsonError("invalid type: boolean `true`, expected a string".to_string())
-    );
   }
 
   #[test]
