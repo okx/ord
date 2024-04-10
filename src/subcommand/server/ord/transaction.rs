@@ -202,10 +202,12 @@ pub(crate) async fn ord_block_inscriptions(
       )?;
       api_tx_operations.push(tx_inscription);
     }
-    api_block_operations.push(ApiTxInscriptions {
-      inscriptions: api_tx_operations,
-      txid: txid.to_string(),
-    });
+    if !api_tx_operations.is_empty() {
+      api_block_operations.push(ApiTxInscriptions {
+        inscriptions: api_tx_operations,
+        txid: txid.to_string(),
+      });
+    }
   }
 
   Ok(Json(ApiResponse::ok(ApiBlockInscriptions {

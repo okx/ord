@@ -382,6 +382,7 @@ pub(crate) async fn brc20_block_events(
         txid: txid.to_string(),
         events: events.into_iter().map(|e| e.into()).collect(),
       })
+      .filter(|e| !e.events.is_empty())
       .collect(),
   })))
 }
