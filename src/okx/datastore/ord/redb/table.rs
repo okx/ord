@@ -109,12 +109,14 @@ pub fn add_inscription_attributes(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::index::{COLLECTIONS_INSCRIPTION_ID_TO_KINDS, ORD_TX_TO_OPERATIONS};
-  use crate::okx::datastore::ord::redb::table::{
-    get_transaction_operations, save_transaction_operations,
+  use crate::{
+    index::{COLLECTIONS_INSCRIPTION_ID_TO_KINDS, ORD_TX_TO_OPERATIONS},
+    okx::datastore::ord::{
+      redb::table::{get_transaction_operations, save_transaction_operations},
+      Action, InscriptionOp,
+    },
+    Inscription, SatPoint,
   };
-  use crate::okx::datastore::ord::InscriptionOp;
-  use crate::{inscription, okx::datastore::ord::Action, SatPoint};
   use redb::Database;
   use std::str::FromStr;
   use tempfile::NamedTempFile;
@@ -165,7 +167,7 @@ mod tests {
         unbound: false,
         vindicated: false,
         parent: None,
-        inscription: inscription("text/plain;charset=utf-8", "foobar"),
+        inscription: Inscription::default(),
       },
       sequence_number: 100,
       inscription_number: Some(100),

@@ -26,6 +26,7 @@ pub struct Inscription {
   pub metaprotocol: Option<Vec<u8>>,
   pub parent: Option<Vec<u8>>,
   pub pointer: Option<Vec<u8>>,
+  pub rune: Option<Vec<u8>>,
   pub unrecognized_even_field: bool,
 }
 
@@ -128,13 +129,14 @@ impl Inscription {
       .push_opcode(opcodes::all::OP_IF)
       .push_slice(envelope::PROTOCOL_ID);
 
-    Tag::ContentType.encode(&mut builder, &self.content_type);
-    Tag::ContentEncoding.encode(&mut builder, &self.content_encoding);
-    Tag::Metaprotocol.encode(&mut builder, &self.metaprotocol);
-    Tag::Parent.encode(&mut builder, &self.parent);
-    Tag::Delegate.encode(&mut builder, &self.delegate);
-    Tag::Pointer.encode(&mut builder, &self.pointer);
-    Tag::Metadata.encode(&mut builder, &self.metadata);
+    Tag::ContentType.append(&mut builder, &self.content_type);
+    Tag::ContentEncoding.append(&mut builder, &self.content_encoding);
+    Tag::Metaprotocol.append(&mut builder, &self.metaprotocol);
+    Tag::Parent.append(&mut builder, &self.parent);
+    Tag::Delegate.append(&mut builder, &self.delegate);
+    Tag::Pointer.append(&mut builder, &self.pointer);
+    Tag::Metadata.append(&mut builder, &self.metadata);
+    Tag::Rune.append(&mut builder, &self.rune);
 
     if let Some(body) = &self.body {
       builder = builder.push_slice(envelope::BODY_TAG);

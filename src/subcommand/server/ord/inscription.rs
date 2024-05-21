@@ -38,6 +38,8 @@ pub struct ApiInscription {
   pub parent: Option<InscriptionId>,
   /// The delegate inscription id of the inscription.
   pub delegate: Option<InscriptionId>,
+  /// Rune tag of the inscription.
+  pub rune: Option<Rune>,
   /// The inscription pointer.
   pub pointer: Option<u64>,
   /// The inscription owner.
@@ -197,6 +199,17 @@ fn ord_get_inscription_by_id(
     parent: parent_inscription_id,
     pointer: inscription.pointer(),
     delegate: inscription.delegate(),
+    rune: inscription.rune.and_then(|bytes| {
+      let mut arr = [0u8; 16];
+      if bytes.len() <= std::mem::size_of::<u128>() {
+        for (place, element) in bytes.into_iter().enumerate() {
+          arr[place] = element;
+        }
+        Some(Rune(u128::from_le_bytes(arr)))
+      } else {
+        None
+      }
+    }),
     owner: output.map(|vout| ScriptKey::from_script(&vout.script_pubkey, chain).into()),
     genesis_height: inscription_entry.height,
     genesis_timestamp: inscription_entry.timestamp,
@@ -282,6 +295,7 @@ mod tests {
         txid: txid(1),
         index: 0xFFFFFFFD,
       }),
+      rune: Some(Rune(0)),
       pointer: Some(0),
       owner: Some(
         ScriptKey::from_script(
@@ -323,6 +337,7 @@ mod tests {
   "metaprotocol": "mata_protocol",
   "parent": "1111111111111111111111111111111111111111111111111111111111111111i4294967294",
   "delegate": "1111111111111111111111111111111111111111111111111111111111111111i4294967293",
+  "rune": "A",
   "pointer": 0,
   "owner": {
     "address": "bc1qhvd6suvqzjcu9pxjhrwhtrlj85ny3n2mqql5w4"
@@ -354,6 +369,7 @@ mod tests {
   "metaprotocol": "mata_protocol",
   "parent": "1111111111111111111111111111111111111111111111111111111111111111i4294967294",
   "delegate": "1111111111111111111111111111111111111111111111111111111111111111i4294967293",
+  "rune": "A",
   "pointer": 0,
   "owner": null,
   "genesisHeight": 1,

@@ -120,27 +120,42 @@ impl Display for Rune {
 }
 
 impl FromStr for Rune {
-  type Err = crate::Error;
+  type Err = Error;
 
-  fn from_str(s: &str) -> crate::Result<Self> {
+  fn from_str(s: &str) -> Result<Self, Error> {
     let mut x = 0u128;
     for (i, c) in s.chars().enumerate() {
       if i > 0 {
-        x += 1;
+        x = x.checked_add(1).ok_or(Error::Range)?;
       }
-      x = x.checked_mul(26).ok_or_else(|| anyhow!("out of range"))?;
+      x = x.checked_mul(26).ok_or(Error::Range)?;
       match c {
         'A'..='Z' => {
-          x = x
-            .checked_add(c as u128 - 'A' as u128)
-            .ok_or_else(|| anyhow!("out of range"))?;
+          x = x.checked_add(c as u128 - 'A' as u128).ok_or(Error::Range)?;
         }
-        _ => bail!("invalid character in rune name: {c}"),
+        _ => return Err(Error::Character(c)),
       }
     }
     Ok(Rune(x))
   }
 }
+
+#[derive(Debug, PartialEq)]
+pub enum Error {
+  Character(char),
+  Range,
+}
+
+impl Display for Error {
+  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    match self {
+      Self::Character(c) => write!(f, "invalid character `{c}`"),
+      Self::Range => write!(f, "name out of range"),
+    }
+  }
+}
+
+impl std::error::Error for Error {}
 
 #[cfg(test)]
 mod tests {
@@ -183,14 +198,22 @@ mod tests {
     case(27, "AB");
     case(51, "AZ");
     case(52, "BA");
-    case(u128::max_value() - 2, "BCGDENLQRQWDSLRUGSNLBTMFIJAT");
-    case(u128::max_value() - 1, "BCGDENLQRQWDSLRUGSNLBTMFIJAU");
-    case(u128::max_value(), "BCGDENLQRQWDSLRUGSNLBTMFIJAV");
+    case(u128::MAX - 2, "BCGDENLQRQWDSLRUGSNLBTMFIJAT");
+    case(u128::MAX - 1, "BCGDENLQRQWDSLRUGSNLBTMFIJAU");
+    case(u128::MAX, "BCGDENLQRQWDSLRUGSNLBTMFIJAV");
   }
 
   #[test]
-  fn from_str_out_of_range() {
-    "BCGDENLQRQWDSLRUGSNLBTMFIJAW".parse::<Rune>().unwrap_err();
+  fn from_str_error() {
+    assert_eq!(
+      "BCGDENLQRQWDSLRUGSNLBTMFIJAW".parse::<Rune>().unwrap_err(),
+      Error::Range,
+    );
+    assert_eq!(
+      "BCGDENLQRQWDSLRUGSNLBTMFIJAVX".parse::<Rune>().unwrap_err(),
+      Error::Range,
+    );
+    assert_eq!("x".parse::<Rune>().unwrap_err(), Error::Character('x'));
   }
 
   #[test]
