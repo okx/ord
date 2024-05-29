@@ -1,7 +1,7 @@
 use {super::*, crate::okx::datastore::brc20::Tick, axum::Json, utoipa::ToSchema};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-#[schema(as = brc20::TransferableAsset)]
+#[schema(as = brc20::ApiTransferableAsset)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiTransferableAsset {
   /// The inscription id.
@@ -16,6 +16,7 @@ pub struct ApiTransferableAsset {
   /// The address to which the transfer will be made.
   pub owner: String,
   /// The inscription location.
+  #[schema(value_type = String)]
   pub location: SatPoint,
 }
 
@@ -30,7 +31,7 @@ pub struct ApiTransferableAsset {
       ("address" = String, Path, description = "Address")
 ),
   responses(
-    (status = 200, description = "Obtain account transferable inscriptions of ticker.", body = BRC20Transferable),
+    (status = 200, description = "Obtain account transferable inscriptions of ticker.", body = ApiBRC20Transferable),
     (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
     (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
     (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
@@ -81,7 +82,7 @@ pub(crate) async fn brc20_transferable(
 #[schema(as = brc20::ApiTransferableAssets)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiTransferableAssets {
-  #[schema(value_type = Vec<brc20::brc20::TransferableAsset>)]
+  #[schema(value_type = Vec<brc20::ApiTransferableAsset>)]
   pub inscriptions: Vec<brc20::ApiTransferableAsset>,
 }
 
@@ -95,7 +96,7 @@ pub struct ApiTransferableAssets {
       ("address" = String, Path, description = "Address")
 ),
   responses(
-    (status = 200, description = "Obtain account all transferable inscriptions.", body = BRC20Transferable),
+    (status = 200, description = "Obtain account all transferable inscriptions.", body = ApiBRC20Transferable),
     (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
     (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
     (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),

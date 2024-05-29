@@ -29,16 +29,20 @@ pub struct ApiInscription {
   /// The inscription content body length.
   pub content_length: Option<usize>,
   /// Decode the content encoding if the message has a content encoding tag.
+  #[schema(value_type = ord::ApiContentEncoding)]
   pub content_encoding: Option<ApiContentEncoding>,
   /// The inscription metadata.
   pub metadata: Option<String>,
   /// The inscription metaprotocol.
   pub metaprotocol: Option<String>,
   /// The inscription parent inscription id.
+  #[schema(value_type = Option<String>)]
   pub parent: Option<InscriptionId>,
   /// The delegate inscription id of the inscription.
+  #[schema(value_type = Option<String>)]
   pub delegate: Option<InscriptionId>,
   /// Rune tag of the inscription.
+  #[schema(value_type = Option<String>)]
   pub rune: Option<Rune>,
   /// The inscription pointer.
   pub pointer: Option<u64>,
@@ -69,7 +73,7 @@ pub struct ApiInscription {
       ("id" = String, Path, description = "inscription ID")
 ),
   responses(
-    (status = 200, description = "Obtain inscription infomation.", body = OrdOrdInscription),
+    (status = 200, description = "Obtain inscription infomation.", body = ApiOrdInscription),
     (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
     (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
     (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
@@ -100,7 +104,7 @@ pub(crate) async fn ord_inscription_id(
       ("number" = i64, Path, description = "inscription number")
 ),
   responses(
-    (status = 200, description = "Obtain inscription infomation.", body = OrdOrdInscription),
+    (status = 200, description = "Obtain inscription infomation.", body = ApiOrdInscription),
     (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
     (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
     (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),

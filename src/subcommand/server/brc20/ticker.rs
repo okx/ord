@@ -6,7 +6,7 @@ use {
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(as = brc20::TickInfo)]
+#[schema(as = brc20::ApiTickInfo)]
 #[serde(rename_all = "camelCase")]
 /// Description of a BRC20 ticker.
 pub struct ApiTickInfo {
@@ -87,7 +87,7 @@ impl From<TokenInfo> for ApiTickInfo {
       ("ticker" = String, Path, description = "Token ticker", min_length = 4, max_length = 4)
   ),
     responses(
-      (status = 200, description = "Obtain matching BRC20 ticker by query.", body = BRC20Tick),
+      (status = 200, description = "Obtain matching BRC20 ticker by query.", body = ApiBRC20Tick),
       (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
       (status = 404, description = "Ticker not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
       (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
@@ -112,10 +112,10 @@ pub(crate) async fn brc20_tick_info(
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(as = brc20::AllTickInfo)]
+#[schema(as = brc20::ApiTickInfos)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiTickInfos {
-  #[schema(value_type = Vec<brc20::TickInfo>)]
+  #[schema(value_type = Vec<brc20::ApiTickInfo>)]
   pub tokens: Vec<ApiTickInfo>,
 }
 
@@ -126,7 +126,7 @@ pub struct ApiTickInfos {
     get,
     path = "/api/v1/brc20/tick",
     responses(
-      (status = 200, description = "Obtain matching all BRC20 tickers.", body = BRC20AllTick),
+      (status = 200, description = "Obtain matching all BRC20 tickers.", body = ApiBRC20AllTick),
       (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
       (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
       (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),

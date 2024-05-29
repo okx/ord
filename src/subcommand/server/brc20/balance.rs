@@ -2,7 +2,7 @@ use {super::*, crate::okx::datastore::brc20::Tick, axum::Json, utoipa::ToSchema}
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[schema(as = brc20::Balance)]
+#[schema(as = brc20::ApiBalance)]
 pub struct ApiBalance {
   /// Name of the ticker.
   pub tick: String,
@@ -28,7 +28,7 @@ pub struct ApiBalance {
         ("address" = String, Path, description = "Address")
   ),
     responses(
-      (status = 200, description = "Obtain account balance by query ticker.", body = BRC20Balance),
+      (status = 200, description = "Obtain account balance by query ticker.", body = ApiBRC20Balance),
       (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
       (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
       (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
@@ -64,9 +64,9 @@ pub(crate) async fn brc20_balance(
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[schema(as = brc20::AllBalance)]
+#[schema(as = brc20::ApiBalances)]
 pub struct ApiBalances {
-  #[schema(value_type = Vec<brc20::Balance>)]
+  #[schema(value_type = Vec<brc20::ApiBalance>)]
   pub balance: Vec<ApiBalance>,
 }
 
@@ -80,7 +80,7 @@ pub struct ApiBalances {
         ("address" = String, Path, description = "Address")
   ),
     responses(
-      (status = 200, description = "Obtain account balances by query address.", body = BRC20AllBalance),
+      (status = 200, description = "Obtain account balances by query address.", body = ApiBRC20AllBalance),
       (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
       (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
       (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),

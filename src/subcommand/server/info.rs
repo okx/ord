@@ -49,10 +49,10 @@ pub struct NodeInfoQuery {
     get,
     path = "/api/v1/node/info",
     params(
-        NodeInfoQuery
-  ),
+      ("btc" = Option<bool>, Query, description = "Query the BTC chain status.")
+    ),
     responses(
-      (status = 200, description = "Obtain node runtime status.", body = Node),
+      (status = 200, description = "Obtain node runtime status.", body = ApiNode),
       (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
     )
   )]

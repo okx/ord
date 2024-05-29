@@ -4,7 +4,7 @@ use {
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(as = brc20::TxEvent)]
+#[schema(as = brc20::ApiTxEvent)]
 #[serde(untagged)]
 #[serde(rename_all = "camelCase")]
 pub enum ApiTxEvent {
@@ -287,10 +287,10 @@ impl ApiTransferEvent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(as = brc20::TxEvents)]
+#[schema(as = brc20::ApiTxEvents)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiTxEvents {
-  #[schema(value_type = Vec<brc20::TxEvent>)]
+  #[schema(value_type = Vec<brc20::ApiTxEvent>)]
   pub events: Vec<ApiTxEvent>,
   pub txid: String,
 }
@@ -305,7 +305,7 @@ pub struct ApiTxEvents {
         ("txid" = String, Path, description = "transaction ID")
   ),
     responses(
-      (status = 200, description = "Obtain transaction events by txid", body = BRC20TxEvents),
+      (status = 200, description = "Obtain transaction events by txid", body = ApiBRC20TxEvents),
       (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
       (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
       (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
@@ -333,10 +333,10 @@ pub(crate) async fn brc20_tx_events(
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-#[schema(as = brc20::BlockEvents)]
+#[schema(as = brc20::ApiBlockEvents)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiBlockEvents {
-  #[schema(value_type = Vec<brc20::TxEvents>)]
+  #[schema(value_type = Vec<brc20::ApiTxEvents>)]
   pub block: Vec<ApiTxEvents>,
 }
 
@@ -350,7 +350,7 @@ pub struct ApiBlockEvents {
         ("blockhash" = String, Path, description = "block hash")
   ),
     responses(
-      (status = 200, description = "Obtain block events by block hash", body = BRC20BlockEvents),
+      (status = 200, description = "Obtain block events by block hash", body = ApiBRC20BlockEvents),
       (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
       (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
       (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),

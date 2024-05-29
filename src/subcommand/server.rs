@@ -210,6 +210,7 @@ impl Server {
       brc20::brc20_tx_events,
       brc20::brc20_block_events,
       brc20::brc20_transferable,
+      brc20::brc20_outpoint,
       brc20::brc20_all_transferable,
 
       ord::ord_inscription_id,
@@ -226,6 +227,7 @@ impl Server {
       brc20::ApiTickInfos,
       brc20::ApiBalance,
       brc20::ApiBalances,
+      brc20::ApiOutPointResult,
       brc20::ApiTxEvent,
       brc20::ApiDeployEvent,
       brc20::ApiMintEvent,
@@ -242,6 +244,7 @@ impl Server {
       response::ApiBRC20AllTick,
       response::ApiBRC20Balance,
       response::ApiBRC20AllBalance,
+      response::ApiBRC20OutPointResult,
       response::ApiBRC20TxEvents,
       response::ApiBRC20BlockEvents,
       response::ApiBRC20Transferable,
@@ -262,12 +265,13 @@ impl Server {
       response::ApiOrdTxInscriptions,
       response::ApiOrdBlockInscriptions,
       response::ApiOrdOutPointResult,
+      response::ApiOrdOutPointData,
 
       // Node Info schemas
       info::NodeInfo,
       info::ChainInfo,
       types::ScriptPubkey,
-      response::Node,
+      response::ApiNode,
       ApiError
       ))
       )]

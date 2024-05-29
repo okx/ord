@@ -1,13 +1,16 @@
 use {super::*, utoipa::ToSchema};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
-#[schema(as = ord::ApiOutPointResult)]
+#[schema(as = brc20::ApiOutPointResult)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiOutPointResult {
   #[schema(value_type = Option<brc20::ApiTransferableAssets>)]
+  /// The Tansferable assets on the outpoint.
   pub result: Option<Vec<ApiTransferableAsset>>,
+  /// The latest block hash.
   pub latest_blockhash: String,
   #[schema(format = "uint64")]
+  /// The latest block height.
   pub latest_height: u32,
 }
 
@@ -20,7 +23,7 @@ pub struct ApiOutPointResult {
       ("outpoint" = String, Path, description = "Outpoint")
 ),
   responses(
-    (status = 200, description = "Obtain outpoint infomation", body = OrdOutPointData),
+    (status = 200, description = "Obtain outpoint infomation", body = ApiBRC20OutPointResult),
     (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
     (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
     (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),

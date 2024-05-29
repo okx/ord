@@ -8,6 +8,7 @@ use {
   ApiBRC20AllTick = ApiResponse<brc20::ApiTickInfos>,
   ApiBRC20Balance = ApiResponse<brc20::ApiBalance>,
   ApiBRC20AllBalance = ApiResponse<brc20::ApiBalances>,
+  ApiBRC20OutPointResult = ApiResponse<brc20::ApiOutPointResult>,
   ApiBRC20TxEvents = ApiResponse<brc20::ApiTxEvents>,
   ApiBRC20BlockEvents = ApiResponse<brc20::ApiBlockEvents>,
   ApiBRC20Transferable = ApiResponse<brc20::ApiTransferableAssets>,
@@ -18,7 +19,7 @@ use {
   ApiOrdTxInscriptions = ApiResponse<ord::ApiTxInscriptions>,
   ApiOrdBlockInscriptions = ApiResponse<ord::ApiBlockInscriptions>,
 
-  Node = ApiResponse<NodeInfo>
+  ApiNode = ApiResponse<NodeInfo>
 )]
 pub(crate) struct ApiResponse<T: Serialize> {
   pub code: i32,

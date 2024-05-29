@@ -6,7 +6,7 @@
     "license": {
       "name": "CC0-1.0"
     },
-    "version": "0.14.0"
+    "version": "0.14.1"
   },
   "paths": {
     "/api/v1/brc20/address/{address}/balance": {
@@ -34,7 +34,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BRC20AllBalance"
+                  "$ref": "#/components/schemas/ApiBRC20AllBalance"
                 }
               }
             }
@@ -109,7 +109,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BRC20Transferable"
+                  "$ref": "#/components/schemas/ApiBRC20Transferable"
                 }
               }
             }
@@ -184,7 +184,82 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BRC20BlockEvents"
+                  "$ref": "#/components/schemas/ApiBRC20BlockEvents"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 2,
+                  "msg": "bad request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 3,
+                  "msg": "not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "example": {
+                  "code": 1,
+                  "msg": "internal error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/brc20/outpoint/{outpoint}/transferable": {
+      "get": {
+        "tags": [
+          "brc20"
+        ],
+        "summary": "Retrieve the outpoint brc20 transferable assets with the specified outpoint.",
+        "description": "Retrieve the outpoint brc20 transferable assets with the specified outpoint.",
+        "operationId": "brc20_outpoint",
+        "parameters": [
+          {
+            "name": "outpoint",
+            "in": "path",
+            "description": "Outpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Obtain outpoint infomation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiBRC20OutPointResult"
                 }
               }
             }
@@ -248,7 +323,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BRC20AllTick"
+                  "$ref": "#/components/schemas/ApiBRC20AllTick"
                 }
               }
             }
@@ -325,7 +400,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BRC20Tick"
+                  "$ref": "#/components/schemas/ApiBRC20Tick"
                 }
               }
             }
@@ -339,7 +414,7 @@
                 },
                 "example": {
                   "code": 2,
-                  "msg": "ticker must be 4 bytes length"
+                  "msg": "bad request"
                 }
               }
             }
@@ -353,7 +428,7 @@
                 },
                 "example": {
                   "code": 3,
-                  "msg": "tick not found"
+                  "msg": "not found"
                 }
               }
             }
@@ -411,7 +486,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BRC20Balance"
+                  "$ref": "#/components/schemas/ApiBRC20Balance"
                 }
               }
             }
@@ -497,7 +572,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BRC20Transferable"
+                  "$ref": "#/components/schemas/ApiBRC20Transferable"
                 }
               }
             }
@@ -572,7 +647,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BRC20TxEvents"
+                  "$ref": "#/components/schemas/ApiBRC20TxEvents"
                 }
               }
             }
@@ -633,9 +708,9 @@
         "parameters": [
           {
             "name": "btc",
-            "in": "path",
-            "description": "Optional to query the BTC chain status.",
-            "required": true,
+            "in": "query",
+            "description": "Query the BTC chain status.",
+            "required": false,
             "schema": {
               "type": "boolean",
               "nullable": true
@@ -648,7 +723,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Node"
+                  "$ref": "#/components/schemas/ApiNode"
                 }
               }
             }
@@ -695,7 +770,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrdBlockInscriptions"
+                  "$ref": "#/components/schemas/ApiOrdBlockInscriptions"
                 }
               }
             }
@@ -770,7 +845,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrdOrdInscription"
+                  "$ref": "#/components/schemas/ApiOrdInscription"
                 }
               }
             }
@@ -846,7 +921,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrdOrdInscription"
+                  "$ref": "#/components/schemas/ApiOrdInscription"
                 }
               }
             }
@@ -921,7 +996,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrdOutPointData"
+                  "$ref": "#/components/schemas/ApiOrdOutPointData"
                 }
               }
             }
@@ -996,7 +1071,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrdTxInscriptions"
+                  "$ref": "#/components/schemas/ApiOrdTxInscriptions"
                 }
               }
             }
@@ -1049,6 +1124,182 @@
   },
   "components": {
     "schemas": {
+      "ApiBRC20AllBalance": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.ApiBalances"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiBRC20AllTick": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.ApiTickInfos"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiBRC20Balance": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.ApiBalance"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiBRC20BlockEvents": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.ApiBlockEvents"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiBRC20OutPointResult": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.ApiOutPointResult"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiBRC20Tick": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.ApiTickInfo"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiBRC20Transferable": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.ApiTransferableAssets"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiBRC20TxEvents": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/brc20.ApiTxEvents"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
       "ApiError": {
         "oneOf": [
           {
@@ -1101,185 +1352,7 @@
           }
         ]
       },
-      "BRC20AllBalance": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/brc20.AllBalance"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "BRC20AllTick": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/brc20.AllTickInfo"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "BRC20Balance": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/brc20.Balance"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "BRC20BlockEvents": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/brc20.BlockEvents"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "BRC20Tick": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/brc20.TickInfo"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "BRC20Transferable": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/brc20.TransferableInscriptions"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "BRC20TxEvents": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/brc20.TxEvents"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "ChainInfo": {
-        "type": "object",
-        "properties": {
-          "chainHeight": {
-            "type": "integer",
-            "format": "uint64",
-            "description": "The height of the blockchain.",
-            "nullable": true,
-            "minimum": 0
-          },
-          "network": {
-            "type": "string",
-            "description": "The network of the blockchain.",
-            "nullable": true
-          },
-          "ordHeight": {
-            "type": "integer",
-            "format": "uint64",
-            "description": "The height of our indexer.",
-            "nullable": true,
-            "minimum": 0
-          }
-        }
-      },
-      "Node": {
+      "ApiNode": {
         "type": "object",
         "required": [
           "code",
@@ -1298,6 +1371,152 @@
             "type": "string",
             "description": "ok",
             "example": "ok"
+          }
+        }
+      },
+      "ApiOrdBlockInscriptions": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.ApiBlockInscriptions"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiOrdInscription": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.ApiInscription"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiOrdOutPointData": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.ApiOutpointInscriptions"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiOrdOutPointResult": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.ApiOutPointResult"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ApiOrdTxInscriptions": {
+        "type": "object",
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ord.ApiTxInscriptions"
+          },
+          "msg": {
+            "type": "string",
+            "description": "ok",
+            "example": "ok"
+          }
+        }
+      },
+      "ChainInfo": {
+        "type": "object",
+        "required": [
+          "ordBlockHeight",
+          "ordBlockHash"
+        ],
+        "properties": {
+          "chainBlockHash": {
+            "type": "string",
+            "description": "The chain block hash of the blockchain.",
+            "nullable": true
+          },
+          "chainBlockHeight": {
+            "type": "integer",
+            "format": "uint64",
+            "description": "The chain block height of the blockchain.",
+            "nullable": true,
+            "minimum": 0
+          },
+          "network": {
+            "type": "string",
+            "description": "The network of the blockchain.",
+            "nullable": true
+          },
+          "ordBlockHash": {
+            "type": "string",
+            "description": "The block hash of our indexer."
+          },
+          "ordBlockHeight": {
+            "type": "integer",
+            "format": "uint32",
+            "description": "The block height of our indexer.",
+            "minimum": 0
           }
         }
       },
@@ -1332,116 +1551,6 @@
           }
         }
       },
-      "OrdBlockInscriptions": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ord.BlockInscriptions"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "OrdOrdInscription": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ord.OrdInscription"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "OrdOutPointData": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ord.OutPointData"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "OrdOutPointResult": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ord.OutPointResult"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
-      "OrdTxInscriptions": {
-        "type": "object",
-        "required": [
-          "code",
-          "msg",
-          "data"
-        ],
-        "properties": {
-          "code": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "data": {
-            "$ref": "#/components/schemas/ord.TxInscriptions"
-          },
-          "msg": {
-            "type": "string",
-            "description": "ok",
-            "example": "ok"
-          }
-        }
-      },
       "ScriptPubkey": {
         "oneOf": [
           {
@@ -1470,35 +1579,7 @@
           }
         ]
       },
-      "brc20.AllBalance": {
-        "type": "object",
-        "required": [
-          "balance"
-        ],
-        "properties": {
-          "balance": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/brc20.Balance"
-            }
-          }
-        }
-      },
-      "brc20.AllTickInfo": {
-        "type": "object",
-        "required": [
-          "tokens"
-        ],
-        "properties": {
-          "tokens": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/brc20.TickInfo"
-            }
-          }
-        }
-      },
-      "brc20.Balance": {
+      "brc20.ApiBalance": {
         "type": "object",
         "required": [
           "tick",
@@ -1528,7 +1609,21 @@
           }
         }
       },
-      "brc20.BlockEvents": {
+      "brc20.ApiBalances": {
+        "type": "object",
+        "required": [
+          "balance"
+        ],
+        "properties": {
+          "balance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/brc20.ApiBalance"
+            }
+          }
+        }
+      },
+      "brc20.ApiBlockEvents": {
         "type": "object",
         "required": [
           "block"
@@ -1537,12 +1632,12 @@
           "block": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/brc20.TxEvents"
+              "$ref": "#/components/schemas/brc20.ApiTxEvents"
             }
           }
         }
       },
-      "brc20.DeployEvent": {
+      "brc20.ApiDeployEvent": {
         "type": "object",
         "required": [
           "type",
@@ -1554,6 +1649,7 @@
           "supply",
           "limitPerMint",
           "decimal",
+          "selfMint",
           "from",
           "to",
           "valid",
@@ -1594,6 +1690,10 @@
             "type": "string",
             "description": "The inscription satpoint of the transaction input."
           },
+          "selfMint": {
+            "type": "boolean",
+            "description": "Whether the ticker is self minted."
+          },
           "supply": {
             "type": "string",
             "description": "The total supply of the deployed ticker."
@@ -1615,7 +1715,7 @@
           }
         }
       },
-      "brc20.ErrorEvent": {
+      "brc20.ApiErrorEvent": {
         "type": "object",
         "required": [
           "type",
@@ -1666,7 +1766,7 @@
           }
         }
       },
-      "brc20.InscribeTransferEvent": {
+      "brc20.ApiInscribeTransferEvent": {
         "type": "object",
         "required": [
           "type",
@@ -1727,7 +1827,7 @@
           }
         }
       },
-      "brc20.MintEvent": {
+      "brc20.ApiMintEvent": {
         "type": "object",
         "required": [
           "type",
@@ -1788,7 +1888,34 @@
           }
         }
       },
-      "brc20.TickInfo": {
+      "brc20.ApiOutPointResult": {
+        "type": "object",
+        "required": [
+          "latestBlockhash",
+          "latestHeight"
+        ],
+        "properties": {
+          "latestBlockhash": {
+            "type": "string",
+            "description": "The latest block hash."
+          },
+          "latestHeight": {
+            "type": "integer",
+            "format": "uint64",
+            "description": "The latest block height.",
+            "minimum": 0
+          },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/brc20.ApiTransferableAssets"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "brc20.ApiTickInfo": {
         "type": "object",
         "description": "Description of a BRC20 ticker.",
         "required": [
@@ -1796,6 +1923,8 @@
           "inscriptionId",
           "inscriptionNumber",
           "supply",
+          "burnedSupply",
+          "selfMint",
           "limitPerMint",
           "minted",
           "decimal",
@@ -1805,6 +1934,11 @@
           "deployBlocktime"
         ],
         "properties": {
+          "burnedSupply": {
+            "type": "string",
+            "format": "uint64",
+            "description": "The amount of the ticker that has been burned."
+          },
           "decimal": {
             "type": "integer",
             "format": "uint8",
@@ -1848,6 +1982,10 @@
             "format": "uint64",
             "description": "The amount of the ticker that has been minted."
           },
+          "selfMint": {
+            "type": "boolean",
+            "description": "Whether the ticker is self minted."
+          },
           "supply": {
             "type": "string",
             "format": "uint64",
@@ -1863,7 +2001,21 @@
           }
         }
       },
-      "brc20.TransferEvent": {
+      "brc20.ApiTickInfos": {
+        "type": "object",
+        "required": [
+          "tokens"
+        ],
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/brc20.ApiTickInfo"
+            }
+          }
+        }
+      },
+      "brc20.ApiTransferEvent": {
         "type": "object",
         "required": [
           "type",
@@ -1924,14 +2076,15 @@
           }
         }
       },
-      "brc20.TransferableInscription": {
+      "brc20.ApiTransferableAsset": {
         "type": "object",
         "required": [
           "inscriptionId",
           "inscriptionNumber",
           "amount",
           "tick",
-          "owner"
+          "owner",
+          "location"
         ],
         "properties": {
           "amount": {
@@ -1948,6 +2101,10 @@
             "format": "int32",
             "description": "The inscription number."
           },
+          "location": {
+            "type": "string",
+            "description": "The inscription location."
+          },
           "owner": {
             "type": "string",
             "description": "The address to which the transfer will be made."
@@ -1958,7 +2115,7 @@
           }
         }
       },
-      "brc20.TransferableInscriptions": {
+      "brc20.ApiTransferableAssets": {
         "type": "object",
         "required": [
           "inscriptions"
@@ -1967,31 +2124,31 @@
           "inscriptions": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/brc20.TransferableInscription"
+              "$ref": "#/components/schemas/brc20.ApiTransferableAsset"
             }
           }
         }
       },
-      "brc20.TxEvent": {
+      "brc20.ApiTxEvent": {
         "oneOf": [
           {
-            "$ref": "#/components/schemas/brc20.DeployEvent"
+            "$ref": "#/components/schemas/brc20.ApiDeployEvent"
           },
           {
-            "$ref": "#/components/schemas/brc20.MintEvent"
+            "$ref": "#/components/schemas/brc20.ApiMintEvent"
           },
           {
-            "$ref": "#/components/schemas/brc20.InscribeTransferEvent"
+            "$ref": "#/components/schemas/brc20.ApiInscribeTransferEvent"
           },
           {
-            "$ref": "#/components/schemas/brc20.TransferEvent"
+            "$ref": "#/components/schemas/brc20.ApiTransferEvent"
           },
           {
-            "$ref": "#/components/schemas/brc20.ErrorEvent"
+            "$ref": "#/components/schemas/brc20.ApiErrorEvent"
           }
         ]
       },
-      "brc20.TxEvents": {
+      "brc20.ApiTxEvents": {
         "type": "object",
         "required": [
           "events",
@@ -2001,7 +2158,7 @@
           "events": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/brc20.TxEvent"
+              "$ref": "#/components/schemas/brc20.ApiTxEvent"
             }
           },
           "txid": {
@@ -2009,7 +2166,7 @@
           }
         }
       },
-      "ord.BlockInscriptions": {
+      "ord.ApiBlockInscriptions": {
         "type": "object",
         "required": [
           "block"
@@ -2018,12 +2175,171 @@
           "block": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ord.TxInscriptions"
+              "$ref": "#/components/schemas/ord.ApiTxInscriptions"
             }
           }
         }
       },
-      "ord.InscriptionAction": {
+      "ord.ApiContentEncoding": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "decode",
+              "type"
+            ],
+            "properties": {
+              "decode": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "br"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "unknown"
+                ]
+              }
+            }
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type"
+        }
+      },
+      "ord.ApiInscription": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "contentEncoding",
+          "genesisHeight",
+          "genesisTimestamp",
+          "location",
+          "collections",
+          "charms"
+        ],
+        "properties": {
+          "charms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Charms of Inscriptions."
+          },
+          "collections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Collections of Inscriptions."
+          },
+          "content": {
+            "type": "string",
+            "description": "The inscription content body.",
+            "nullable": true
+          },
+          "contentEncoding": {
+            "$ref": "#/components/schemas/ord.ApiContentEncoding"
+          },
+          "contentLength": {
+            "type": "integer",
+            "description": "The inscription content body length.",
+            "nullable": true,
+            "minimum": 0
+          },
+          "contentType": {
+            "type": "string",
+            "description": "The inscription content type.",
+            "nullable": true
+          },
+          "delegate": {
+            "type": "string",
+            "description": "The delegate inscription id of the inscription.",
+            "nullable": true
+          },
+          "genesisHeight": {
+            "type": "integer",
+            "format": "uint32",
+            "description": "The inscription genesis block height.",
+            "minimum": 0
+          },
+          "genesisTimestamp": {
+            "type": "integer",
+            "format": "uint32",
+            "description": "The inscription genesis timestamp.",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "description": "The inscription id."
+          },
+          "location": {
+            "type": "string",
+            "description": "The inscription location."
+          },
+          "metadata": {
+            "type": "string",
+            "description": "The inscription metadata.",
+            "nullable": true
+          },
+          "metaprotocol": {
+            "type": "string",
+            "description": "The inscription metaprotocol.",
+            "nullable": true
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The inscription number."
+          },
+          "owner": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScriptPubkey"
+              }
+            ],
+            "nullable": true
+          },
+          "parent": {
+            "type": "string",
+            "description": "The inscription parent inscription id.",
+            "nullable": true
+          },
+          "pointer": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The inscription pointer.",
+            "nullable": true,
+            "minimum": 0
+          },
+          "rune": {
+            "type": "string",
+            "description": "Rune tag of the inscription.",
+            "nullable": true
+          },
+          "sat": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The inscription sat index.",
+            "nullable": true,
+            "minimum": 0
+          }
+        }
+      },
+      "ord.ApiInscriptionAction": {
         "oneOf": [
           {
             "type": "object",
@@ -2058,7 +2374,7 @@
           }
         ]
       },
-      "ord.InscriptionDigest": {
+      "ord.ApiInscriptionDigest": {
         "type": "object",
         "required": [
           "id",
@@ -2081,70 +2397,34 @@
           }
         }
       },
-      "ord.OrdInscription": {
+      "ord.ApiOutPointResult": {
         "type": "object",
         "required": [
-          "id",
-          "number",
-          "genesisHeight",
-          "location",
-          "collections"
+          "latestBlockhash",
+          "latestHeight"
         ],
         "properties": {
-          "collections": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Collections of Inscriptions."
-          },
-          "content": {
+          "latestBlockhash": {
             "type": "string",
-            "description": "The inscription content body.",
-            "nullable": true
+            "description": "The latest block hash."
           },
-          "contentType": {
-            "type": "string",
-            "description": "The inscription content type.",
-            "nullable": true
-          },
-          "genesisHeight": {
+          "latestHeight": {
             "type": "integer",
             "format": "uint64",
-            "description": "The inscription genesis block height.",
+            "description": "The latest block height.",
             "minimum": 0
           },
-          "id": {
-            "type": "string",
-            "description": "The inscription id."
-          },
-          "location": {
-            "type": "string",
-            "description": "The inscription location."
-          },
-          "number": {
-            "type": "integer",
-            "format": "int32",
-            "description": "The inscription number."
-          },
-          "owner": {
+          "result": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/ScriptPubkey"
+                "$ref": "#/components/schemas/ord.ApiOutpointInscriptions"
               }
             ],
             "nullable": true
-          },
-          "sat": {
-            "type": "integer",
-            "format": "int64",
-            "description": "The inscription sat index.",
-            "nullable": true,
-            "minimum": 0
           }
         }
       },
-      "ord.OutPointData": {
+      "ord.ApiOutpointInscriptions": {
         "type": "object",
         "required": [
           "txid",
@@ -2157,7 +2437,7 @@
           "inscriptionDigest": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ord.InscriptionDigest"
+              "$ref": "#/components/schemas/ord.ApiInscriptionDigest"
             },
             "description": "The inscriptions on the transaction output."
           },
@@ -2180,32 +2460,7 @@
           }
         }
       },
-      "ord.OutPointResult": {
-        "type": "object",
-        "required": [
-          "latestBlockhash",
-          "latestHeight"
-        ],
-        "properties": {
-          "latestBlockhash": {
-            "type": "string"
-          },
-          "latestHeight": {
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0
-          },
-          "result": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ord.OutPointData"
-              }
-            ],
-            "nullable": true
-          }
-        }
-      },
-      "ord.TxInscription": {
+      "ord.ApiTxInscription": {
         "type": "object",
         "required": [
           "action",
@@ -2215,7 +2470,7 @@
         ],
         "properties": {
           "action": {
-            "$ref": "#/components/schemas/ord.InscriptionAction"
+            "$ref": "#/components/schemas/ord.ApiInscriptionAction"
           },
           "from": {
             "$ref": "#/components/schemas/ScriptPubkey"
@@ -2249,7 +2504,7 @@
           }
         }
       },
-      "ord.TxInscriptions": {
+      "ord.ApiTxInscriptions": {
         "type": "object",
         "required": [
           "inscriptions",
@@ -2259,7 +2514,7 @@
           "inscriptions": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ord.TxInscription"
+              "$ref": "#/components/schemas/ord.ApiTxInscription"
             }
           },
           "txid": {

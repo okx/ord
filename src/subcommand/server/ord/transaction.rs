@@ -122,7 +122,7 @@ pub struct ApiBlockInscriptions {
       ("txid" = String, Path, description = "transaction ID")
 ),
   responses(
-    (status = 200, description = "Obtain inscription actions by txid", body = OrdTxInscriptions),
+    (status = 200, description = "Obtain inscription actions by txid", body = ApiOrdTxInscriptions),
     (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
     (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
     (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
@@ -169,7 +169,7 @@ pub(crate) async fn ord_txid_inscriptions(
       ("blockhash" = String, Path, description = "block hash")
 ),
   responses(
-    (status = 200, description = "Obtain inscription actions by blockhash", body = OrdBlockInscriptions),
+    (status = 200, description = "Obtain inscription actions by blockhash", body = ApiOrdBlockInscriptions),
     (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
     (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
     (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),

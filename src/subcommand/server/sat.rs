@@ -46,19 +46,18 @@ pub struct RaritySat {
 // /sat/outpoint/:outpoint/info
 /// Retrieve the sat range of the outpoint.
 #[utoipa::path(
-    get,
-    path = "/api/v1/sat/outpoint/{outpoint}/info",
-    params(
-        ("outpoint" = String, Path, description = "Outpoint")
+  get,
+  path = "/api/v1/sat/outpoint/{outpoint}/info",
+  params(
+    ("outpoint" = String, Path, description = "Outpoint")
   ),
-    responses(
-      (status = 200, description = "Obtain outpoint infomation", body = OrdOutPointData),
-      (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
-      (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
-      (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
-    )
-  )]
-
+  responses(
+    (status = 200, description = "Obtain outpoint infomation", body = APiOrdOutPointData),
+    (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
+    (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
+    (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
+  )
+)]
 pub(crate) async fn sat_range_by_outpoint(
   Extension(index): Extension<Arc<Index>>,
   Path(outpoint): Path<OutPoint>,
@@ -83,6 +82,21 @@ pub(crate) async fn sat_range_by_outpoint(
   })))
 }
 
+// /sat/outpoint/:outpoint/rarity
+/// Retrieve the sat range of the outpoint.
+#[utoipa::path(
+  get,
+  path = "/api/v1/sat/outpoint/{outpoint}/rarity",
+  params(
+    ("outpoint" = String, Path, description = "Outpoint")
+  ),
+  responses(
+    (status = 200, description = "Obtain outpoint infomation", body = APiOrdOutPointData),
+    (status = 400, description = "Bad query.", body = ApiError, example = json!(&ApiError::bad_request("bad request"))),
+    (status = 404, description = "Not found.", body = ApiError, example = json!(&ApiError::not_found("not found"))),
+    (status = 500, description = "Internal server error.", body = ApiError, example = json!(&ApiError::internal("internal error"))),
+  )
+)]
 pub(crate) async fn sat_range_with_rarity_by_outpoint(
   Extension(index): Extension<Arc<Index>>,
   Path(outpoint): Path<OutPoint>,
