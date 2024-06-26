@@ -9,7 +9,7 @@ pub(super) use {balance::*, outpoint::*, receipt::*, ticker::*, transferable::*}
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum BRC20ApiError {
-  #[error("invalid ticker {0}, must be 4 characters long")]
+  #[error("invalid ticker {0}, must be 4 or 5 characters long")]
   InvalidTicker(String),
   #[error("failed to retrieve ticker {0} in the database")]
   UnknownTicker(String),
