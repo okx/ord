@@ -15,7 +15,7 @@ impl BtcDomain {
     } else {
       domain_list.join("|")
     };
-    let pattern = format!(r"^(?<name>.*)\.(?<domain>[{domains}])$");
+    let pattern = format!(r"^(?<name>.+)\.(?<domain>{domains})$");
     let content = std::str::from_utf8(bytes)?;
     let re = Regex::new(&pattern).unwrap();
     if let Some(capture) = re.captures(content) {
