@@ -19,12 +19,15 @@ pub struct ChainContext {
   pub blockheight: u32,
   pub blocktime: u32,
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ProtocolConfig {
   first_inscription_height: u32,
   first_brc20_height: Option<u32>,
   enable_ord_receipts: bool,
   enable_index_bitmap: bool,
+  // 支持btc域名解析
+  enable_index_domain: bool,
+  btc_domain_list: Vec<String>,
 }
 
 impl ProtocolConfig {
@@ -38,6 +41,8 @@ impl ProtocolConfig {
       },
       enable_ord_receipts: options.enable_save_ord_receipts,
       enable_index_bitmap: options.enable_index_bitmap,
+      enable_index_domain: options.enable_index_domain,
+      btc_domain_list: options.btc_domain_list.clone(),
     }
   }
 }

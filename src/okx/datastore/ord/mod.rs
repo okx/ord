@@ -8,6 +8,7 @@ use {
 };
 
 pub mod bitmap;
+pub mod btc_domain;
 pub mod collections;
 pub mod operation;
 pub mod redb;

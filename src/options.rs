@@ -81,9 +81,14 @@ pub struct Options {
   pub(crate) enable_save_ord_receipts: bool,
   #[arg(long, help = "Enable Index Bitmap Collection.")]
   pub(crate) enable_index_bitmap: bool,
+  #[arg(long, help = "Enable Index BTC domain Collection.")]
+  pub(crate) enable_index_domain: bool,
   // OKX defined options.
   #[arg(long, help = "Enable Index all of BRC20 Protocol")]
   pub(crate) enable_index_brc20: bool,
+  #[arg(long, use_value_delimiter=true, value_delimiter = ",", num_args=0..,
+    help = "BTC domain list, if empty, use default [btc,unisat,sats,x]")]
+  pub(crate) btc_domain_list: Vec<String>,
   #[arg(
     long,
     help = "Don't look for BRC20 messages below <FIRST_BRC20_HEIGHT>."

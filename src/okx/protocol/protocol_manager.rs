@@ -21,7 +21,7 @@ impl ProtocolManager {
   // Need three datastore, and they're all in the same write transaction.
   pub fn new(config: ProtocolConfig) -> Self {
     Self {
-      config,
+      config: config.clone(),
       call_man: CallManager::new(),
       resolve_man: MsgResolveManager::new(config),
     }
@@ -78,8 +78,16 @@ impl ProtocolManager {
 
     let bitmap_start = Instant::now();
     let mut bitmap_count = 0;
+    let mut btc_domain_count = 0;
     if self.config.enable_index_bitmap {
       bitmap_count = ord_proto::bitmap::index_bitmap(context, &operations)?;
+    }
+    if self.config.enable_index_domain {
+      btc_domain_count = ord_proto::btc_domain::index_btc_domain(
+        context,
+        &operations,
+        &self.config.btc_domain_list,
+      )?;
     }
     let cost4 = bitmap_start.elapsed().as_millis();
 

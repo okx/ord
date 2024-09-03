@@ -646,7 +646,7 @@ impl<'index> Updater<'_> {
 
     // Create a protocol manager to index the block of bitmap data.
     let config = ProtocolConfig::new_with_options(&index.options);
-    ProtocolManager::new(config).index_block(&mut context, &block, operations)?;
+    ProtocolManager::new(config).index_block(&mut context, &block, operations, domain_list)?;
 
     if index.index_runes && self.height >= self.index.options.first_rune_height() {
       let mut outpoint_to_rune_balances = wtx.open_table(OUTPOINT_TO_RUNE_BALANCES)?;
