@@ -905,4 +905,13 @@ mod tests {
       "cookie file `/foo/bar/baz/qux/.cookie` does not exist"
     );
   }
+
+  #[test]
+  fn test_domain_list() {
+    let arguments = Arguments::try_parse_from(["ord", "--btc_domain_list", "aaa, bbb"]).unwrap();
+    assert_eq!(
+      arguments.options.btc_domain_list,
+      vec!["aaa".to_string(), "bbb".to_string()]
+    );
+  }
 }
