@@ -11,9 +11,9 @@ const DEFAULT_DOMAIN_LIST: [&'static str; 4] = ["btc", "unisat", "sats", "x"];
 impl District {
   pub fn parse(bytes: &[u8], domain_list: &[String]) -> Result<Self> {
     let domains = if domain_list.is_empty() {
-      DEFAULT_DOMAIN_LIST.iter().join("|")
+      DEFAULT_DOMAIN_LIST.join("|")
     } else {
-      domain_list.iter().join("|")
+      domain_list.join("|")
     };
     let pattern = format!(r"^(?<name>.*)\.(?<domain>[{domains}])$");
     let content = std::str::from_utf8(bytes)?;
