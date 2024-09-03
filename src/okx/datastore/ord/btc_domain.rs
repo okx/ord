@@ -63,6 +63,9 @@ mod tests {
     assert_eq!(district.domain, "btc");
     assert_eq!(district.name, "01");
     assert_eq!(district.btc_block_height(), None);
+    let district = BtcDomain::parse("btc.com/01?.btc.btc".as_bytes(), &domain_list).unwrap();
+    assert_eq!(district.domain, "btc");
+    assert_eq!(district.name, "btc.com/01?.btc");
 
     let district = BtcDomain::parse("123456.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), Some(123456));
