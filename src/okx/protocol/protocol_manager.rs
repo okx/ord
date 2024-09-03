@@ -92,11 +92,12 @@ impl ProtocolManager {
     let cost4 = bitmap_start.elapsed().as_millis();
 
     log::info!(
-      "Protocol Manager indexed block {} with ord inscriptions {}, messages {}, bitmap {} in {} ms, {}/{}/{}/{}",
+      "Protocol Manager indexed block {} with ord inscriptions {}, messages {}, bitmap {}, btc domain {}, in {} ms, {}/{}/{}/{}",
       context.chain_conf.blockheight,
       inscriptions_size,
       messages_size,
       bitmap_count,
+      btc_domain_count,
       start.elapsed().as_millis(),
       cost1/1000,
       cost2/1000,

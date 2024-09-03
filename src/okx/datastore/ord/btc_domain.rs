@@ -2,13 +2,13 @@ use {super::*, anyhow::anyhow, regex::Regex};
 
 const BTC_DOMAIN_KEY: &str = r"BTC_DOMAIN";
 
-pub struct District {
+pub struct BtcDomain {
   pub name: String,
   pub domain: String,
 }
 
 const DEFAULT_DOMAIN_LIST: [&'static str; 4] = ["btc", "unisat", "sats", "x"];
-impl District {
+impl BtcDomain {
   pub fn parse(bytes: &[u8], domain_list: &[String]) -> Result<Self> {
     let domains = if domain_list.is_empty() {
       DEFAULT_DOMAIN_LIST.join("|")
@@ -56,41 +56,41 @@ mod tests {
   #[test]
   fn validate_regex() {
     let domain_list = vec![];
-    let district = District::parse("0.bitmap".as_bytes(), &domain_list);
+    let district = BtcDomain::parse("0.bitmap".as_bytes(), &domain_list);
     assert!(district.is_err());
 
-    let district = District::parse("01.btc".as_bytes(), &domain_list).unwrap();
+    let district = BtcDomain::parse("01.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.domain, "btc");
     assert_eq!(district.name, "01");
     assert_eq!(district.btc_block_height(), None);
 
-    let district = District::parse("123456.btc".as_bytes(), &domain_list).unwrap();
+    let district = BtcDomain::parse("123456.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), Some(123456));
-    let district = District::parse("100000.btc".as_bytes(), &domain_list).unwrap();
+    let district = BtcDomain::parse("100000.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), Some(100000));
-    let district = District::parse("000001.btc".as_bytes(), &domain_list).unwrap();
+    let district = BtcDomain::parse("000001.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), Some(1));
 
-    let district = District::parse("1234567.btc".as_bytes(), &domain_list).unwrap();
+    let district = BtcDomain::parse("1234567.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), None);
 
-    let district = District::parse("abc.btc".as_bytes(), &domain_list).unwrap();
+    let district = BtcDomain::parse("abc.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.domain, "btc");
     assert_eq!(district.name, "abc");
 
     for d in DEFAULT_DOMAIN_LIST {
       let s = format!("abc.{d}");
-      let district = District::parse(s.as_bytes(), &domain_list).unwrap();
+      let district = BtcDomain::parse(s.as_bytes(), &domain_list).unwrap();
       assert!(DEFAULT_DOMAIN_LIST.contains(&district.domain.as_str()));
       assert_eq!(district.name, "abc");
     }
     // new domain list
     let domain_list = vec!["aaa".to_string(), "bbb".to_string()];
-    let district = District::parse("abc.aaa".as_bytes(), &domain_list).unwrap();
+    let district = BtcDomain::parse("abc.aaa".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.name, "abc");
     assert_eq!(district.domain, "aaa");
 
-    let district = District::parse("abc.btc".as_bytes(), &domain_list);
+    let district = BtcDomain::parse("abc.btc".as_bytes(), &domain_list);
     assert!(district.is_err());
   }
 }

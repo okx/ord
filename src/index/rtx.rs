@@ -1,4 +1,7 @@
 use super::*;
+use crate::okx::datastore::ord::btc_domain::BtcDomain;
+use base64::prelude::BASE64_STANDARD;
+use base64::Engine;
 
 pub(crate) struct Rtx<'a>(pub(crate) redb::ReadTransaction<'a>);
 
@@ -172,6 +175,22 @@ impl Rtx<'_> {
     let district = District { number };
     let table = self.0.open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)?;
     get_collection_inscription_id(&table, &district.to_collection_key())
+  }
+
+  pub(crate) fn domain_district_to_inscription_id(
+    &self,
+    base64_domain: &str,
+    domain_list: &[String],
+  ) -> Result<Option<InscriptionId>> {
+    let domain_raw = BASE64_STANDARD
+      .decode(base64_domain.as_bytes())
+      .map_err(|e| {
+        log::error!("can't decode base64 domain: {base64_domain}, error: {e:?}");
+        e
+      })?;
+    let domain = BtcDomain::parse(&domain_raw, &domain_list)?;
+    let table = self.0.open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)?;
+    get_collection_inscription_id(&table, &domain.to_collection_key())
   }
 
   pub(crate) fn ord_transaction_id_to_inscription_operations(

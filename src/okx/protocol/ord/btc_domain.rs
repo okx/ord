@@ -3,7 +3,7 @@ use crate::okx::protocol::context::Context;
 use {
   crate::{
     okx::datastore::ord::{
-      btc_domain::District,
+      btc_domain::BtcDomain,
       collections::CollectionKind,
       operation::{Action, InscriptionOp},
     },
@@ -57,9 +57,9 @@ fn index_district(
   inscription: Inscription,
   inscription_id: InscriptionId,
   domain_list: &[String],
-) -> Result<Option<(InscriptionId, District)>> {
+) -> Result<Option<(InscriptionId, BtcDomain)>> {
   if let Some(content) = inscription.body() {
-    if let Ok(district) = District::parse(content, domain_list) {
+    if let Ok(district) = BtcDomain::parse(content, domain_list) {
       if let Some(h) = district.btc_block_height() {
         if h > context.chain_conf.blockheight {
           return Ok(None);
