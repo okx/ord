@@ -38,7 +38,7 @@ pub fn index_btc_domain(
     match op.action {
       Action::New { inscription, .. } => {
         if let Some((inscription_id, district)) =
-          index_district(context, inscription, op.inscription_id, domain_list)?
+          index_domain(context, inscription, op.inscription_id, domain_list)?
         {
           let key = district.to_collection_key();
           context.set_inscription_by_collection_key(&key, &inscription_id)?;
@@ -52,7 +52,7 @@ pub fn index_btc_domain(
   Ok(count)
 }
 
-fn index_district(
+fn index_domain(
   context: &mut Context,
   inscription: Inscription,
   inscription_id: InscriptionId,
@@ -60,11 +60,13 @@ fn index_district(
 ) -> Result<Option<(InscriptionId, BtcDomain)>> {
   if let Some(content) = inscription.body() {
     if let Ok(district) = BtcDomain::parse(content, domain_list) {
-      if let Some(h) = district.btc_block_height() {
-        if h > context.chain_conf.blockheight {
-          return Ok(None);
-        }
-      }
+      // TODO: 当前高度为800000，若mint了900000.btc，则在到达900000高度时开图
+      // TODO: 当前高度为800000，若mint了700000.btc，则直接开图，图片内容= 700000.bimap
+      // if let Some(h) = district.btc_block_height() {
+      //   if h > context.chain_conf.blockheight {
+      //     return Ok(None);
+      //   }
+      // }
       let collection_key = district.to_collection_key();
 
       if context
