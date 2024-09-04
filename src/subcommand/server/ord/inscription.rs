@@ -254,7 +254,7 @@ pub(crate) async fn ord_debug_domain_district(
   Path(base64_domain): Path<String>,
 ) -> ApiResult<InscriptionId> {
   log::debug!(
-    "rpc: get ord_debug_bitmap_district: base64_domain:{}",
+    "rpc: get ord_debug_domain_district: base64_domain:{}",
     base64_domain
   );
 
