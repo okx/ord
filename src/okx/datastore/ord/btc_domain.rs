@@ -34,7 +34,7 @@ impl BtcDomain {
     format!("{}_{}_{}", BTC_DOMAIN_KEY, self.name, self.domain)
   }
 
-  /// 为.btc域名项目的6位纯数字域名提供额外的图片展示
+  /// need image display if the domain name of "*.btc" is 6-digit
   pub fn btc_block_height(&self) -> Option<u32> {
     if self.name.len() == 6 && self.domain == "btc" {
       if let Ok(block_height) = self.name.parse::<u32>() {

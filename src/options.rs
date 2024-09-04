@@ -908,12 +908,8 @@ mod tests {
 
   #[test]
   fn test_domain_list() {
-    let arguments = Arguments::try_parse_from([
-      "ord",
-      "--btc-domain-list=aaa,bbb",
-      "index",
-      "update"
-    ]).unwrap();
+    let arguments =
+      Arguments::try_parse_from(["ord", "--btc-domain-list=aaa,bbb", "index", "update"]).unwrap();
     assert_eq!(
       arguments.options.btc_domain_list,
       vec!["aaa".to_string(), "bbb".to_string()]
