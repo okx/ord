@@ -158,7 +158,7 @@ mod tests {
     let mut table = wtx.open_table(ORD_TX_TO_OPERATIONS).unwrap();
     let txid =
       Txid::from_str("b61b0172d95e266c18aea0c624db987e971a5d6d4ebc2aaed85da4642d635735").unwrap();
-    let operation = InscriptionOp {
+    let mut operation = InscriptionOp {
       txid,
       action: Action::New {
         cursed: false,
@@ -182,6 +182,10 @@ mod tests {
 
     save_transaction_operations(&mut table, &txid, &[operation.clone()]).unwrap();
 
+    // skip the inscription
+    if let Action::New { inscription, .. } = &mut operation.action {
+      *inscription = crate::Inscription::default();
+    }
     assert_eq!(
       get_transaction_operations(&table, &txid).unwrap(),
       Some(vec![operation])
