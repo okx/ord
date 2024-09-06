@@ -18,16 +18,28 @@ impl BtcDomain {
     let pattern = format!(r"^(?<name>.+)\.(?<domain>{domains})$");
     let content = std::str::from_utf8(bytes)?;
     let re = Regex::new(&pattern).unwrap();
-    if let Some(capture) = re.captures(content) {
+    if let Some(capture) = re.captures(&content.to_lowercase()) {
       let name = &capture["name"];
       let domain = &capture["domain"];
-      Ok(Self {
-        name: name.to_string(),
-        domain: domain.to_string(),
-      })
-    } else {
-      Err(anyhow!("No match found."))
+      if Self::is_name_valid(name) {
+        return Ok(Self {
+          name: name.to_string(),
+          domain: domain.to_string(),
+        })
+      }
     }
+    Err(anyhow!("No match found."))
+  }
+
+  fn is_name_valid(name: &str) -> bool {
+    let pattern = r"[\.[:space:]]";
+    let re = Regex::new(pattern).unwrap();
+    if re.captures(name) {
+      return false
+    }
+    // check if it's json format
+    let value: Result<serde_json::Value,_> = serde_json::from_str(name);
+    return value.is_err()
   }
 
   pub fn to_collection_key(&self) -> String {
@@ -56,16 +68,29 @@ mod tests {
   #[test]
   fn validate_regex() {
     let domain_list = vec![];
-    let district = BtcDomain::parse("0.bitmap".as_bytes(), &domain_list);
-    assert!(district.is_err());
+    let invalid_domains = [
+      "abc.bitmap",
+      "btc.com.btc",
+      "hi.jack.btc",
+      " jack.btc",
+      "jack.btc ",
+      "hi jack.btc",
+      " jack.btc ",
+      "jack.btc\n",
+      "\njack.btc",
+      "hi\njack.btc",
+      "\njack.btc\n",
+      r#"{ "p":"sns", "op":"reg",    "name":"jack.btc"}"#,
+    ];
+    for domain in invalid_domains {
+      let district = BtcDomain::parse(domain.as_bytes(), &domain_list);
+      assert!(district.is_err());
+    }
 
     let district = BtcDomain::parse("01.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.domain, "btc");
     assert_eq!(district.name, "01");
     assert_eq!(district.btc_block_height(), None);
-    let district = BtcDomain::parse("btc.com/01?.btc.btc".as_bytes(), &domain_list).unwrap();
-    assert_eq!(district.domain, "btc");
-    assert_eq!(district.name, "btc.com/01?.btc");
 
     let district = BtcDomain::parse("123456.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), Some(123456));
