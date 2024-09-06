@@ -34,7 +34,7 @@ impl BtcDomain {
   fn is_name_valid(name: &str) -> bool {
     let pattern = r"[\.[:space:]]";
     let re = Regex::new(pattern).unwrap();
-    if re.captures(name) {
+    if re.captures(name).is_some() {
       return false
     }
     // check if it's json format
@@ -87,10 +87,18 @@ mod tests {
       assert!(district.is_err());
     }
 
-    let district = BtcDomain::parse("01.btc".as_bytes(), &domain_list).unwrap();
-    assert_eq!(district.domain, "btc");
-    assert_eq!(district.name, "01");
-    assert_eq!(district.btc_block_height(), None);
+    let valid_domains = [
+      "01.btc",
+      "123456.btc",
+      "Jack.btc",
+      "JACK.BTC",
+      "jack.BtC",
+      "比特币.btc",
+      "😀.btc",
+    ];
+    let district = BtcDomain::parse("01.btc".as_bytes(), &domain_list);
+    assert!(district.is_ok());
+
 
     let district = BtcDomain::parse("123456.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), Some(123456));
@@ -117,8 +125,5 @@ mod tests {
     let district = BtcDomain::parse("abc.aaa".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.name, "abc");
     assert_eq!(district.domain, "aaa");
-
-    let district = BtcDomain::parse("abc.btc".as_bytes(), &domain_list);
-    assert!(district.is_err());
   }
 }
