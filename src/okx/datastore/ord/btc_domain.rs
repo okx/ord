@@ -38,8 +38,11 @@ impl BtcDomain {
       return false
     }
     // check if it's json format
-    let value: Result<serde_json::Value,_> = serde_json::from_str(name);
-    return value.is_err()
+    if name.contains("{") {
+      let value: Result<serde_json::Value,_> = serde_json::from_str(name);
+      return value.is_err()
+    }
+    true
   }
 
   pub fn to_collection_key(&self) -> String {
