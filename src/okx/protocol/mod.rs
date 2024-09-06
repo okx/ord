@@ -25,7 +25,6 @@ pub struct ProtocolConfig {
   first_brc20_height: Option<u32>,
   enable_ord_receipts: bool,
   enable_index_bitmap: bool,
-  // 支持btc域名解析
   enable_index_domain: bool,
   btc_domain_list: Vec<String>,
 }

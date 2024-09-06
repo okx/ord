@@ -60,13 +60,6 @@ fn index_domain(
 ) -> Result<Option<(InscriptionId, BtcDomain)>> {
   if let Some(content) = inscription.body() {
     if let Ok(district) = BtcDomain::parse(content, domain_list) {
-      // TODO: if current block height is 800000，and mint 900000.btc，need display image at block height 900000
-      // TODO: if current block height is 800000，and mint 700000.btc，need to display image directly, the image content = 700000.bimap
-      // if let Some(h) = district.btc_block_height() {
-      //   if h > context.chain_conf.blockheight {
-      //     return Ok(None);
-      //   }
-      // }
       let collection_key = district.to_collection_key();
 
       if context
