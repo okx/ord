@@ -7,7 +7,7 @@ pub struct BtcDomain {
   pub domain: String,
 }
 
-const DEFAULT_DOMAIN_LIST: [&'static str; 4] = ["btc", "unisat", "sats", "x"];
+const DEFAULT_DOMAIN_LIST: [&str; 4] = ["btc", "unisat", "sats", "x"];
 impl BtcDomain {
   pub fn parse(bytes: &[u8], domain_list: &[String]) -> Result<Self> {
     let domains = if domain_list.is_empty() {
@@ -99,8 +99,10 @@ mod tests {
       "比特币.btc",
       "😀.btc",
     ];
-    let district = BtcDomain::parse("01.btc".as_bytes(), &domain_list);
-    assert!(district.is_ok());
+    for domain in valid_domains {
+      let district = BtcDomain::parse(domain.as_bytes(), &domain_list);
+      assert!(district.is_ok());
+    }
 
     let district = BtcDomain::parse("123456.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), Some(123456));
