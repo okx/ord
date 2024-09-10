@@ -25,7 +25,7 @@ impl BtcDomain {
         return Ok(Self {
           name: name.to_string(),
           domain: domain.to_string(),
-        })
+        });
       }
     }
     Err(anyhow!("No match found."))
@@ -35,12 +35,12 @@ impl BtcDomain {
     let pattern = r"[\.[:space:]]";
     let re = Regex::new(pattern).unwrap();
     if re.captures(name).is_some() {
-      return false
+      return false;
     }
     // check if it's json format
     if name.contains("{") {
-      let value: Result<serde_json::Value,_> = serde_json::from_str(name);
-      return value.is_err()
+      let value: Result<serde_json::Value, _> = serde_json::from_str(name);
+      return value.is_err();
     }
     true
   }
@@ -101,7 +101,6 @@ mod tests {
     ];
     let district = BtcDomain::parse("01.btc".as_bytes(), &domain_list);
     assert!(district.is_ok());
-
 
     let district = BtcDomain::parse("123456.btc".as_bytes(), &domain_list).unwrap();
     assert_eq!(district.btc_block_height(), Some(123456));
