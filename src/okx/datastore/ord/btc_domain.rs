@@ -31,8 +31,10 @@ impl BtcDomain {
     Err(anyhow!("No match found."))
   }
 
+  /// check the name is valid or not
+  /// https://docs.btcname.id/docs/overview/chapter-4-thinking-about-.btc-domain-name/calibration-rules
   fn is_name_valid(name: &str) -> bool {
-    let pattern = r"[\.[:space:]]";
+    let pattern = r"[\.[:space:]\\]";
     let re = Regex::new(pattern).unwrap();
     if re.captures(name).is_some() {
       return false;
@@ -49,24 +51,23 @@ impl BtcDomain {
     format!("{}_{}_{}", BTC_DOMAIN_KEY, self.name, self.domain)
   }
 
-  /// need image display if the domain name of "*.btc" is 6-digit
-  pub fn btc_block_height(&self) -> Option<u32> {
-    if self.name.len() == 6 && self.domain == "btc" {
-      if let Ok(block_height) = self.name.parse::<u32>() {
-        Some(block_height)
-      } else {
-        None
-      }
-    } else {
-      None
-    }
-  }
+  // need image display if the domain name of "*.btc" is 6-digit
+  // pub fn btc_block_height(&self) -> Option<u32> {
+  //   if self.name.len() == 6 && self.domain == "btc" {
+  //     if let Ok(block_height) = self.name.parse::<u32>() {
+  //       Some(block_height)
+  //     } else {
+  //       None
+  //     }
+  //   } else {
+  //     None
+  //   }
+  // }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use bech32::ToBase32;
 
   #[test]
   fn validate_regex() {
@@ -83,6 +84,8 @@ mod tests {
       "\njack.btc",
       "hi\njack.btc",
       "\njack.btc\n",
+      "\\jack.btc",
+      "\tjack.btc",
       r#"{ "p":"sns", "op":"reg",    "name":"jack.btc"}"#,
     ];
     for domain in invalid_domains {
