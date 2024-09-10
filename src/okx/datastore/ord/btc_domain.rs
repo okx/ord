@@ -34,7 +34,7 @@ impl BtcDomain {
   /// check the name is valid or not
   /// https://docs.btcname.id/docs/overview/chapter-4-thinking-about-.btc-domain-name/calibration-rules
   fn is_name_valid(name: &str) -> bool {
-    let pattern = r"[\.[:space:]\\]";
+    let pattern = r"[\.\n ]";
     let re = Regex::new(pattern).unwrap();
     if re.captures(name).is_some() {
       return false;
