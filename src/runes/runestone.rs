@@ -962,7 +962,7 @@ mod tests {
   #[test]
   fn id_deltas_saturate_to_max() {
     assert_eq!(
-      decipher(&[TAG_BODY, 1, 2, 3, u128::max_value(), 5, 6]),
+      decipher(&[TAG_BODY, 1, 2, 3, u128::MAX, 5, 6]),
       Runestone {
         edicts: vec![
           Edict {
@@ -971,7 +971,7 @@ mod tests {
             output: 3,
           },
           Edict {
-            id: u128::max_value(),
+            id: u128::MAX,
             amount: 5,
             output: 6,
           },
@@ -1157,7 +1157,7 @@ mod tests {
     case(
       Vec::new(),
       Some(Etching {
-        rune: Some(Rune(u128::max_value())),
+        rune: Some(Rune(u128::MAX)),
         ..Default::default()
       }),
       24,
@@ -1175,7 +1175,7 @@ mod tests {
       }],
       Some(Etching {
         divisibility: MAX_DIVISIBILITY,
-        rune: Some(Rune(u128::max_value())),
+        rune: Some(Rune(u128::MAX)),
         ..Default::default()
       }),
       30,
@@ -1183,7 +1183,7 @@ mod tests {
 
     case(
       vec![Edict {
-        amount: u128::max_value(),
+        amount: u128::MAX,
         id: RuneId {
           height: 0,
           index: 0,
@@ -1193,7 +1193,7 @@ mod tests {
       }],
       Some(Etching {
         divisibility: MAX_DIVISIBILITY,
-        rune: Some(Rune(u128::max_value())),
+        rune: Some(Rune(u128::MAX)),
         ..Default::default()
       }),
       48,
@@ -1204,7 +1204,7 @@ mod tests {
         amount: 0,
         id: RuneId {
           height: 1_000_000,
-          index: u16::max_value(),
+          index: u16::MAX,
         }
         .into(),
         output: 0,
@@ -1225,10 +1225,10 @@ mod tests {
 
     case(
       vec![Edict {
-        amount: u128::max_value(),
+        amount: u128::MAX,
         id: RuneId {
           height: 1_000_000,
-          index: u16::max_value(),
+          index: u16::MAX,
         }
         .into(),
         output: 0,
@@ -1240,19 +1240,19 @@ mod tests {
     case(
       vec![
         Edict {
-          amount: u128::max_value(),
+          amount: u128::MAX,
           id: RuneId {
             height: 1_000_000,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
         },
         Edict {
-          amount: u128::max_value(),
+          amount: u128::MAX,
           id: RuneId {
             height: 1_000_000,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
@@ -1265,28 +1265,28 @@ mod tests {
     case(
       vec![
         Edict {
-          amount: u128::max_value(),
+          amount: u128::MAX,
           id: RuneId {
             height: 1_000_000,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
         },
         Edict {
-          amount: u128::max_value(),
+          amount: u128::MAX,
           id: RuneId {
             height: 1_000_000,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
         },
         Edict {
-          amount: u128::max_value(),
+          amount: u128::MAX,
           id: RuneId {
             height: 1_000_000,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
@@ -1299,10 +1299,10 @@ mod tests {
     case(
       vec![
         Edict {
-          amount: u64::max_value().into(),
+          amount: u64::MAX.into(),
           id: RuneId {
             height: 1_000_000,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
@@ -1316,10 +1316,10 @@ mod tests {
     case(
       vec![
         Edict {
-          amount: u64::max_value().into(),
+          amount: u64::MAX.into(),
           id: RuneId {
             height: 1_000_000,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
@@ -1333,10 +1333,10 @@ mod tests {
     case(
       vec![
         Edict {
-          amount: u64::max_value().into(),
+          amount: u64::MAX.into(),
           id: RuneId {
             height: 0,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
@@ -1353,7 +1353,7 @@ mod tests {
           amount: 1_000_000_000_000_000_000,
           id: RuneId {
             height: 1_000_000,
-            index: u16::max_value(),
+            index: u16::MAX,
           }
           .into(),
           output: 0,
@@ -1372,7 +1372,7 @@ mod tests {
         TAG_FLAGS,
         FLAG_ETCH,
         TAG_TERM,
-        u128::from(u64::max_value()) + 1,
+        u128::from(u64::MAX) + 1,
       ]),
       Runestone {
         etching: Some(Etching::default()),

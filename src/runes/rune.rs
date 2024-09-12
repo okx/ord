@@ -183,9 +183,9 @@ mod tests {
     case(27, "AB");
     case(51, "AZ");
     case(52, "BA");
-    case(u128::max_value() - 2, "BCGDENLQRQWDSLRUGSNLBTMFIJAT");
-    case(u128::max_value() - 1, "BCGDENLQRQWDSLRUGSNLBTMFIJAU");
-    case(u128::max_value(), "BCGDENLQRQWDSLRUGSNLBTMFIJAV");
+    case(u128::MAX - 2, "BCGDENLQRQWDSLRUGSNLBTMFIJAT");
+    case(u128::MAX - 1, "BCGDENLQRQWDSLRUGSNLBTMFIJAU");
+    case(u128::MAX, "BCGDENLQRQWDSLRUGSNLBTMFIJAV");
   }
 
   #[test]
@@ -217,7 +217,7 @@ mod tests {
     case(END - 1, "A");
     case(END, "A");
     case(END + 1, "A");
-    case(u32::max_value(), "A");
+    case(u32::MAX, "A");
 
     case(START + INTERVAL * 00 - 1, "AAAAAAAAAAAAA");
     case(START + INTERVAL * 00 + 0, "ZZYZXBRKWXVA");

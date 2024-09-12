@@ -1215,7 +1215,7 @@ impl Index {
     };
 
     self
-      .get_children_by_sequence_number_paginated(sequence_number, usize::max_value(), 0)
+      .get_children_by_sequence_number_paginated(sequence_number, usize::MAX, 0)
       .map(|(children, _more)| children)
   }
 
@@ -4538,7 +4538,7 @@ mod tests {
             i,
             if i == 1 { 0 } else { 1 },
             0,
-            inscription("text/plain;charset=utf-8", &format!("hello {}", i)).to_witness(),
+            inscription("text/plain;charset=utf-8", format!("hello {}", i)).to_witness(),
           )], // for the first inscription use coinbase, otherwise use the previous tx
           ..Default::default()
         });

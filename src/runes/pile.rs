@@ -122,7 +122,7 @@ mod tests {
     );
     assert_eq!(
       Pile {
-        amount: u128::max_value(),
+        amount: u128::MAX,
         divisibility: 18,
         symbol: None,
       }
@@ -131,7 +131,7 @@ mod tests {
     );
     assert_eq!(
       Pile {
-        amount: u128::max_value(),
+        amount: u128::MAX,
         divisibility: MAX_DIVISIBILITY,
         symbol: None,
       }
