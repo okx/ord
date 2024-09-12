@@ -21,10 +21,10 @@ where
     }
   }
 
-  pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
+  pub fn get<Q>(&self, key: &Q) -> Option<&V>
   where
     K: Borrow<Q>,
-    Q: Hash + Eq,
+    Q: Hash + Eq + ?Sized,
   {
     if let Some(v) = self.new_cache.get(key) {
       Some(v)
@@ -33,10 +33,10 @@ where
     }
   }
 
-  pub fn contains<Q: ?Sized>(&self, key: &Q) -> bool
+  pub fn contains<Q>(&self, key: &Q) -> bool
   where
     K: Borrow<Q>,
-    Q: Hash + Eq,
+    Q: Hash + Eq + ?Sized,
   {
     if self.new_cache.contains_key(key) {
       true

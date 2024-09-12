@@ -18,7 +18,7 @@ use std::fmt::{Debug, Display};
 pub trait Brc20Reader {
   type Error: Debug + Display;
 
-  fn get_balances(&self, script_key: &ScriptKey) -> Result<Vec<Balance>, Self::Error>;
+  // fn get_balances(&self, script_key: &ScriptKey) -> Result<Vec<Balance>, Self::Error>;
   fn get_balance(
     &self,
     script_key: &ScriptKey,
@@ -26,27 +26,27 @@ pub trait Brc20Reader {
   ) -> Result<Option<Balance>, Self::Error>;
 
   fn get_token_info(&self, tick: &Tick) -> Result<Option<TokenInfo>, Self::Error>;
-  fn get_tokens_info(&self) -> Result<Vec<TokenInfo>, Self::Error>;
+  // fn get_tokens_info(&self) -> Result<Vec<TokenInfo>, Self::Error>;
 
-  fn get_transaction_receipts(&self, txid: &Txid) -> Result<Option<Vec<Receipt>>, Self::Error>;
+  // fn get_transaction_receipts(&self, txid: &Txid) -> Result<Option<Vec<Receipt>>, Self::Error>;
 
   fn get_transferable_assets_by_satpoint(
     &self,
     satpoint: &SatPoint,
   ) -> Result<Option<TransferableLog>, Self::Error>;
-  fn get_transferable_assets_by_account(
-    &self,
-    script: &ScriptKey,
-  ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
-  fn get_transferable_assets_by_account_ticker(
-    &self,
-    script: &ScriptKey,
-    tick: &Tick,
-  ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
-  fn get_transferable_assets_by_outpoint(
-    &self,
-    outpoint: OutPoint,
-  ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
+  // fn get_transferable_assets_by_account(
+  //   &self,
+  //   script: &ScriptKey,
+  // ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
+  // fn get_transferable_assets_by_account_ticker(
+  //   &self,
+  //   script: &ScriptKey,
+  //   tick: &Tick,
+  // ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
+  // fn get_transferable_assets_by_outpoint(
+  //   &self,
+  //   outpoint: OutPoint,
+  // ) -> Result<Vec<(SatPoint, TransferableLog)>, Self::Error>;
 }
 
 pub trait Brc20ReaderWriter: Brc20Reader {

@@ -102,19 +102,19 @@ impl<'a, 'db, 'txn> OrdReader for Context<'a, 'db, 'txn> {
     }
   }
 
-  fn get_transaction_operations(
-    &self,
-    txid: &Txid,
-  ) -> crate::Result<Option<Vec<InscriptionOp>>, Self::Error> {
-    get_transaction_operations(self.ORD_TX_TO_OPERATIONS, txid)
-  }
+  // fn get_transaction_operations(
+  //   &self,
+  //   txid: &Txid,
+  // ) -> crate::Result<Option<Vec<InscriptionOp>>, Self::Error> {
+  //   get_transaction_operations(self.ORD_TX_TO_OPERATIONS, txid)
+  // }
 
-  fn get_collections_of_inscription(
-    &self,
-    inscription_id: &InscriptionId,
-  ) -> crate::Result<Option<Vec<CollectionKind>>, Self::Error> {
-    get_collections_of_inscription(self.COLLECTIONS_INSCRIPTION_ID_TO_KINDS, inscription_id)
-  }
+  // fn get_collections_of_inscription(
+  //   &self,
+  //   inscription_id: &InscriptionId,
+  // ) -> crate::Result<Option<Vec<CollectionKind>>, Self::Error> {
+  //   get_collections_of_inscription(self.COLLECTIONS_INSCRIPTION_ID_TO_KINDS, inscription_id)
+  // }
 
   fn get_collection_inscription_id(
     &self,
@@ -157,9 +157,9 @@ impl<'a, 'db, 'txn> OrdReaderWriter for Context<'a, 'db, 'txn> {
 impl<'a, 'db, 'txn> Brc20Reader for Context<'a, 'db, 'txn> {
   type Error = anyhow::Error;
 
-  fn get_balances(&self, script_key: &ScriptKey) -> crate::Result<Vec<Balance>, Self::Error> {
-    get_balances(self.BRC20_BALANCES, script_key)
-  }
+  // fn get_balances(&self, script_key: &ScriptKey) -> crate::Result<Vec<Balance>, Self::Error> {
+  //   get_balances(self.BRC20_BALANCES, script_key)
+  // }
 
   fn get_balance(
     &self,
@@ -173,40 +173,40 @@ impl<'a, 'db, 'txn> Brc20Reader for Context<'a, 'db, 'txn> {
     get_token_info(self.BRC20_TOKEN, tick)
   }
 
-  fn get_tokens_info(&self) -> crate::Result<Vec<TokenInfo>, Self::Error> {
-    get_tokens_info(self.BRC20_TOKEN)
-  }
+  // fn get_tokens_info(&self) -> crate::Result<Vec<TokenInfo>, Self::Error> {
+  //   get_tokens_info(self.BRC20_TOKEN)
+  // }
 
-  fn get_transaction_receipts(
-    &self,
-    txid: &Txid,
-  ) -> crate::Result<Option<Vec<Receipt>>, Self::Error> {
-    get_transaction_receipts(self.BRC20_EVENTS, txid)
-  }
+  // fn get_transaction_receipts(
+  //   &self,
+  //   txid: &Txid,
+  // ) -> crate::Result<Option<Vec<Receipt>>, Self::Error> {
+  //   get_transaction_receipts(self.BRC20_EVENTS, txid)
+  // }
 
-  fn get_transferable_assets_by_account(
-    &self,
-    script: &ScriptKey,
-  ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
-    get_transferable_assets_by_account(
-      self.BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS,
-      self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
-      script,
-    )
-  }
+  // fn get_transferable_assets_by_account(
+  //   &self,
+  //   script: &ScriptKey,
+  // ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
+  //   get_transferable_assets_by_account(
+  //     self.BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS,
+  //     self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
+  //     script,
+  //   )
+  // }
 
-  fn get_transferable_assets_by_account_ticker(
-    &self,
-    script: &ScriptKey,
-    tick: &Tick,
-  ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
-    get_transferable_assets_by_account_ticker(
-      self.BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS,
-      self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
-      script,
-      tick,
-    )
-  }
+  // fn get_transferable_assets_by_account_ticker(
+  //   &self,
+  //   script: &ScriptKey,
+  //   tick: &Tick,
+  // ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
+  //   get_transferable_assets_by_account_ticker(
+  //     self.BRC20_ADDRESS_TICKER_TO_TRANSFERABLE_ASSETS,
+  //     self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS,
+  //     script,
+  //     tick,
+  //   )
+  // }
 
   fn get_transferable_assets_by_satpoint(
     &self,
@@ -215,12 +215,12 @@ impl<'a, 'db, 'txn> Brc20Reader for Context<'a, 'db, 'txn> {
     get_transferable_assets_by_satpoint(self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS, satpoint)
   }
 
-  fn get_transferable_assets_by_outpoint(
-    &self,
-    outpoint: OutPoint,
-  ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
-    get_transferable_assets_by_outpoint(self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS, outpoint)
-  }
+  // fn get_transferable_assets_by_outpoint(
+  //   &self,
+  //   outpoint: OutPoint,
+  // ) -> crate::Result<Vec<(SatPoint, TransferableLog)>, Self::Error> {
+  //   get_transferable_assets_by_outpoint(self.BRC20_SATPOINT_TO_TRANSFERABLE_ASSETS, outpoint)
+  // }
 }
 
 impl<'a, 'db, 'txn> Brc20ReaderWriter for Context<'a, 'db, 'txn> {

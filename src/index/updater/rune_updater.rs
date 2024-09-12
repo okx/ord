@@ -131,7 +131,7 @@ impl<'a, 'db, 'tx> RuneUpdater<'a, 'db, 'tx> {
                     limit
                   }
                 } else {
-                  u128::max_value()
+                  u128::MAX
                 },
                 deadline: etching.deadline,
                 divisibility: etching.divisibility,
@@ -314,7 +314,7 @@ impl<'a, 'db, 'tx> RuneUpdater<'a, 'db, 'tx> {
                 limit
               }
             } else {
-              u128::max_value()
+              u128::MAX
             } - balance,
             end: end.and_then(|end| (!burn).then_some(end)),
             symbol,

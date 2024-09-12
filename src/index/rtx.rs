@@ -188,7 +188,7 @@ impl Rtx<'_> {
         log::error!("can't decode base64 domain: {base64_domain}, error: {e:?}");
         e
       })?;
-    let domain = BtcDomain::parse(&domain_raw, &domain_list)?;
+    let domain = BtcDomain::parse(&domain_raw, domain_list)?;
     let table = self.0.open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)?;
     get_collection_inscription_id(&table, &domain.to_collection_key())
   }

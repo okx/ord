@@ -275,7 +275,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             hidden: inscription.payload.hidden(),
             parent: inscription.payload.parent(),
             pointer: inscription.payload.pointer(),
-            reinscription: inscribed_offsets.get(&offset).is_some(),
+            reinscription: inscribed_offsets.contains_key(&offset),
             unbound,
             inscription: inscription.payload.clone(),
             vindicated: curse.is_some() && jubilant,
