@@ -2081,10 +2081,7 @@ mod tests {
             txid: txid3,
             vout: 0,
           },
-          vec![
-            (id0, u128::MAX / 2 + 1),
-            (id1, u128::MAX / 2 + 1),
-          ],
+          vec![(id0, u128::MAX / 2 + 1), (id1, u128::MAX / 2 + 1)],
         ),
         (
           OutPoint {
@@ -3042,22 +3039,10 @@ mod tests {
         },
       )],
       [
-        (
-          OutPoint { txid, vout: 0 },
-          vec![(id, u128::MAX / 4 + 1)],
-        ),
-        (
-          OutPoint { txid, vout: 1 },
-          vec![(id, u128::MAX / 4 + 1)],
-        ),
-        (
-          OutPoint { txid, vout: 2 },
-          vec![(id, u128::MAX / 4 + 1)],
-        ),
-        (
-          OutPoint { txid, vout: 3 },
-          vec![(id, u128::MAX / 4)],
-        ),
+        (OutPoint { txid, vout: 0 }, vec![(id, u128::MAX / 4 + 1)]),
+        (OutPoint { txid, vout: 1 }, vec![(id, u128::MAX / 4 + 1)]),
+        (OutPoint { txid, vout: 2 }, vec![(id, u128::MAX / 4 + 1)]),
+        (OutPoint { txid, vout: 3 }, vec![(id, u128::MAX / 4)]),
       ],
     );
   }
@@ -3188,22 +3173,10 @@ mod tests {
         },
       )],
       [
-        (
-          OutPoint { txid, vout: 0 },
-          vec![(id, u128::MAX / 4 + 1)],
-        ),
-        (
-          OutPoint { txid, vout: 1 },
-          vec![(id, u128::MAX / 4 + 1)],
-        ),
-        (
-          OutPoint { txid, vout: 2 },
-          vec![(id, u128::MAX / 4 + 1)],
-        ),
-        (
-          OutPoint { txid, vout: 3 },
-          vec![(id, u128::MAX / 4)],
-        ),
+        (OutPoint { txid, vout: 0 }, vec![(id, u128::MAX / 4 + 1)]),
+        (OutPoint { txid, vout: 1 }, vec![(id, u128::MAX / 4 + 1)]),
+        (OutPoint { txid, vout: 2 }, vec![(id, u128::MAX / 4 + 1)]),
+        (OutPoint { txid, vout: 3 }, vec![(id, u128::MAX / 4)]),
       ],
     );
   }
@@ -3315,10 +3288,7 @@ mod tests {
         },
       )],
       [
-        (
-          OutPoint { txid, vout: 0 },
-          vec![(id, u128::MAX - 2000)],
-        ),
+        (OutPoint { txid, vout: 0 }, vec![(id, u128::MAX - 2000)]),
         (OutPoint { txid, vout: 1 }, vec![(id, 1000)]),
         (OutPoint { txid, vout: 2 }, vec![(id, 1000)]),
       ],

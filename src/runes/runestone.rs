@@ -1368,12 +1368,7 @@ mod tests {
   #[test]
   fn etching_with_term_greater_than_maximum_is_ignored() {
     assert_eq!(
-      decipher(&[
-        TAG_FLAGS,
-        FLAG_ETCH,
-        TAG_TERM,
-        u128::from(u64::MAX) + 1,
-      ]),
+      decipher(&[TAG_FLAGS, FLAG_ETCH, TAG_TERM, u128::from(u64::MAX) + 1,]),
       Runestone {
         etching: Some(Etching::default()),
         ..Default::default()
