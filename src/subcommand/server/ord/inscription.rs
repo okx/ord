@@ -261,7 +261,7 @@ pub(crate) async fn ord_debug_domain_district(
   let rtx = index.begin_read()?;
   let inscription_id = rtx
     .domain_district_to_inscription_id(&btc_name, &index.domain_list)?
-    .ok_or_api_not_found(format!("district {base64_domain} not found."))?;
+    .ok_or_api_not_found(format!("district {btc_name} not found."))?;
 
   log::debug!(
     "rpc: get ord_debug_bitmap_district: {:?} {:?}",
