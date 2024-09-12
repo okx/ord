@@ -12,7 +12,7 @@ pub use self::{
 };
 use super::ScriptKey;
 use crate::{Result, SatPoint};
-use bitcoin::{OutPoint, Txid};
+use bitcoin::Txid;
 use std::fmt::{Debug, Display};
 
 pub trait Brc20Reader {

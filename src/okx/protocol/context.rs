@@ -7,12 +7,9 @@ use crate::{
     datastore::{
       brc20::{
         redb::table::{
-          get_balance, get_balances, get_token_info, get_tokens_info, get_transaction_receipts,
-          get_transferable_assets_by_account, get_transferable_assets_by_account_ticker,
-          get_transferable_assets_by_outpoint, get_transferable_assets_by_satpoint,
-          insert_token_info, insert_transferable_asset, remove_transferable_asset,
-          save_transaction_receipts, update_burned_token_info, update_mint_token_info,
-          update_token_balance,
+          get_balance, get_token_info, get_transferable_assets_by_satpoint, insert_token_info,
+          insert_transferable_asset, remove_transferable_asset, save_transaction_receipts,
+          update_burned_token_info, update_mint_token_info, update_token_balance,
         },
         Balance, Brc20Reader, Brc20ReaderWriter, Receipt, Tick, TokenInfo, TransferableLog,
       },
@@ -20,9 +17,8 @@ use crate::{
         collections::CollectionKind,
         redb::table::{
           add_inscription_attributes, get_collection_inscription_id,
-          get_collections_of_inscription, get_inscription_number_by_sequence_number,
-          get_transaction_operations, get_txout_by_outpoint, save_transaction_operations,
-          set_inscription_by_collection_key,
+          get_inscription_number_by_sequence_number, get_txout_by_outpoint,
+          save_transaction_operations, set_inscription_by_collection_key,
         },
         InscriptionOp, OrdReader, OrdReaderWriter,
       },

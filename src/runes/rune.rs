@@ -95,7 +95,7 @@ impl<'de> Deserialize<'de> for Rune {
 impl Display for Rune {
   fn fmt(&self, f: &mut Formatter) -> fmt::Result {
     let mut n = self.0;
-    if n == u128::max_value() {
+    if n == u128::MAX {
       return write!(f, "BCGDENLQRQWDSLRUGSNLBTMFIJAV");
     }
 
