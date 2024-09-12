@@ -1,6 +1,5 @@
 use super::*;
 use crate::okx::datastore::ord::btc_name::BtcName;
-use base64::Engine;
 
 pub(crate) struct Rtx<'a>(pub(crate) redb::ReadTransaction<'a>);
 
