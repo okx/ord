@@ -251,21 +251,21 @@ pub(crate) async fn ord_debug_bitmap_district(
 // ord/debug/domain/:base64_domain
 pub(crate) async fn ord_debug_domain_district(
   Extension(index): Extension<Arc<Index>>,
-  Path(base64_domain): Path<String>,
+  Path(btc_name): Path<String>,
 ) -> ApiResult<InscriptionId> {
   log::debug!(
     "rpc: get ord_debug_domain_district: base64_domain:{}",
-    base64_domain
+    btc_name
   );
 
   let rtx = index.begin_read()?;
   let inscription_id = rtx
-    .domain_district_to_inscription_id(&base64_domain, &index.domain_list)?
+    .domain_district_to_inscription_id(&btc_name, &index.domain_list)?
     .ok_or_api_not_found(format!("district {base64_domain} not found."))?;
 
   log::debug!(
     "rpc: get ord_debug_bitmap_district: {:?} {:?}",
-    base64_domain,
+    btc_name,
     inscription_id
   );
 

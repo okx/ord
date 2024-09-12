@@ -83,7 +83,7 @@ impl ProtocolManager {
       bitmap_count = ord_proto::bitmap::index_bitmap(context, &operations)?;
     }
     if self.config.enable_index_domain {
-      btc_domain_count = ord_proto::btc_domain::index_btc_domain(
+      btc_domain_count = ord_proto::btc_name::index_btc_name(
         context,
         &operations,
         &self.config.btc_domain_list,

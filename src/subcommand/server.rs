@@ -310,7 +310,7 @@ impl Server {
           get(ord::ord_debug_bitmap_district),
         )
         .route(
-          "/ord/debug/domain/:base64_domain",
+          "/ord/debug/domain/:btc_name",
           get(ord::ord_debug_domain_district),
         )
         .route("/brc20/tick/:tick", get(brc20::brc20_tick_info))

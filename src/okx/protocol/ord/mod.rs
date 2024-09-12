@@ -1,2 +1,2 @@
 pub mod bitmap;
-pub mod btc_domain;
+pub mod btc_name;
