@@ -175,7 +175,7 @@ impl Rtx<'_> {
     get_collection_inscription_id(&table, &district.to_collection_key())
   }
 
-  pub(crate) fn domain_district_to_inscription_id(
+  pub(crate) fn btc_name_to_inscription_id(
     &self,
     btc_name: &str,
     domain_list: &[String],
