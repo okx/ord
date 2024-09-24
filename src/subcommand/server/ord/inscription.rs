@@ -248,7 +248,7 @@ pub(crate) async fn ord_debug_bitmap_district(
   Ok(Json(ApiResponse::ok(inscription_id)))
 }
 
-// ord/debug/btc_nam/:btc_name
+// ord/debug/btc_name/:btc_name
 pub(crate) async fn ord_debug_btc_name(
   Extension(index): Extension<Arc<Index>>,
   Path(btc_name): Path<String>,
