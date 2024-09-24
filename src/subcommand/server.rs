@@ -310,8 +310,8 @@ impl Server {
           get(ord::ord_debug_bitmap_district),
         )
         .route(
-          "/ord/debug/btc/name/:btc_name",
-          get(ord::ord_debug_btc_name),
+          "/ord/debug/btc/domain/:btc_name",
+          get(ord::ord_debug_btc_domain),
         )
         .route("/brc20/tick/:tick", get(brc20::brc20_tick_info))
         .route("/brc20/tick", get(brc20::brc20_all_tick_info))

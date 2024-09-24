@@ -1,20 +1,17 @@
 use {super::*, anyhow::anyhow, regex::Regex};
 
-const BTC_DOMAIN_KEY: &str = r"BTC_NAME";
+const BTC_DOMAIN_KEY: &str = r"BTC_DOMAIN";
 
-pub struct BtcName {
+pub struct BtcDomain {
   pub name: String,
   pub domain: String,
+  pub collection_kind: CollectionKind,
 }
 
 const DEFAULT_DOMAIN_LIST: [&str; 4] = ["btc", "unisat", "sats", "x"];
-impl BtcName {
-  pub fn parse(bytes: &[u8], domain_list: &[String]) -> Result<Self> {
-    let domains = if domain_list.is_empty() {
-      DEFAULT_DOMAIN_LIST.join("|")
-    } else {
-      domain_list.join("|")
-    };
+impl BtcDomain {
+  pub fn parse(bytes: &[u8]) -> Result<Self> {
+    let domains = DEFAULT_DOMAIN_LIST.join("|");
     let pattern = format!(r"^(?<name>.+)\.(?<domain>{domains})$");
     let content = std::str::from_utf8(bytes)?;
     let re = Regex::new(&pattern).unwrap();
@@ -25,6 +22,7 @@ impl BtcName {
         return Ok(Self {
           name: name.to_string(),
           domain: domain.to_string(),
+          collection_kind: CollectionKind::try_from(domain).unwrap(),
         });
       }
     }
@@ -48,7 +46,7 @@ impl BtcName {
   }
 
   pub fn to_collection_key(&self) -> String {
-    format!("{}_{}_{}", BTC_DOMAIN_KEY, self.name, self.domain)
+    format!("{}_{}_{}", BTC_DOMAIN_KEY, self.domain, self.name)
   }
 }
 
@@ -58,7 +56,6 @@ mod tests {
 
   #[test]
   fn validate_regex() {
-    let domain_list = vec![];
     let invalid_domains = [
       "abc.bitmap",
       "btc.com.btc",
@@ -71,10 +68,11 @@ mod tests {
       "\njack.btc",
       "hi\njack.btc",
       "\njack.btc\n",
+      "abc.aaa",
       r#"{ "p":"sns", "op":"reg",    "name":"jack.btc"}"#,
     ];
     for domain in invalid_domains {
-      let btc_name = BtcName::parse(domain.as_bytes(), &domain_list);
+      let btc_name = BtcDomain::parse(domain.as_bytes());
       assert!(btc_name.is_err());
     }
 
@@ -90,20 +88,30 @@ mod tests {
       "\tjack.btc",
     ];
     for domain in valid_domains {
-      let btc_name = BtcName::parse(domain.as_bytes(), &domain_list);
+      let btc_name = BtcDomain::parse(domain.as_bytes());
       assert!(btc_name.is_ok());
+      assert!(matches!(
+        btc_name.unwrap().collection_kind,
+        CollectionKind::BtcName
+      ));
     }
+
+    // test "unisat", "sats", "x"
+    let valid_domain = "abcdef.unisat";
+    let unisat_name = BtcDomain::parse(valid_domain.as_bytes()).unwrap();
+    assert_eq!(unisat_name.collection_kind, CollectionKind::UnisatName);
+    let valid_domain = "abcdef.sats";
+    let sats_name = BtcDomain::parse(valid_domain.as_bytes()).unwrap();
+    assert_eq!(sats_name.collection_kind, CollectionKind::SatsName);
+    let valid_domain = "abcdef.x";
+    let x_name = BtcDomain::parse(valid_domain.as_bytes()).unwrap();
+    assert_eq!(x_name.collection_kind, CollectionKind::XName);
 
     for d in DEFAULT_DOMAIN_LIST {
       let s = format!("abc.{d}");
-      let btc_name = BtcName::parse(s.as_bytes(), &domain_list).unwrap();
+      let btc_name = BtcDomain::parse(s.as_bytes()).unwrap();
       assert!(DEFAULT_DOMAIN_LIST.contains(&btc_name.domain.as_str()));
       assert_eq!(btc_name.name, "abc");
     }
-    // new domain list
-    let domain_list = vec!["aaa".to_string(), "bbb".to_string()];
-    let btc_name = BtcName::parse("abc.aaa".as_bytes(), &domain_list).unwrap();
-    assert_eq!(btc_name.name, "abc");
-    assert_eq!(btc_name.domain, "aaa");
   }
 }

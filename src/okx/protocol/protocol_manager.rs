@@ -83,8 +83,7 @@ impl ProtocolManager {
       bitmap_count = ord_proto::bitmap::index_bitmap(context, &operations)?;
     }
     if self.config.enable_index_domain {
-      btc_domain_count =
-        ord_proto::btc_name::index_btc_name(context, &operations, &self.config.btc_domain_list)?;
+      btc_domain_count = ord_proto::btc_name::index_btc_domain(context, &operations)?;
     }
     let cost4 = bitmap_start.elapsed().as_millis();
 

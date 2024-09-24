@@ -7,6 +7,9 @@ pub enum CollectionKind {
   BitMap,
   BRC20,
   BtcName,
+  UnisatName,
+  SatsName,
+  XName,
 }
 impl Display for CollectionKind {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -15,9 +18,25 @@ impl Display for CollectionKind {
       "{}",
       match self {
         CollectionKind::BitMap => String::from("bitmap"),
-        CollectionKind::BtcName => String::from("btc_name"),
         CollectionKind::BRC20 => String::from("brc20"),
+        CollectionKind::BtcName => String::from("btc_name"),
+        CollectionKind::UnisatName => String::from("unisat_name"),
+        CollectionKind::SatsName => String::from("sats_name"),
+        CollectionKind::XName => String::from("x_name"),
       }
     )
+  }
+}
+
+impl TryFrom<&str> for CollectionKind {
+  type Error = ();
+  fn try_from(value: &str) -> Result<Self, Self::Error> {
+    match value {
+      "btc" => Ok(CollectionKind::BtcName),
+      "unisat" => Ok(CollectionKind::UnisatName),
+      "sats" => Ok(CollectionKind::SatsName),
+      "x" => Ok(CollectionKind::XName),
+      _ => Err(()),
+    }
   }
 }

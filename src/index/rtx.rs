@@ -1,5 +1,5 @@
 use super::*;
-use crate::okx::datastore::ord::btc_name::BtcName;
+use crate::okx::datastore::ord::btc_name::BtcDomain;
 
 pub(crate) struct Rtx<'a>(pub(crate) redb::ReadTransaction<'a>);
 
@@ -175,13 +175,9 @@ impl Rtx<'_> {
     get_collection_inscription_id(&table, &district.to_collection_key())
   }
 
-  pub(crate) fn btc_name_to_inscription_id(
-    &self,
-    btc_name: &str,
-    domain_list: &[String],
-  ) -> Result<Option<InscriptionId>> {
+  pub(crate) fn btc_name_to_inscription_id(&self, btc_name: &str) -> Result<Option<InscriptionId>> {
     let btc_name_raw = btc_name.as_bytes().to_vec();
-    let domain = BtcName::parse(&btc_name_raw, domain_list)?;
+    let domain = BtcDomain::parse(&btc_name_raw)?;
     let table = self.0.open_table(COLLECTIONS_KEY_TO_INSCRIPTION_ID)?;
     get_collection_inscription_id(&table, &domain.to_collection_key())
   }

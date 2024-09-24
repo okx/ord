@@ -26,7 +26,6 @@ pub struct ProtocolConfig {
   enable_ord_receipts: bool,
   enable_index_bitmap: bool,
   enable_index_domain: bool,
-  btc_domain_list: Vec<String>,
 }
 
 impl ProtocolConfig {
@@ -41,7 +40,6 @@ impl ProtocolConfig {
       enable_ord_receipts: options.enable_save_ord_receipts,
       enable_index_bitmap: options.enable_index_bitmap,
       enable_index_domain: options.enable_index_domain,
-      btc_domain_list: options.btc_domain_list.clone(),
     }
   }
 }

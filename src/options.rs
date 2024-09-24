@@ -86,9 +86,6 @@ pub struct Options {
   // OKX defined options.
   #[arg(long, help = "Enable Index all of BRC20 Protocol")]
   pub(crate) enable_index_brc20: bool,
-  #[arg(long, use_value_delimiter=true, value_delimiter = ',', num_args=0..,
-    help = "BTC domain list, default are btc,unisat,sats,x")]
-  pub(crate) btc_domain_list: Vec<String>,
   #[arg(
     long,
     help = "Don't look for BRC20 messages below <FIRST_BRC20_HEIGHT>."
@@ -903,16 +900,6 @@ mod tests {
       .unwrap_err()
       .to_string(),
       "cookie file `/foo/bar/baz/qux/.cookie` does not exist"
-    );
-  }
-
-  #[test]
-  fn test_domain_list() {
-    let arguments =
-      Arguments::try_parse_from(["ord", "--btc-domain-list=aaa,bbb", "index", "update"]).unwrap();
-    assert_eq!(
-      arguments.options.btc_domain_list,
-      vec!["aaa".to_string(), "bbb".to_string()]
     );
   }
 }

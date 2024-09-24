@@ -228,7 +228,6 @@ pub struct Index {
   path: PathBuf,
   started: DateTime<Utc>,
   unrecoverably_reorged: AtomicBool,
-  pub domain_list: Vec<String>,
 }
 
 impl Index {
@@ -423,7 +422,6 @@ impl Index {
       path,
       started: Utc::now(),
       unrecoverably_reorged: AtomicBool::new(false),
-      domain_list: options.btc_domain_list.clone(),
     })
   }
 

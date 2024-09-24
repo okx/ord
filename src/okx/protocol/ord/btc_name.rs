@@ -3,8 +3,7 @@ use crate::okx::protocol::context::Context;
 use {
   crate::{
     okx::datastore::ord::{
-      btc_name::BtcName,
-      collections::CollectionKind,
+      btc_name::BtcDomain,
       operation::{Action, InscriptionOp},
     },
     Inscription, InscriptionId, Result,
@@ -14,10 +13,9 @@ use {
   std::collections::HashMap,
 };
 
-pub fn index_btc_name(
+pub fn index_btc_domain(
   context: &mut Context,
   operations: &HashMap<Txid, Vec<InscriptionOp>>,
-  domain_list: &[String],
 ) -> Result<u64> {
   let mut count = 0;
 
@@ -37,12 +35,12 @@ pub fn index_btc_name(
   for op in positive_inscriptions.into_iter() {
     match op.action {
       Action::New { inscription, .. } => {
-        if let Some((inscription_id, btc_name)) =
-          do_index_btc_name(context, inscription, op.inscription_id, domain_list)?
+        if let Some((inscription_id, btc_domain)) =
+          do_index_btc_domain(context, inscription, op.inscription_id)?
         {
-          let key = btc_name.to_collection_key();
+          let key = btc_domain.to_collection_key();
           context.set_inscription_by_collection_key(&key, &inscription_id)?;
-          context.add_inscription_attributes(&inscription_id, CollectionKind::BtcName)?;
+          context.add_inscription_attributes(&inscription_id, btc_domain.collection_kind)?;
           count += 1;
         }
       }
@@ -52,14 +50,13 @@ pub fn index_btc_name(
   Ok(count)
 }
 
-fn do_index_btc_name(
+fn do_index_btc_domain(
   context: &mut Context,
   inscription: Inscription,
   inscription_id: InscriptionId,
-  domain_list: &[String],
-) -> Result<Option<(InscriptionId, BtcName)>> {
+) -> Result<Option<(InscriptionId, BtcDomain)>> {
   if let Some(content) = inscription.body() {
-    if let Ok(btc_name) = BtcName::parse(content, domain_list) {
+    if let Ok(btc_name) = BtcDomain::parse(content) {
       let collection_key = btc_name.to_collection_key();
 
       if context

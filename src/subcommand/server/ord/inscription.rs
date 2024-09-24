@@ -249,20 +249,20 @@ pub(crate) async fn ord_debug_bitmap_district(
 }
 
 // ord/debug/btc_nam/:btc_name
-pub(crate) async fn ord_debug_btc_name(
+pub(crate) async fn ord_debug_btc_domain(
   Extension(index): Extension<Arc<Index>>,
-  Path(btc_name): Path<String>,
+  Path(btc_domain): Path<String>,
 ) -> ApiResult<InscriptionId> {
-  log::debug!("rpc: get ord_debug_btc_name:{btc_name}");
+  log::info!("rpc: get ord_debug_btc_domain:{btc_domain}");
 
   let rtx = index.begin_read()?;
   let inscription_id = rtx
-    .btc_name_to_inscription_id(&btc_name, &index.domain_list)?
-    .ok_or_api_not_found(format!("district {btc_name} not found."))?;
+    .btc_name_to_inscription_id(&btc_domain)?
+    .ok_or_api_not_found(format!("btc domain {btc_domain} not found."))?;
 
-  log::debug!(
-    "rpc: get ord_debug_bitmap_district: {:?} {:?}",
-    btc_name,
+  log::info!(
+    "rpc: get ord_debug_btc_domain: {:?} {:?}",
+    btc_domain,
     inscription_id
   );
 
