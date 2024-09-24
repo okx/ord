@@ -44,6 +44,7 @@ http = "0.2.6"
 humantime = "2.1.0"
 hyper = { version = "0.14.24", features = ["client", "http2"] }
 indicatif = "0.17.1"
+itertools = "0.13"
 lazy_static = "1.4.0"
 log = "0.4.14"
 mime = "0.3.16"
