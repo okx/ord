@@ -42,6 +42,7 @@ hex = "0.4.3"
 html-escaper = "0.2.0"
 http = "0.2.6"
 humantime = "2.1.0"
+time = "0.3.36"
 hyper = { version = "0.14.24", features = ["client", "http2"] }
 indicatif = "0.17.1"
 lazy_static = "1.4.0"
