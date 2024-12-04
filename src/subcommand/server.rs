@@ -138,6 +138,14 @@ pub struct Server {
   pub(crate) polling_interval: humantime::Duration,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BlockInscriptionsDetails {
+  minted: Vec<api::InscriptionRecursive>,
+  transferred: Vec<api::InscriptionRecursive>,
+  page_index: u32,
+  more: bool,
+}
+
 impl Server {
   pub fn run(self, settings: Settings, index: Arc<Index>, handle: Handle) -> SubcommandResult {
     Runtime::new()?.block_on(async {
@@ -216,6 +224,10 @@ impl Server {
         .route(
           "/inscriptions/block/:height/:page",
           get(Self::inscriptions_in_block_paginated),
+        )
+        .route(
+          "/inscriptions/history/:height/:page",
+          get(Self::inscriptions_history_in_block_paginated),
         )
         .route("/install.sh", get(Self::install_script))
         .route("/ordinal/:sat", get(Self::ordinal))
@@ -1150,6 +1162,9 @@ impl Server {
     Path(inscription_id): Path<InscriptionId>,
   ) -> ServerResult {
     task::block_in_place(|| {
+      //开始计时
+      let start = Instant::now();
+
       let Some(inscription) = index.get_inscription_by_id(inscription_id)? else {
         return if let Some(proxy) = server_config.proxy.as_ref() {
           Self::proxy(proxy, &format!("r/inscription/{}", inscription_id))
@@ -1195,6 +1210,10 @@ impl Server {
           .ok()
           .map(|address| address.to_string())
       });
+
+      //统计耗时
+      let duration = start.elapsed();
+      println!("Time elapsed in inscription_recursive() is: {:?}", duration);
 
       Ok(
         Json(api::InscriptionRecursive {
@@ -1963,6 +1982,12 @@ impl Server {
     Extension(server_config): Extension<Arc<ServerConfig>>,
     Path((parent, page)): Path<(InscriptionId, usize)>,
   ) -> ServerResult {
+    //打印控制台日志
+    println!(
+      "children_recursive_paginated parent:{:?}, page:{:?}",
+      parent, page
+    );
+
     task::block_in_place(|| {
       let Some(parent) = index.get_inscription_entry(parent)? else {
         return if let Some(proxy) = server_config.proxy.as_ref() {
@@ -2147,6 +2172,158 @@ impl Server {
         .page(server_config)
         .into_response()
       })
+    })
+  }
+
+  async fn inscriptions_history_in_block_paginated(
+    Extension(index): Extension<Arc<Index>>,
+    Path((block_height, page_index)): Path<(u32, u32)>,
+    AcceptJson(accept_json): AcceptJson,
+  ) -> ServerResult {
+    task::block_in_place(|| {
+      if !accept_json {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+      }
+
+      let page_size = 100000;
+      let page_index_usize = usize::try_from(page_index).unwrap_or(usize::MAX);
+      let page_size_usize = usize::try_from(page_size).unwrap_or(usize::MAX);
+
+      // 获取区块中新创建的铭文
+      let mut minted_ids = index
+        .get_inscriptions_in_block(block_height)?
+        .into_iter()
+        .skip(page_index_usize.saturating_mul(page_size_usize))
+        .take(page_size_usize.saturating_add(1))
+        .collect::<Vec<InscriptionId>>();
+
+      let more_minted = minted_ids.len() > page_size_usize;
+      if more_minted {
+        minted_ids.pop();
+      }
+
+      // 转换为详细信息
+      let minted_details: Vec<api::InscriptionRecursive> = minted_ids
+        .iter()
+        .filter_map(|inscription_id| {
+          let inscription = index.get_inscription_by_id(*inscription_id).ok()??;
+          let entry = index.get_inscription_entry(*inscription_id).ok()??;
+          let satpoint = index
+            .get_inscription_satpoint_by_id(*inscription_id)
+            .ok()
+            .flatten()?;
+
+          let output = if satpoint.outpoint == unbound_outpoint() {
+            None
+          } else {
+            index
+              .get_transaction(satpoint.outpoint.txid)
+              .ok()
+              .flatten()?
+              .output
+              .into_iter()
+              .nth(satpoint.outpoint.vout.try_into().unwrap())
+          };
+
+          let address = output.as_ref().and_then(|output| {
+            Chain::Mainnet
+              .address_from_script(&output.script_pubkey)
+              .ok()
+              .map(|address| address.to_string())
+          });
+
+          Some(api::InscriptionRecursive {
+            charms: Charm::charms(entry.charms),
+            content_type: inscription.content_type().map(|s| s.to_string()),
+            content_length: inscription.content_length(),
+            delegate: inscription.delegate(),
+            fee: entry.fee,
+            height: entry.height,
+            id: *inscription_id,
+            number: entry.inscription_number,
+            output: satpoint.outpoint,
+            value: output.as_ref().map(|o| o.value.to_sat()),
+            sat: entry.sat,
+            satpoint,
+            timestamp: timestamp(entry.timestamp.into()).timestamp(),
+            address,
+          })
+        })
+        .collect();
+
+      // 获取区块中转移的铭文
+      let mut transferred_ids = index
+        .get_transferred_inscriptions_in_block(block_height)?
+        .into_iter()
+        .skip(page_index_usize.saturating_mul(page_size_usize))
+        .take(page_size_usize.saturating_add(1))
+        .collect::<Vec<InscriptionId>>();
+
+      let more_transferred = transferred_ids.len() > page_size_usize;
+      if more_transferred {
+        transferred_ids.pop();
+      }
+
+      // 转换为详细信息
+      let transferred_details: Vec<api::InscriptionRecursive> = transferred_ids
+        .iter()
+        .filter_map(|inscription_id| {
+          let inscription = index.get_inscription_by_id(*inscription_id).ok()??;
+          let entry = index.get_inscription_entry(*inscription_id).ok()??;
+          let satpoint = index
+            .get_inscription_satpoint_by_id(*inscription_id)
+            .ok()
+            .flatten()?;
+
+          let output = if satpoint.outpoint == unbound_outpoint() {
+            None
+          } else {
+            index
+              .get_transaction(satpoint.outpoint.txid)
+              .ok()
+              .flatten()?
+              .output
+              .into_iter()
+              .nth(satpoint.outpoint.vout.try_into().unwrap())
+          };
+
+          let address = output.as_ref().and_then(|output| {
+            Chain::Mainnet
+              .address_from_script(&output.script_pubkey)
+              .ok()
+              .map(|address| address.to_string())
+          });
+
+          Some(api::InscriptionRecursive {
+            charms: Charm::charms(entry.charms),
+            content_type: inscription.content_type().map(|s| s.to_string()),
+            content_length: inscription.content_length(),
+            delegate: inscription.delegate(),
+            fee: entry.fee,
+            height: entry.height,
+            id: *inscription_id,
+            number: entry.inscription_number,
+            output: satpoint.outpoint,
+            value: output.as_ref().map(|o| o.value.to_sat()),
+            sat: entry.sat,
+            satpoint,
+            timestamp: timestamp(entry.timestamp.into()).timestamp(),
+            address,
+          })
+        })
+        .collect();
+
+      let more = more_minted || more_transferred;
+
+      Ok(
+        Json(BlockInscriptionsDetails {
+          minted: minted_details,
+          transferred: transferred_details,
+          page_index,
+          more,
+        })
+        .into_response(),
+      )
     })
   }
 

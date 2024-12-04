@@ -35,6 +35,7 @@ use {
     sync::Once,
   },
 };
+use std::collections::HashSet;
 
 pub use self::entry::RuneEntry;
 
@@ -211,6 +212,56 @@ pub struct Index {
 }
 
 impl Index {
+  pub fn get_transferred_inscriptions_in_block(&self, block_height: u32) -> Result<Vec<InscriptionId>> {
+    let rtx = self.database.begin_read()?;
+
+    // 获取该区块的所有交易
+    let Some(block) = self.get_block_by_height(block_height)? else {
+      return Ok(Vec::new());
+    };
+
+    let sequence_number_to_inscription_entry = rtx.open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?;
+
+    let mut transferred_inscriptions = Vec::new();
+    let mut seen_inscriptions = HashSet::new();
+
+    // 检查每个交易的输出
+    for tx in &block.txdata {
+      for (vout, _output) in tx.output.iter().enumerate() {
+        let outpoint = OutPoint {
+          txid: tx.compute_txid(),
+          vout: vout as u32,
+        };
+
+        // 获取该输出上的所有铭文
+        let inscriptions = self.get_inscriptions_on_output_with_satpoints(outpoint)?;
+
+        // 如果这是一笔转移交易（不是铸造交易）
+        for (_, inscription_id) in inscriptions {
+          let Some(sequence_number) = rtx
+              .open_table(INSCRIPTION_ID_TO_SEQUENCE_NUMBER)?
+              .get(&inscription_id.store())?
+              .map(|guard| guard.value()) else {
+            continue;
+          };
+
+          // 获取铭文条目来检查其创建高度
+          let entry = sequence_number_to_inscription_entry.get(sequence_number)?.unwrap();
+          let inscription_entry = InscriptionEntry::load(entry.value());
+
+          // 如果铭文是在之前的区块创建的，则它在当前区块是被转移的
+          if inscription_entry.height < block_height && !seen_inscriptions.contains(&inscription_id) {
+            transferred_inscriptions.push(inscription_id);
+            seen_inscriptions.insert(inscription_id);
+          }
+        }
+      }
+    }
+
+    transferred_inscriptions.sort(); // 保持顺序一致性
+    Ok(transferred_inscriptions)
+  }
+
   pub fn open(settings: &Settings) -> Result<Self> {
     Index::open_with_event_sender(settings, None)
   }
@@ -1269,20 +1320,24 @@ impl Index {
     let sequence_number_to_entry = rtx.open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?;
 
     let mut children = rtx
-      .open_multimap_table(SEQUENCE_NUMBER_TO_CHILDREN)?
-      .get(sequence_number)?
-      .skip(page_index * page_size)
-      .take(page_size.saturating_add(1))
-      .map(|result| {
-        result
-          .and_then(|sequence_number| {
-            sequence_number_to_entry
-              .get(sequence_number.value())
-              .map(|entry| InscriptionEntry::load(entry.unwrap().value()).id)
-          })
-          .map_err(|err| err.into())
-      })
-      .collect::<Result<Vec<InscriptionId>>>()?;
+        .open_multimap_table(SEQUENCE_NUMBER_TO_CHILDREN)?
+        .get(sequence_number)?
+        .skip(page_index * page_size)
+        .take(page_size.saturating_add(1))
+        .map(|result| {
+          result
+              .and_then(|child_sequence_number| {
+                let child_entry = sequence_number_to_entry
+                    .get(child_sequence_number.value())?
+                    .unwrap();
+                let child_entry_data = InscriptionEntry::load(child_entry.value());
+                let child_inscription_id = child_entry_data.id;
+
+                Ok(child_inscription_id)
+              })
+              .map_err(|err| err.into())
+        })
+        .collect::<Result<Vec<InscriptionId>>>()?;
 
     let more = children.len() > page_size;
 
