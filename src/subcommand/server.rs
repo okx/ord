@@ -44,6 +44,7 @@ pub use server_config::ServerConfig;
 mod accept_encoding;
 mod accept_json;
 mod error;
+mod okx;
 pub mod query;
 mod server_config;
 
@@ -177,6 +178,52 @@ impl Server {
         proxy: self.proxy.clone(),
       });
 
+      let api_v1_router = Router::new()
+        .route("/node/info", get(okx::info::node_info))
+        .route("/ord/id/:id/inscription", get(okx::ord::ord_inscription_id))
+        .route(
+          "/ord/number/:number/inscription",
+          get(okx::ord::ord_inscription_number),
+        )
+        .route("/ord/outpoint/:outpoint/info", get(okx::ord::ord_outpoint))
+        .route(
+          "/ord/tx/:txid/inscriptions",
+          get(okx::ord::ord_txid_inscriptions),
+        )
+        .route(
+          "/ord/block/:blockhash/inscriptions",
+          get(okx::ord::ord_block_inscriptions),
+        )
+        .route("/brc20/tick/:tick", get(okx::brc20::brc20_tick_info))
+        .route("/brc20/tick", get(okx::brc20::brc20_all_tick_info))
+        .route(
+          "/brc20/tick/:tick/address/:address/balance",
+          get(okx::brc20::brc20_balance),
+        )
+        .route(
+          "/brc20/address/:address/balance",
+          get(okx::brc20::brc20_all_balance),
+        )
+        .route(
+          "/brc20/tick/:tick/address/:address/transferable",
+          get(okx::brc20::brc20_transferable),
+        )
+        .route(
+          "/brc20/address/:address/transferable",
+          get(okx::brc20::brc20_all_transferable),
+        )
+        .route(
+          "/brc20/outpoint/:outpoint/transferable",
+          get(okx::brc20::brc20_outpoint),
+        )
+        .route("/brc20/tx/:txid/events", get(okx::brc20::brc20_tx_events))
+        .route(
+          "/brc20/block/:block_hash/events",
+          get(okx::brc20::brc20_block_events),
+        );
+
+      let api_router = Router::new().nest("/v1", api_v1_router);
+
       let router = Router::new()
         .route("/", get(Self::home))
         .route("/address/:address", get(Self::address))
@@ -285,6 +332,7 @@ impl Server {
         .route("/tx/:txid", get(Self::transaction))
         .route("/decode/:txid", get(Self::decode))
         .route("/update", get(Self::update))
+        .nest("/api", api_router)
         .fallback(Self::fallback)
         .layer(Extension(index))
         .layer(Extension(server_config.clone()))

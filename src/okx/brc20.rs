@@ -25,12 +25,13 @@ pub static MAXIMUM_SUPPLY: Lazy<Num> = Lazy::new(|| Num::from(u64::MAX));
 pub static BIGDECIMAL_TEN: Lazy<Num> = Lazy::new(|| Num::from(10u64));
 
 pub(crate) use self::{
+  entry::{BRC20Balance, BRC20Receipt, BRC20TickerInfo, BRC20TransferAsset},
+  error::BRC20Error,
   executor::BRC20ExecutionMessage,
   ticker::{BRC20LowerCaseTicker, BRC20Ticker},
 };
 use crate::okx::brc20::entry::BRC20TransferAssetValue;
 use crate::okx::brc20::num::Num;
-use entry::BRC20TransferAsset;
 
 #[derive(Debug, Clone)]
 pub enum BRC20Message {
