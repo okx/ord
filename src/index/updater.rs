@@ -8,6 +8,13 @@ use {
   },
 };
 
+use crate::okx::context::TableContext;
+use crate::okx::OkxUpdater;
+pub(crate) use inscription_updater::{
+  hook::{BundleMessage, InscriptionAction},
+  Curse,
+};
+
 mod inscription_updater;
 mod rune_updater;
 
@@ -423,6 +430,18 @@ impl Updater<'_> {
       wtx.open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?;
     let mut transaction_id_to_transaction = wtx.open_table(TRANSACTION_ID_TO_TRANSACTION)?;
 
+    // Inscription receipts table
+    let mut inscription_receipts = wtx.open_table(TRANSACTION_ID_TO_INSCRIPTION_RECEIPTS)?;
+
+    // BRC20 tables
+    let mut brc20_ticker_info = wtx.open_table(BRC20_TICKER_ENTRY)?;
+    let mut brc20_balances = wtx.open_table(BRC20_BALANCES)?;
+    let mut brc20_receipts = wtx.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
+    let mut brc20_satpoint_to_transfer_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_TRANSFER_ASSETS)?;
+    let mut brc20_address_ticker_to_transfer_assets =
+      wtx.open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS)?;
+
     let index_inscriptions = self.height >= self.index.settings.first_inscription_height()
       && self.index.index_inscriptions;
 
@@ -498,6 +517,8 @@ impl Updater<'_> {
 
     let home_inscription_count = home_inscriptions.len()?;
 
+    let mut block_bundle_messages = HashMap::new();
+
     let mut inscription_updater = InscriptionUpdater {
       blessed_inscription_count,
       cursed_inscription_count,
@@ -517,6 +538,9 @@ impl Updater<'_> {
       transaction_buffer: Vec::new(),
       transaction_id_to_transaction: &mut transaction_id_to_transaction,
       unbound_inscriptions,
+      brc20_satpoint_to_transfer_assets: &mut brc20_satpoint_to_transfer_assets,
+      brc20_address_ticker_to_transfer_assets: &mut brc20_address_ticker_to_transfer_assets,
+      block_bundle_messages: &mut block_bundle_messages,
     };
 
     let mut coinbase_inputs = Vec::new();
@@ -712,6 +736,25 @@ impl Updater<'_> {
       &Statistic::UnboundInscriptions.key(),
       &inscription_updater.unbound_inscriptions,
     )?;
+
+    if index_inscriptions && self.index.index_addresses {
+      let mut context = TableContext::new(
+        &mut inscription_receipts,
+        &mut brc20_balances,
+        &mut brc20_ticker_info,
+        &mut brc20_receipts,
+        &mut brc20_satpoint_to_transfer_assets,
+        &mut brc20_address_ticker_to_transfer_assets,
+      );
+
+      let mut okx_updater = OkxUpdater {
+        height: self.height,
+        timestamp: block.header.time,
+        chain: self.index.settings.chain(),
+        save_inscription_receipts: self.index.save_inscription_receipts,
+      };
+      okx_updater.index_block_bundle_messages(&mut context, block, block_bundle_messages)?;
+    }
 
     Ok(())
   }

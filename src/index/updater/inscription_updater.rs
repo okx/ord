@@ -1,7 +1,10 @@
 use super::*;
+use hook::BundleMessage;
+
+pub(crate) mod hook;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-enum Curse {
+pub(crate) enum Curse {
   DuplicateField,
   IncompleteField,
   NotAtOffsetZero,
@@ -15,9 +18,12 @@ enum Curse {
 
 #[derive(Debug, Clone)]
 pub(super) struct Flotsam {
+  txid: Txid,
   inscription_id: InscriptionId,
   offset: u64,
   origin: Origin,
+  old_satpoint: SatPoint,
+  input_script_buf: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
@@ -30,10 +36,12 @@ enum Origin {
     reinscription: bool,
     unbound: bool,
     vindicated: bool,
+    inscription: Inscription,
+    pre_jubilant_curse_reason: Option<Curse>,
   },
   Old {
     sequence_number: u32,
-    old_satpoint: SatPoint,
+    inscription_number: i32,
   },
 }
 
@@ -56,6 +64,11 @@ pub(super) struct InscriptionUpdater<'a, 'tx> {
   pub(super) sequence_number_to_entry: &'a mut Table<'tx, u32, InscriptionEntryValue>,
   pub(super) timestamp: u32,
   pub(super) unbound_inscriptions: u64,
+  pub(super) brc20_satpoint_to_transfer_assets:
+    &'a mut Table<'tx, &'static SatPointValue, &'static BRC20TransferAssetValue>,
+  pub(super) brc20_address_ticker_to_transfer_assets:
+    &'a mut MultimapTable<'tx, &'static AddressTickerKeyValue, &'static SatPointValue>,
+  pub(super) block_bundle_messages: &'a mut HashMap<Txid, Vec<BundleMessage>>,
 }
 
 impl InscriptionUpdater<'_, '_> {
@@ -93,6 +106,11 @@ impl InscriptionUpdater<'_, '_> {
 
       let mut transferred_inscriptions = input_utxo_entries[input_index].parse_inscriptions();
 
+      let input_script_buf = index
+        .index_addresses
+        .then_some(input_utxo_entries[input_index].script_pubkey())
+        .unwrap_or_default();
+
       transferred_inscriptions.sort_by_key(|(sequence_number, _)| *sequence_number);
 
       for (sequence_number, old_satpoint_offset) in transferred_inscriptions {
@@ -101,22 +119,26 @@ impl InscriptionUpdater<'_, '_> {
           offset: old_satpoint_offset,
         };
 
-        let inscription_id = InscriptionEntry::load(
+        let inscription_entry = InscriptionEntry::load(
           self
             .sequence_number_to_entry
             .get(sequence_number)?
             .unwrap()
             .value(),
-        )
-        .id;
+        );
+
+        let inscription_id = inscription_entry.id;
 
         let offset = total_input_value + old_satpoint_offset;
         floating_inscriptions.push(Flotsam {
+          txid,
           offset,
           inscription_id,
+          old_satpoint,
+          input_script_buf: input_script_buf.to_vec(),
           origin: Origin::Old {
             sequence_number,
-            old_satpoint,
+            inscription_number: inscription_entry.inscription_number,
           },
         });
 
@@ -136,6 +158,8 @@ impl InscriptionUpdater<'_, '_> {
         if inscription.input != u32::try_from(input_index).unwrap() {
           break;
         }
+
+        let inscription = envelopes.next().unwrap();
 
         let inscription_id = InscriptionId {
           txid,
@@ -193,8 +217,14 @@ impl InscriptionUpdater<'_, '_> {
           .unwrap_or(offset);
 
         floating_inscriptions.push(Flotsam {
+          txid,
           inscription_id,
           offset,
+          old_satpoint: SatPoint {
+            outpoint: txin.previous_output,
+            offset: offset - total_input_value,
+          },
+          input_script_buf: input_script_buf.to_vec(),
           origin: Origin::New {
             cursed: curse.is_some() && !jubilant,
             fee: 0,
@@ -205,6 +235,8 @@ impl InscriptionUpdater<'_, '_> {
               || curse == Some(Curse::UnrecognizedEvenField)
               || inscription.payload.unrecognized_even_field,
             vindicated: curse.is_some() && jubilant,
+            inscription: inscription.payload,
+            pre_jubilant_curse_reason: curse,
           },
         });
 
@@ -213,7 +245,6 @@ impl InscriptionUpdater<'_, '_> {
           .or_insert((inscription_id, 0))
           .1 += 1;
 
-        envelopes.next();
         id_counter += 1;
       }
     }
@@ -294,6 +325,7 @@ impl InscriptionUpdater<'_, '_> {
         new_locations.push((
           new_satpoint,
           inscriptions.next().unwrap(),
+          &txout.script_pubkey,
           txout.script_pubkey.is_op_return(),
         ));
       }
@@ -301,7 +333,7 @@ impl InscriptionUpdater<'_, '_> {
       output_value = end;
     }
 
-    for (new_satpoint, flotsam, op_return) in new_locations.into_iter() {
+    for (new_satpoint, flotsam, script_pub_key, op_return) in new_locations.into_iter() {
       let output_utxo_entry =
         &mut output_utxo_entries[usize::try_from(new_satpoint.outpoint.vout).unwrap()];
 
@@ -309,6 +341,7 @@ impl InscriptionUpdater<'_, '_> {
         input_sat_ranges,
         flotsam,
         new_satpoint,
+        Some(script_pub_key),
         op_return,
         Some(output_utxo_entry),
         utxo_cache,
@@ -326,6 +359,7 @@ impl InscriptionUpdater<'_, '_> {
           input_sat_ranges,
           flotsam,
           new_satpoint,
+          None,
           false,
           None,
           utxo_cache,
@@ -369,16 +403,17 @@ impl InscriptionUpdater<'_, '_> {
     input_sat_ranges: Option<&Vec<&[u8]>>,
     flotsam: Flotsam,
     new_satpoint: SatPoint,
+    new_script_buf: Option<&ScriptBuf>,
     op_return: bool,
     mut normal_output_utxo_entry: Option<&mut UtxoEntryBuf>,
     utxo_cache: &mut HashMap<OutPoint, UtxoEntryBuf>,
     index: &Index,
   ) -> Result {
     let inscription_id = flotsam.inscription_id;
-    let (unbound, sequence_number) = match flotsam.origin {
+    let (unbound, sequence_number, inscription_number, charms) = match flotsam.origin {
       Origin::Old {
         sequence_number,
-        old_satpoint,
+        inscription_number,
       } => {
         if op_return {
           let entry = InscriptionEntry::load(
@@ -403,21 +438,22 @@ impl InscriptionUpdater<'_, '_> {
             block_height: self.height,
             inscription_id,
             new_location: new_satpoint,
-            old_location: old_satpoint,
+            old_location: flotsam.old_satpoint,
             sequence_number,
           })?;
         }
 
-        (false, sequence_number)
+        (false, sequence_number, inscription_number, None)
       }
       Origin::New {
         cursed,
         fee,
         hidden,
-        parents,
+        ref parents,
         reinscription,
         unbound,
         vindicated,
+        ..
       } => {
         let inscription_number = if cursed {
           let number: i32 = self.cursed_inscription_count.try_into().unwrap();
@@ -499,7 +535,7 @@ impl InscriptionUpdater<'_, '_> {
             charms,
             inscription_id,
             location: (!unbound).then_some(new_satpoint),
-            parent_inscription_ids: parents,
+            parent_inscription_ids: parents.clone(),
             sequence_number,
           })?;
         }
@@ -536,7 +572,7 @@ impl InscriptionUpdater<'_, '_> {
           }
         }
 
-        (unbound, sequence_number)
+        (unbound, sequence_number, inscription_number, Some(charms))
       }
     };
 
@@ -563,7 +599,24 @@ impl InscriptionUpdater<'_, '_> {
         .or_insert(UtxoEntryBuf::empty(index))
     });
 
-    output_utxo_entry.push_inscription(sequence_number, satpoint.offset, index);
+    // Design a hook to parse BRC20, Inscriptions, and Bitmap messages from inscription events.
+    // The return value determines whether to continue tracking this inscription.
+    let inscription_hook = hook::InscriptionHook {
+      flotsam: &flotsam,
+      new_satpoint,
+      new_script_buf,
+      sequence_number,
+      inscription_number,
+      charms,
+      updater: self,
+      index,
+    };
+
+    // If the hook determines that the inscription should continue to be tracked,
+    // push the inscription into the output UTXO entry.
+    if inscription_hook.handle_inscription()? {
+      output_utxo_entry.push_inscription(sequence_number, satpoint.offset, index);
+    }
 
     Ok(())
   }

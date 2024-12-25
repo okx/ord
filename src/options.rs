@@ -84,4 +84,19 @@ pub struct Options {
   pub(crate) testnet: bool,
   #[arg(long, help = "Use testnet4. Equivalent to `--chain testnet4`.")]
   pub(crate) testnet4: bool,
+
+  // OKX defined options.
+  #[arg(
+    long,
+    help = "Set log level. [possible values: error, warn, info, debug, trace]"
+  )]
+  pub(crate) log_level: Option<LogLevel>,
+  #[arg(long, help = "Store logs in <LOG_DIR>.")]
+  pub(crate) log_dir: Option<PathBuf>,
+  #[arg(long, help = "Store inscription receipts.")]
+  pub(crate) save_inscription_receipts: bool,
+  #[arg(long, help = "Index bitmap collection inscriptions.")]
+  pub(crate) index_bitmap: bool,
+  #[arg(long, help = "Index BRC-20 token operations.")]
+  pub(crate) index_brc20: bool,
 }
