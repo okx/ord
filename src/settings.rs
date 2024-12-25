@@ -28,6 +28,12 @@ pub struct Settings {
   server_password: Option<String>,
   server_url: Option<String>,
   server_username: Option<String>,
+
+  log_dir: Option<PathBuf>,
+  log_level: Option<LogLevel>,
+  save_inscription_receipts: bool,
+  index_bitmap: bool,
+  index_brc20: bool,
 }
 
 impl Settings {
@@ -141,6 +147,12 @@ impl Settings {
       server_password: self.server_password.or(source.server_password),
       server_url: self.server_url.or(source.server_url),
       server_username: self.server_username.or(source.server_username),
+
+      log_dir: self.log_dir.or(source.log_dir),
+      log_level: self.log_level.or(source.log_level),
+      save_inscription_receipts: self.save_inscription_receipts || source.save_inscription_receipts,
+      index_bitmap: self.index_bitmap || source.index_bitmap,
+      index_brc20: self.index_brc20 || source.index_brc20,
     }
   }
 
@@ -176,6 +188,12 @@ impl Settings {
       server_password: options.server_password,
       server_url: None,
       server_username: options.server_username,
+
+      log_dir: options.log_dir,
+      log_level: options.log_level,
+      save_inscription_receipts: options.save_inscription_receipts,
+      index_bitmap: options.index_bitmap,
+      index_brc20: options.index_brc20,
     }
   }
 
@@ -264,6 +282,14 @@ impl Settings {
       server_password: get_string("SERVER_PASSWORD"),
       server_url: get_string("SERVER_URL"),
       server_username: get_string("SERVER_USERNAME"),
+
+      log_dir: get_path("LOG_DIR"),
+      log_level: get_string("LOG_LEVEL")
+        .map(|level| level.parse::<LogLevel>())
+        .transpose()?,
+      save_inscription_receipts: get_bool("SAVE_INSCRIPTION_RECEIPTS"),
+      index_bitmap: get_bool("INDEX_BITMAP"),
+      index_brc20: get_bool("INDEX_BRC20"),
     })
   }
 
@@ -294,6 +320,12 @@ impl Settings {
       server_password: None,
       server_url: Some(server_url.into()),
       server_username: None,
+
+      log_dir: None,
+      log_level: None,
+      save_inscription_receipts: false,
+      index_bitmap: false,
+      index_brc20: false,
     }
   }
 
@@ -346,7 +378,7 @@ impl Settings {
       config: None,
       config_dir: None,
       cookie_file: Some(cookie_file),
-      data_dir: Some(data_dir),
+      data_dir: Some(data_dir.clone()),
       height_limit: self.height_limit,
       hidden: self.hidden,
       http_port: self.http_port,
@@ -368,6 +400,12 @@ impl Settings {
       server_password: self.server_password,
       server_url: self.server_url,
       server_username: self.server_username,
+
+      log_dir: Some(self.log_dir.unwrap_or(data_dir.clone().join("logs"))),
+      log_level: Some(self.log_level.unwrap_or_default()),
+      save_inscription_receipts: self.save_inscription_receipts,
+      index_bitmap: self.index_bitmap,
+      index_brc20: self.index_brc20,
     })
   }
 
@@ -517,6 +555,14 @@ impl Settings {
     }
   }
 
+  pub fn first_brc20_height(&self) -> u32 {
+    if self.integration_test {
+      0
+    } else {
+      self.chain.unwrap().first_brc20_height()
+    }
+  }
+
   pub fn height_limit(&self) -> Option<u32> {
     self.height_limit
   }
@@ -575,6 +621,25 @@ impl Settings {
 
   pub fn server_url(&self) -> Option<&str> {
     self.server_url.as_deref()
+  }
+
+  pub(crate) fn log_level(&self) -> LogLevel {
+    self.log_level.as_ref().unwrap().clone()
+  }
+
+  pub(crate) fn log_dir(&self) -> PathBuf {
+    self.log_dir.as_ref().unwrap().into()
+  }
+
+  pub(crate) fn save_inscription_receipts(&self) -> bool {
+    self.save_inscription_receipts
+  }
+
+  pub(crate) fn index_brc20(&self) -> bool {
+    self.index_brc20
+  }
+  pub(crate) fn index_bitmap(&self) -> bool {
+    self.index_bitmap
   }
 }
 
@@ -994,7 +1059,7 @@ mod tests {
 
   #[test]
   fn example_config_file_is_valid() {
-    let _: Settings = serde_yaml::from_reader(File::open("ord.yaml").unwrap()).unwrap();
+    let _: Settings = serde_yaml::from_reader(fs::File::open("ord.yaml").unwrap()).unwrap();
   }
 
   #[test]
@@ -1013,7 +1078,7 @@ mod tests {
       ("DATA_DIR", "/data/dir"),
       ("HEIGHT_LIMIT", "3"),
       ("HIDDEN", "6fb976ab49dcec017f1e201e84395983204ae1a7c2abf7ced0a85d692e442799i0 703e5f7c49d82aab99e605af306b9a30e991e57d42f982908a962a81ac439832i0"),
-    ("HTTP_PORT", "8080"),
+      ("HTTP_PORT", "8080"),
       ("INDEX", "index"),
       ("INDEX_CACHE_SIZE", "4"),
       ("INDEX_ADDRESSES", "1"),
@@ -1025,10 +1090,16 @@ mod tests {
       ("SERVER_PASSWORD", "server password"),
       ("SERVER_URL", "server url"),
       ("SERVER_USERNAME", "server username"),
+
+      ("LOG_DIR", "log_dir"),
+      ("LOG_LEVEL", "debug"),
+      ("SAVE_INSCRIPTION_RECEIPTS", "1"),
+      ("INDEX_BITMAP", "1"),
+      ("INDEX_BRC20", "1"),
     ]
-    .into_iter()
-    .map(|(key, value)| (key.into(), value.into()))
-    .collect::<BTreeMap<String, String>>();
+        .into_iter()
+        .map(|(key, value)| (key.into(), value.into()))
+        .collect::<BTreeMap<String, String>>();
 
     pretty_assert_eq!(
       Settings::from_env(env).unwrap(),
@@ -1069,6 +1140,11 @@ mod tests {
         server_password: Some("server password".into()),
         server_url: Some("server url".into()),
         server_username: Some("server username".into()),
+        log_dir: Some("log_dir".into()),
+        log_level: Some(LogLevel::from_str("debug").unwrap()),
+        save_inscription_receipts: true,
+        index_bitmap: true,
+        index_brc20: true,
       }
     );
   }
@@ -1101,6 +1177,11 @@ mod tests {
           "--no-index-inscriptions",
           "--server-password=server password",
           "--server-username=server username",
+          "--log-dir=log_dir",
+          "--log-level=debug",
+          "--save-inscription-receipts",
+          "--index-bitmap",
+          "--index-brc20",
         ])
         .unwrap()
       ),
@@ -1130,6 +1211,11 @@ mod tests {
         server_password: Some("server password".into()),
         server_url: None,
         server_username: Some("server username".into()),
+        log_dir: Some("log_dir".into()),
+        log_level: Some(LogLevel::from_str("debug").unwrap()),
+        save_inscription_receipts: true,
+        index_bitmap: true,
+        index_brc20: true,
       }
     );
   }

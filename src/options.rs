@@ -3,8 +3,8 @@ use super::*;
 #[derive(Clone, Default, Debug, Parser)]
 #[command(group(
   ArgGroup::new("chains")
-    .required(false)
-    .args(&["chain_argument", "signet", "regtest", "testnet"]),
+  .required(false)
+  .args(&["chain_argument", "signet", "regtest", "testnet"]),
 ))]
 pub struct Options {
   #[arg(long, help = "Load Bitcoin Core data dir from <BITCOIN_DATA_DIR>.")]
@@ -82,4 +82,19 @@ pub struct Options {
   pub(crate) signet: bool,
   #[arg(long, short, help = "Use testnet. Equivalent to `--chain testnet`.")]
   pub(crate) testnet: bool,
+
+  // OKX defined options.
+  #[arg(
+    long,
+    help = "Set log level. [possible values: error, warn, info, debug, trace]"
+  )]
+  pub(crate) log_level: Option<LogLevel>,
+  #[arg(long, help = "Store logs in <LOG_DIR>.")]
+  pub(crate) log_dir: Option<PathBuf>,
+  #[arg(long, help = "Store inscription receipts.")]
+  pub(crate) save_inscription_receipts: bool,
+  #[arg(long, help = "Index bitmap collection inscriptions.")]
+  pub(crate) index_bitmap: bool,
+  #[arg(long, help = "Index BRC-20 token operations.")]
+  pub(crate) index_brc20: bool,
 }

@@ -431,7 +431,7 @@ impl Entry for OutPoint {
   }
 }
 
-pub(super) type SatPointValue = [u8; 44];
+pub(crate) type SatPointValue = [u8; 44];
 
 impl Entry for SatPoint {
   type Value = SatPointValue;
@@ -474,7 +474,7 @@ impl Entry for SatRange {
   }
 }
 
-pub(super) type TxidValue = [u8; 32];
+pub(crate) type TxidValue = [u8; 32];
 
 impl Entry for Txid {
   type Value = TxidValue;

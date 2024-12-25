@@ -12,6 +12,13 @@ use {
   },
   super::*,
   crate::{
+    okx::{
+      brc20::entry::{
+        BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
+        BRC20TransferAssetValue,
+      },
+      entry::{AddressTickerKeyValue, InscriptionReceiptsValue},
+    },
     runes::MintError,
     subcommand::{find::FindRangeOutput, server::query},
     templates::StatusHtml,
@@ -37,6 +44,7 @@ use {
 };
 
 pub use self::entry::RuneEntry;
+pub(crate) use self::updater::{BlockData, BundleMessage, Curse, InscriptionAction};
 
 pub(crate) mod entry;
 pub mod event;
@@ -73,6 +81,15 @@ define_table! { TRANSACTION_ID_TO_RUNE, &TxidValue, u128 }
 define_table! { TRANSACTION_ID_TO_TRANSACTION, &TxidValue, &[u8] }
 define_table! { WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP, u32, u128 }
 
+// Inscription receipts table
+define_table! { TRANSACTION_ID_TO_INSCRIPTION_RECEIPTS, &TxidValue, &InscriptionReceiptsValue }
+// BRC-20 tables
+define_table! { BRC20_BALANCES, &AddressTickerKeyValue, &BRC20BalanceValue }
+define_table! { BRC20_TICKER_ENTRY, &BRC20LowerCaseTickerValue, &BRC20TickerInfoValue }
+define_table! { BRC20_TRANSACTION_ID_TO_RECEIPTS, &TxidValue, &BRC20ReceiptsValue }
+define_table! { BRC20_SATPOINT_TO_TRANSFER_ASSETS, &SatPointValue, &BRC20TransferAssetValue }
+define_multimap_table! { BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS, &AddressTickerKeyValue, &SatPointValue }
+
 #[derive(Copy, Clone)]
 pub(crate) enum Statistic {
   Schema = 0,
@@ -91,6 +108,10 @@ pub(crate) enum Statistic {
   Runes = 13,
   SatRanges = 14,
   UnboundInscriptions = 16,
+
+  OkxIndexBrc20 = 17,
+  OkxIndexBitmap = 18,
+  OkxSaveInscriptionReceipts = 19,
 }
 
 impl Statistic {
@@ -208,6 +229,10 @@ pub struct Index {
   started: DateTime<Utc>,
   first_index_height: u32,
   unrecoverably_reorged: AtomicBool,
+
+  index_brc20: bool,
+  index_bitmap: bool,
+  save_inscription_receipts: bool,
 }
 
 impl Index {
@@ -323,6 +348,14 @@ impl Index {
         tx.open_table(TRANSACTION_ID_TO_RUNE)?;
         tx.open_table(WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP)?;
 
+        // Okx tables
+        tx.open_table(TRANSACTION_ID_TO_INSCRIPTION_RECEIPTS)?;
+        tx.open_table(BRC20_BALANCES)?;
+        tx.open_table(BRC20_TICKER_ENTRY)?;
+        tx.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
+        tx.open_table(BRC20_SATPOINT_TO_TRANSFER_ASSETS)?;
+        tx.open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS)?;
+
         {
           let mut statistics = tx.open_table(STATISTIC_TO_COUNT)?;
 
@@ -357,6 +390,28 @@ impl Index {
           )?;
 
           Self::set_statistic(&mut statistics, Statistic::Schema, SCHEMA_VERSION)?;
+
+          if settings.index_inscriptions_raw() && settings.index_addresses_raw() {
+            Self::set_statistic(
+              &mut statistics,
+              Statistic::OkxIndexBrc20,
+              u64::from(settings.index_brc20()),
+            )?;
+
+            Self::set_statistic(
+              &mut statistics,
+              Statistic::OkxSaveInscriptionReceipts,
+              u64::from(settings.save_inscription_receipts()),
+            )?;
+
+            if settings.chain() == Chain::Mainnet {
+              Self::set_statistic(
+                &mut statistics,
+                Statistic::OkxIndexBitmap,
+                u64::from(settings.index_bitmap()),
+              )?;
+            }
+          }
         }
 
         if settings.index_runes_raw() && settings.chain() == Chain::Mainnet {
@@ -416,6 +471,10 @@ impl Index {
     let index_transactions;
     let index_inscriptions;
 
+    let index_brc20;
+    let index_bitmap;
+    let save_inscription_receipts;
+
     {
       let tx = database.begin_read()?;
       let statistics = tx.open_table(STATISTIC_TO_COUNT)?;
@@ -424,6 +483,11 @@ impl Index {
       index_runes = Self::is_statistic_set(&statistics, Statistic::IndexRunes)?;
       index_sats = Self::is_statistic_set(&statistics, Statistic::IndexSats)?;
       index_transactions = Self::is_statistic_set(&statistics, Statistic::IndexTransactions)?;
+
+      index_brc20 = Self::is_statistic_set(&statistics, Statistic::OkxIndexBrc20)?;
+      index_bitmap = Self::is_statistic_set(&statistics, Statistic::OkxIndexBitmap)?;
+      save_inscription_receipts =
+        Self::is_statistic_set(&statistics, Statistic::OkxSaveInscriptionReceipts)?;
     }
 
     let genesis_block_coinbase_transaction =
@@ -457,6 +521,10 @@ impl Index {
       path,
       started: Utc::now(),
       unrecoverably_reorged: AtomicBool::new(false),
+
+      index_brc20,
+      index_bitmap,
+      save_inscription_receipts,
     })
   }
 
