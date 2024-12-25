@@ -44,10 +44,14 @@ use {
 };
 
 pub use self::entry::RuneEntry;
-pub(crate) use self::updater::{BlockData, BundleMessage, Curse, InscriptionAction};
+pub(crate) use self::{
+  rtx::Rtx,
+  updater::{BlockData, BundleMessage, Curse, InscriptionAction},
+};
 
 pub(crate) mod entry;
 pub mod event;
+mod extend;
 mod fetcher;
 mod lot;
 mod reorg;
@@ -836,7 +840,7 @@ impl Index {
     Ok(())
   }
 
-  fn begin_read(&self) -> Result<rtx::Rtx> {
+  pub(crate) fn begin_read(&self) -> Result<rtx::Rtx> {
     Ok(rtx::Rtx(self.database.begin_read()?))
   }
 

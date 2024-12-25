@@ -13,7 +13,10 @@ pub(crate) mod context;
 pub(crate) mod entry;
 mod utxo_address;
 
-pub use self::utxo_address::UtxoAddress;
+pub(crate) use self::{
+  composite_key::{AddressEndpoint, AddressTickerKey},
+  utxo_address::{UtxoAddress, UtxoAddressRef},
+};
 
 #[derive(Debug, Clone)]
 pub enum Message {

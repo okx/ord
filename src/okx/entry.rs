@@ -1,5 +1,5 @@
-use crate::index::InscriptionAction;
 use super::*;
+use crate::index::InscriptionAction;
 use crate::okx::brc20::entry::BRC20Balance;
 use crate::okx::composite_key::{AddressEndpoint, AddressTickerKey};
 
@@ -46,9 +46,10 @@ impl_bincode_dynamic_entry!(Vec<InscriptionReceipt>, InscriptionReceiptsValue);
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct InscriptionReceipt {
   pub sequence_number: u32,
+  pub inscription_number: i32,
   pub inscription_id: InscriptionId,
   pub old_satpoint: SatPoint,
-  pub new_satpoint: Option<SatPoint>,
+  pub new_satpoint: SatPoint,
   pub sender: UtxoAddress,
   pub receiver: Option<UtxoAddress>,
   pub action: Action,
@@ -59,8 +60,9 @@ impl From<BundleMessage> for InscriptionReceipt {
     Self {
       sequence_number: value.sequence_number,
       inscription_id: value.inscription_id,
+      inscription_number: value.inscription_number,
       old_satpoint: value.old_satpoint,
-      new_satpoint: Some(value.new_satpoint),
+      new_satpoint: value.new_satpoint,
       sender: value.sender,
       receiver: value.receiver,
       action: match value.inscription_action {

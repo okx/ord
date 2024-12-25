@@ -70,7 +70,7 @@ pub struct BRC20Receipt {
   pub op_type: BRC20OpType,
   pub sender: UtxoAddress,
   pub receiver: UtxoAddress,
-  pub result: Result<BRC20Event, error::BRC20Error>,
+  pub result: Result<BRC20Event, BRC20Error>,
 }
 
 #[cfg(test)]
