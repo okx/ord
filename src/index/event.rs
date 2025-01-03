@@ -1,4 +1,5 @@
 use super::*;
+use crate::okx::UtxoAddress;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Event {
@@ -41,4 +42,29 @@ pub enum Event {
     rune_id: RuneId,
     txid: Txid,
   },
+}
+
+#[derive(Debug)]
+pub enum Action {
+  Created {
+    inscription: Inscription,
+    parents: Vec<InscriptionId>,
+    pre_jubilant_curse_reason: Option<Curse>,
+    charms: u16,
+  },
+  Transferred,
+}
+
+#[derive(Debug)]
+pub struct OkxInscriptionEvent {
+  pub txid: Txid,
+  pub offset: u64,
+  pub inscription_id: InscriptionId,
+  pub sequence_number: u32,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub sender: UtxoAddress,
+  pub receiver: Option<UtxoAddress>,
+  pub action: Action,
 }

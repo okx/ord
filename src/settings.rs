@@ -34,6 +34,7 @@ pub struct Settings {
   save_inscription_receipts: bool,
   index_bitmap: bool,
   index_brc20: bool,
+  disable_invalid_brc20_tracking: bool,
 }
 
 impl Settings {
@@ -153,6 +154,8 @@ impl Settings {
       save_inscription_receipts: self.save_inscription_receipts || source.save_inscription_receipts,
       index_bitmap: self.index_bitmap || source.index_bitmap,
       index_brc20: self.index_brc20 || source.index_brc20,
+      disable_invalid_brc20_tracking: self.disable_invalid_brc20_tracking
+        || source.disable_invalid_brc20_tracking,
     }
   }
 
@@ -195,6 +198,7 @@ impl Settings {
       save_inscription_receipts: options.save_inscription_receipts,
       index_bitmap: options.index_bitmap,
       index_brc20: options.index_brc20,
+      disable_invalid_brc20_tracking: options.disable_invalid_brc20_tracking,
     }
   }
 
@@ -291,6 +295,7 @@ impl Settings {
       save_inscription_receipts: get_bool("SAVE_INSCRIPTION_RECEIPTS"),
       index_bitmap: get_bool("INDEX_BITMAP"),
       index_brc20: get_bool("INDEX_BRC20"),
+      disable_invalid_brc20_tracking: get_bool("NO_TRACKING_INVALID_BRC20_INSCRIPTIONS"),
     })
   }
 
@@ -327,6 +332,7 @@ impl Settings {
       save_inscription_receipts: false,
       index_bitmap: false,
       index_brc20: false,
+      disable_invalid_brc20_tracking: false,
     }
   }
 
@@ -407,6 +413,7 @@ impl Settings {
       save_inscription_receipts: self.save_inscription_receipts,
       index_bitmap: self.index_bitmap,
       index_brc20: self.index_brc20,
+      disable_invalid_brc20_tracking: self.disable_invalid_brc20_tracking,
     })
   }
 
@@ -640,6 +647,11 @@ impl Settings {
   pub(crate) fn index_brc20(&self) -> bool {
     self.index_brc20
   }
+
+  pub(crate) fn disable_invalid_brc20_tracking(&self) -> bool {
+    self.disable_invalid_brc20_tracking
+  }
+
   pub(crate) fn index_bitmap(&self) -> bool {
     self.index_bitmap
   }
@@ -1170,6 +1182,7 @@ mod tests {
         save_inscription_receipts: true,
         index_bitmap: true,
         index_brc20: true,
+        disable_invalid_brc20_tracking: true,
       }
     );
   }
@@ -1207,6 +1220,7 @@ mod tests {
           "--save-inscription-receipts",
           "--index-bitmap",
           "--index-brc20",
+          "--no-tracking-invalid-brc20-inscriptions",
         ])
         .unwrap()
       ),
@@ -1241,6 +1255,7 @@ mod tests {
         save_inscription_receipts: true,
         index_bitmap: true,
         index_brc20: true,
+        disable_invalid_brc20_tracking: true,
       }
     );
   }

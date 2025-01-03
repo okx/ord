@@ -10,10 +10,8 @@ use {
 
 use crate::okx::context::TableContext;
 use crate::okx::OkxUpdater;
-pub(crate) use inscription_updater::{
-  hook::{BundleMessage, InscriptionAction},
-  Curse,
-};
+pub(crate) use bundle_message::{BundleMessage, InscriptionAction};
+pub(crate) use inscription_updater::Curse;
 
 mod inscription_updater;
 mod rune_updater;
