@@ -1,19 +1,17 @@
 use {
-  self::{inscription_updater::InscriptionUpdater, rune_updater::RuneUpdater},
-  super::{fetcher::Fetcher, *},
-  futures::future::try_join_all,
-  tokio::sync::{
-    broadcast::{self, error::TryRecvError},
-    mpsc::{self},
-  },
+    self::{inscription_updater::InscriptionUpdater, rune_updater::RuneUpdater},
+    futures::future::try_join_all,
+    super::{*, fetcher::Fetcher},
+    tokio::sync::{
+        broadcast::{self, error::TryRecvError},
+        mpsc::{self},
+    },
 };
 
 use crate::okx::context::TableContext;
 use crate::okx::OkxUpdater;
-pub(crate) use inscription_updater::{
-  hook::{BundleMessage, InscriptionAction},
-  Curse,
-};
+pub(crate) use inscription_updater::Curse;
+pub(crate) use crate::index::bundle_message::{BundleMessage, InscriptionAction};
 
 mod inscription_updater;
 mod rune_updater;

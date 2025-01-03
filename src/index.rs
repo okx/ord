@@ -10,7 +10,12 @@ use {
     updater::Updater,
     utxo_entry::{ParsedUtxoEntry, UtxoEntry, UtxoEntryBuf},
   },
-  super::*,
+  bitcoin::block::Header,
+  bitcoincore_rpc::{
+    Client,
+    json::{GetBlockHeaderResult, GetBlockStatsResult},
+  },
+  chrono::SubsecRound,
   crate::{
     okx::{
       brc20::entry::{
@@ -23,17 +28,11 @@ use {
     subcommand::{find::FindRangeOutput, server::query},
     templates::StatusHtml,
   },
-  bitcoin::block::Header,
-  bitcoincore_rpc::{
-    json::{GetBlockHeaderResult, GetBlockStatsResult},
-    Client,
-  },
-  chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
   redb::{
     Database, DatabaseError, MultimapTable, MultimapTableDefinition, MultimapTableHandle,
-    ReadOnlyTable, ReadableMultimapTable, ReadableTable, ReadableTableMetadata, RepairSession,
+    ReadableMultimapTable, ReadableTable, ReadableTableMetadata, ReadOnlyTable, RepairSession,
     StorageError, Table, TableDefinition, TableHandle, TableStats, WriteTransaction,
   },
   std::{
@@ -41,6 +40,7 @@ use {
     io::{BufWriter, Write},
     sync::Once,
   },
+  super::*,
 };
 
 pub use self::entry::RuneEntry;
@@ -61,6 +61,7 @@ mod utxo_entry;
 
 #[cfg(test)]
 pub(crate) mod testing;
+pub(crate) mod bundle_message;
 
 const SCHEMA_VERSION: u64 = 30;
 
@@ -116,6 +117,7 @@ pub(crate) enum Statistic {
   OkxIndexBrc20 = 17,
   OkxIndexBitmap = 18,
   OkxSaveInscriptionReceipts = 19,
+  OkxNoTrackingInvalidBrc20Inscriptions = 20,
 }
 
 impl Statistic {
@@ -237,6 +239,7 @@ pub struct Index {
   index_brc20: bool,
   index_bitmap: bool,
   save_inscription_receipts: bool,
+  disable_invalid_brc20_tracking: bool,
 }
 
 impl Index {
@@ -404,6 +407,12 @@ impl Index {
 
             Self::set_statistic(
               &mut statistics,
+              Statistic::OkxNoTrackingInvalidBrc20Inscriptions,
+              u64::from(settings.disable_invalid_brc20_tracking()),
+            )?;
+
+            Self::set_statistic(
+              &mut statistics,
               Statistic::OkxSaveInscriptionReceipts,
               u64::from(settings.save_inscription_receipts()),
             )?;
@@ -478,6 +487,7 @@ impl Index {
     let index_brc20;
     let index_bitmap;
     let save_inscription_receipts;
+    let disable_invalid_brc20_tracking;
 
     {
       let tx = database.begin_read()?;
@@ -489,6 +499,11 @@ impl Index {
       index_transactions = Self::is_statistic_set(&statistics, Statistic::IndexTransactions)?;
 
       index_brc20 = Self::is_statistic_set(&statistics, Statistic::OkxIndexBrc20)?;
+      disable_invalid_brc20_tracking = Self::is_statistic_set(
+        &statistics,
+        Statistic::OkxNoTrackingInvalidBrc20Inscriptions,
+      )?;
+
       index_bitmap = Self::is_statistic_set(&statistics, Statistic::OkxIndexBitmap)?;
       save_inscription_receipts =
         Self::is_statistic_set(&statistics, Statistic::OkxSaveInscriptionReceipts)?;
@@ -529,6 +544,7 @@ impl Index {
       index_brc20,
       index_bitmap,
       save_inscription_receipts,
+      disable_invalid_brc20_tracking,
     })
   }
 
@@ -2463,7 +2479,7 @@ impl Index {
 
 #[cfg(test)]
 mod tests {
-  use {super::*, crate::index::testing::Context};
+  use {crate::index::testing::Context, super::*};
 
   #[test]
   fn height_limit() {

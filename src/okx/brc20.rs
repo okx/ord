@@ -4,7 +4,6 @@ use crate::okx::brc20::operation::{BRC20OperationExtractor, Deploy, Mint, RawOpe
 use crate::okx::brc20::policies::HardForks;
 use crate::okx::composite_key::AddressTickerKey;
 use crate::okx::entry::{AddressTickerKeyValue, DynamicEntry};
-use crate::okx::InscriptionMessage;
 use crate::Chain;
 use once_cell::sync::Lazy;
 use redb::{MultimapTable, Table};
@@ -65,7 +64,7 @@ pub trait BRC20MessageExtractor<'a, 'tx> {
   ) -> Result<Option<BRC20Message>>;
 }
 
-impl<'a, 'tx> BRC20MessageExtractor<'a, 'tx> for InscriptionMessage {
+impl<'a, 'tx> BRC20MessageExtractor<'a, 'tx> for OkxInscriptionEvent {
   fn extract_brc20_message(
     &self,
     height: u32,

@@ -6,7 +6,7 @@ pub trait BitmapMessageExtractor<'a, 'tx> {
   fn extract_bitmap_message(&self) -> Result<Option<BitmapMessage>>;
 }
 
-impl<'a, 'tx> BitmapMessageExtractor<'a, 'tx> for InscriptionMessage {
+impl<'a, 'tx> BitmapMessageExtractor<'a, 'tx> for OkxInscriptionEvent {
   fn extract_bitmap_message(&self) -> Result<Option<BitmapMessage>> {
     Ok(None)
   }

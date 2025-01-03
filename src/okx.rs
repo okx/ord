@@ -1,9 +1,14 @@
 use super::*;
+use crate::index::entry::SatPointValue;
+use crate::index::event::Action;
+use crate::index::event::OkxInscriptionEvent;
 use crate::index::{BlockData, BundleMessage, Curse};
 use crate::okx::bitmap::BitmapMessage;
+use crate::okx::brc20::entry::BRC20TransferAssetValue;
 use crate::okx::brc20::{BRC20ExecutionMessage, BRC20Message};
 use crate::okx::context::TableContext;
-use crate::okx::entry::InscriptionReceipt;
+use crate::okx::entry::{AddressTickerKeyValue, InscriptionReceipt};
+use redb::{MultimapTable, Table};
 use std::collections::HashMap;
 
 pub(crate) mod bitmap;
@@ -19,31 +24,9 @@ pub(crate) use self::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Message {
+pub enum SubMessage {
   BRC20(BRC20Message),
   BITMAP(BitmapMessage),
-}
-
-#[derive(Debug)]
-pub enum Action {
-  Created {
-    inscription: Inscription,
-    parents: Vec<InscriptionId>,
-    pre_jubilant_curse_reason: Option<Curse>,
-    charms: u16,
-  },
-  Transferred,
-}
-
-pub struct InscriptionMessage {
-  pub inscription_id: InscriptionId,
-  pub sequence_number: u32,
-  pub inscription_number: i32,
-  pub old_satpoint: SatPoint,
-  pub new_satpoint: SatPoint,
-  pub sender: UtxoAddress,
-  pub receiver: Option<UtxoAddress>,
-  pub action: Action,
 }
 
 pub(crate) struct OkxUpdater {
@@ -78,13 +61,13 @@ impl OkxUpdater {
       let mut brc20_tx_receipts = Vec::new();
 
       for bundle_message in tx_bundle_messages.iter() {
-        if let Some(brc20_message) = BRC20ExecutionMessage::from_bundle_message(bundle_message) {
+        if let Some(brc20_message) = Option::<BRC20ExecutionMessage>::from(bundle_message) {
           if let Ok(receipt) =
             brc20_message.execute(context, self.height, self.chain, self.timestamp)
           {
             brc20_tx_receipts.push(receipt);
           }
-        } else if let Some(Message::BITMAP(bitmap_message)) = &bundle_message.internal_message {
+        } else if let Some(SubMessage::BITMAP(bitmap_message)) = &bundle_message.sub_message {
           bitmap_message.execute(context, self.height)?;
         }
       }

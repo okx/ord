@@ -6,6 +6,7 @@ use crate::okx::brc20::event::{
 };
 use bigdecimal::num_bigint::Sign;
 
+/// Represents a message used for executing BRC20 operations.
 pub(crate) struct BRC20ExecutionMessage {
   txid: Txid,
   offset: u64,
@@ -15,29 +16,31 @@ pub(crate) struct BRC20ExecutionMessage {
   old_satpoint: SatPoint,
   new_satpoint: SatPoint,
   sender: UtxoAddress,
-  receiver: Option<UtxoAddress>, // if unbound no to address.
+  receiver: Option<UtxoAddress>, // no address, if unbound
   message: BRC20Message,
 }
 
-impl BRC20ExecutionMessage {
-  pub fn from_bundle_message(bundle_message: &BundleMessage) -> Option<Self> {
-    match &bundle_message.internal_message {
-      Some(Message::BRC20(message)) => Some(Self {
-        txid: bundle_message.txid,
-        offset: bundle_message.offset,
-        inscription_id: bundle_message.inscription_id,
-        sequence_number: bundle_message.sequence_number,
-        inscription_number: bundle_message.inscription_number,
-        old_satpoint: bundle_message.old_satpoint,
-        new_satpoint: bundle_message.new_satpoint,
-        sender: bundle_message.sender.clone(),
-        receiver: bundle_message.receiver.clone(),
+impl From<&BundleMessage> for Option<BRC20ExecutionMessage> {
+  fn from(value: &BundleMessage) -> Self {
+    match &value.sub_message {
+      Some(SubMessage::BRC20(message)) => Some(BRC20ExecutionMessage {
+        txid: value.txid,
+        offset: value.offset,
+        inscription_id: value.inscription_id,
+        sequence_number: value.sequence_number,
+        inscription_number: value.inscription_number,
+        old_satpoint: value.old_satpoint,
+        new_satpoint: value.new_satpoint,
+        sender: value.sender.clone(),
+        receiver: value.receiver.clone(),
         message: message.clone(),
       }),
       _ => None,
     }
   }
+}
 
+impl BRC20ExecutionMessage {
   pub fn execute(
     self,
     context: &mut TableContext,
@@ -55,6 +58,7 @@ impl BRC20ExecutionMessage {
     match result {
       Ok(receipt) => Ok(receipt),
       Err(ExecutionError::ExecutionFailed(e)) => Ok(BRC20Receipt {
+        // Handle specific execution failure
         inscription_id: self.inscription_id,
         sequence_number: self.sequence_number,
         inscription_number: self.inscription_number,

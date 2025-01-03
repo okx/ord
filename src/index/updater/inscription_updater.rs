@@ -1,7 +1,7 @@
 use super::*;
-use hook::BundleMessage;
-
-pub(crate) mod hook;
+use crate::index::bundle_message::BundleMessage;
+use crate::index::event::{Action, OkxInscriptionEvent};
+use crate::okx::UtxoAddress;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub(crate) enum Curse {
@@ -599,22 +599,59 @@ impl InscriptionUpdater<'_, '_> {
         .or_insert(UtxoEntryBuf::empty(index))
     });
 
-    // Design a hook to parse BRC20, Inscriptions, and Bitmap messages from inscription events.
-    // The return value determines whether to continue tracking this inscription.
-    let inscription_hook = hook::InscriptionHook {
-      flotsam: &flotsam,
-      new_satpoint,
-      new_script_buf,
-      sequence_number,
-      inscription_number,
-      charms,
-      updater: self,
-      index,
-    };
+    let mut should_tracking_inscription = true;
 
-    // If the hook determines that the inscription should continue to be tracked,
-    // push the inscription into the output UTXO entry.
-    if inscription_hook.handle_inscription()? {
+    // input_script_buf will only have a valid value when index_addresses is true.
+    if index.index_addresses {
+      let event = OkxInscriptionEvent {
+        txid: flotsam.txid,
+        offset: flotsam.offset,
+        inscription_id: flotsam.inscription_id,
+        sequence_number,
+        inscription_number,
+        old_satpoint: flotsam.old_satpoint,
+        new_satpoint,
+        sender: UtxoAddress::from_script(
+          Script::from_bytes(flotsam.input_script_buf.as_slice()),
+          &index.settings.chain(),
+        ),
+        receiver: new_script_buf
+          .map(|script| UtxoAddress::from_script(script, &index.settings.chain())),
+        action: match flotsam.origin {
+          Origin::New {
+            inscription,
+            parents,
+            pre_jubilant_curse_reason,
+            ..
+          } => Action::Created {
+            inscription,
+            parents,
+            pre_jubilant_curse_reason,
+            charms: charms.unwrap(),
+          },
+          Origin::Old { .. } => Action::Transferred,
+        },
+      };
+
+      if let Some(message) = BundleMessage::from_okx_inscription_event(
+        event,
+        self.height,
+        &index,
+        self.brc20_satpoint_to_transfer_assets,
+        self.brc20_address_ticker_to_transfer_assets,
+      )? {
+        // We should decide whether to track the inscription based on the message.
+        should_tracking_inscription = message.should_track(&index);
+        self
+          .block_bundle_messages
+          .entry(message.txid)
+          .or_insert_with(Vec::new)
+          .push(message);
+      }
+    }
+
+    // If we are tracking the inscription, we need to push the inscription into the output UTXO entry.
+    if should_tracking_inscription {
       output_utxo_entry.push_inscription(sequence_number, satpoint.offset, index);
     }
 
