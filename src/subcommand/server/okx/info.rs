@@ -35,18 +35,19 @@ pub async fn node_info(
     ApiError::Internal("Failed to retrieve the latest block from the database.".to_string())
   })?;
 
-  let (chain_block_height, chain_block_hash) = match query.btc.unwrap_or_default() {
-    true => {
-      let chain_blockchain_info = index
-        .client
-        .get_blockchain_info()
-        .map_err(ApiError::internal)?;
-      (
-        Some(u32::try_from(chain_blockchain_info.blocks).unwrap()),
-        Some(chain_blockchain_info.best_block_hash),
-      )
-    }
-    false => (None, None),
+  let (chain_block_height, chain_blockhash) = if query.btc.unwrap_or_default() {
+    index
+      .client
+      .get_blockchain_info()
+      .map_err(ApiError::internal)
+      .map(|info| {
+        (
+          Some(u32::try_from(info.blocks).unwrap_or_default()),
+          Some(info.best_block_hash),
+        )
+      })?
+  } else {
+    (None, None)
   };
 
   Ok(Json(ApiResponse::ok(NodeInfo {
@@ -58,7 +59,7 @@ pub async fn node_info(
       ord_block_height: latest_height.0,
       ord_block_hash: latest_blockhash.to_string(),
       chain_block_height,
-      chain_block_hash: chain_block_hash.map(|hash| hash.to_string()),
+      chain_block_hash: chain_blockhash.map(|hash| hash.to_string()),
     },
   })))
 }

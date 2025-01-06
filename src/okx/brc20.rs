@@ -22,7 +22,7 @@ mod policies;
 mod ticker;
 
 pub static MAXIMUM_SUPPLY: Lazy<FixedPoint> =
-  Lazy::new(|| FixedPoint::new(u128::from(u64::MAX), 0).unwrap());
+  Lazy::new(|| FixedPoint::new_unchecked(u128::from(u64::MAX), 0));
 
 pub(crate) use self::{
   entry::{BRC20Balance, BRC20Receipt, BRC20TickerInfo, BRC20TransferAsset},
@@ -116,9 +116,7 @@ impl<'a, 'tx> BRC20MessageExtractor<'a, 'tx> for OkxInscriptionEvent {
           Ok(RawOperation::Transfer(transfer)) => {
             Ok(Some(BRC20Message::InscribeTransfer(transfer)))
           }
-          _ => {
-            Ok(None)
-          }
+          _ => Ok(None),
         }
       }
       Action::Transferred => {
@@ -145,9 +143,7 @@ impl<'a, 'tx> BRC20MessageExtractor<'a, 'tx> for OkxInscriptionEvent {
           amount: asset.amount,
         }))
       }
-      _ => {
-        Ok(None)
-      }
+      _ => Ok(None),
     }
   }
 }

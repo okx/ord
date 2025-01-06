@@ -59,9 +59,9 @@ mod rtx;
 mod updater;
 mod utxo_entry;
 
+pub(crate) mod bundle_message;
 #[cfg(test)]
 pub(crate) mod testing;
-pub(crate) mod bundle_message;
 
 const SCHEMA_VERSION: u64 = 30;
 
@@ -734,6 +734,10 @@ impl Index {
   }
 
   pub fn update(&self) -> Result {
+    if let Err(e) = logger::init(self.settings.log_level(), self.settings.log_dir()) {
+      bail!("initialize logger error: {}", e);
+    }
+
     loop {
       let wtx = self.begin_write()?;
 

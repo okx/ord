@@ -1,7 +1,4 @@
-use {
-  super::{error::ApiError, *},
-  axum::Json,
-};
+use {super::*, axum::Json};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,9 +36,9 @@ pub(crate) async fn ord_outpoint(
 ) -> ApiResult<ApiOutPointResult> {
   log::debug!("rpc: get ord_outpoint: {outpoint}");
   let rtx = index.begin_read()?;
-  let (latest_height, latest_blockhash) = Index::latest_block(&rtx)?.ok_or(
-    OrdApiError::Internal("Failed to retrieve the latest block from the database.".to_string()),
-  )?;
+  let Some((height, blockhash)) = Index::latest_block(&rtx)? else {
+    return Err(OrdApiError::DataBaseNotReady.into());
+  };
 
   let (inscriptions_with_satpoints, value, script_pubkey) =
     Index::get_inscriptions_on_output_with_satpoints_and_script_pubkey(outpoint, &rtx, &index)?;
@@ -50,8 +47,8 @@ pub(crate) async fn ord_outpoint(
   if inscriptions_with_satpoints.is_empty() {
     return Ok(Json(ApiResponse::ok(ApiOutPointResult {
       result: None,
-      latest_height: latest_height.n(),
-      latest_blockhash,
+      latest_height: height.n(),
+      latest_blockhash: blockhash,
     })));
   }
 
@@ -84,7 +81,7 @@ pub(crate) async fn ord_outpoint(
       value,
       inscription_digest: inscription_digests,
     }),
-    latest_height: latest_height.n(),
-    latest_blockhash,
+    latest_height: height.n(),
+    latest_blockhash: blockhash,
   })))
 }

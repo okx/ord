@@ -22,13 +22,16 @@ pub(crate) async fn brc20_balance(
 
   let rtx = index.begin_read()?;
 
-  let ticker = BRC20Ticker::from_str(&ticker).map_err(|_| BRC20ApiError::InvalidTicker(ticker))?;
+  let ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::internal)?;
 
-  let utxo_address = UtxoAddress::from_str(&address, settings.chain().network())
-    .map_err(|_| BRC20ApiError::InvalidAddress(address.clone()))?;
+  let utxo_address =
+    UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
+
+  Index::brc20_get_ticker_info(&ticker, &rtx)?
+    .ok_or(BRC20ApiError::UnknownTicker(ticker.to_string()))?;
 
   let balance = Index::brc20_get_balance_by_address_ticker(&utxo_address, &ticker, &rtx)?
-    .ok_or(BRC20ApiError::UnknownTicker(ticker.to_string()))?;
+    .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
 
   log::debug!(
     "rpc: get brc20_balance: {} {} {:?}",
@@ -63,8 +66,8 @@ pub(crate) async fn brc20_all_balance(
 
   let rtx = index.begin_read()?;
 
-  let utxo_address = UtxoAddress::from_str(&address, settings.chain().network())
-    .map_err(|_| BRC20ApiError::InvalidAddress(address.clone()))?;
+  let utxo_address =
+    UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
 
   let all_balance = Index::brc20_get_balances_by_address(&utxo_address, &rtx)?;
   log::debug!("rpc: get brc20_all_balance: {} {:?}", address, all_balance);

@@ -29,7 +29,6 @@ impl Index {
     rtx: &Rtx,
   ) -> Result<Option<BRC20Balance>> {
     let balances_table = rtx.0.open_table(BRC20_BALANCES)?;
-    let ticker_info_table = rtx.0.open_table(BRC20_TICKER_ENTRY)?;
 
     Ok(
       balances_table
@@ -41,12 +40,7 @@ impl Index {
           .store()
           .as_ref(),
         )?
-        .map(|v| BRC20Balance::load(v.value()))
-        .or(
-          ticker_info_table
-            .get(ticker.to_lowercase().store().as_ref())?
-            .map(|_| BRC20Balance::new_with_ticker(ticker)),
-        ),
+        .map(|v| BRC20Balance::load(v.value())),
     )
   }
 
@@ -128,7 +122,7 @@ impl Index {
     Ok(assets)
   }
 
-  pub fn brc20_get_transferring_assets_with_location_by_outpoint(
+  pub(crate) fn brc20_get_transferring_assets_with_location_by_outpoint(
     outpoint: OutPoint,
     rtx: &Rtx,
   ) -> Result<Vec<(SatPoint, BRC20TransferAsset)>> {
@@ -152,86 +146,12 @@ impl Index {
     Ok(transferable_assets)
   }
 
-  pub fn brc20_get_raw_receipts(txid: &Txid, rtx: &Rtx) -> Result<Option<Vec<BRC20Receipt>>> {
+  pub(crate) fn brc20_get_raw_receipts(txid: &Txid, rtx: &Rtx) -> Result<Option<Vec<BRC20Receipt>>> {
     let table = rtx.0.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
     Ok(
       table
         .get(&txid.store())?
         .map(|x| DynamicEntry::load(x.value())),
     )
-  }
-
-  pub(crate) fn brc20_get_transaction_receipts(
-    txid: Txid,
-    rtx: &Rtx,
-    client: &Client,
-  ) -> Result<Option<Vec<BRC20Receipt>>> {
-    let Some(receipts) = Self::brc20_get_raw_receipts(&txid, rtx)? else {
-      let raw_tx = client.get_raw_transaction_info(&txid, None)?;
-
-      match raw_tx.blockhash {
-        Some(tx_blockhash) => {
-          // Get the block header of the transaction. We should check if the block has been parsed by the indexer.
-          let tx_bh = client.get_block_header_info(&tx_blockhash)?;
-
-          // Check if the block hash has been parsed by the indexer.
-          // If it has been parsed, proceed to the next step.
-          let Some(parsed_hash) = rtx.block_hash(Some(u32::try_from(tx_bh.height).unwrap()))?
-          else {
-            // If it has not been parsed, return None.
-            return Ok(None);
-          };
-
-          // Check if the block hash of the parsed transaction is the same as the indexed parsed blocks.
-          if parsed_hash != tx_blockhash {
-            // In the different conflicting block.
-            return Ok(None);
-          }
-          // Empty inscription operations in the transaction.
-          return Ok(Some(Vec::new()));
-        }
-        None => {
-          return Err(anyhow!(
-            "Can't retrieve pending BRC20 transaction receipts. {txid}"
-          ))
-        }
-      }
-    };
-    Ok(Some(receipts))
-  }
-
-  pub(crate) fn brc20_get_block_receipts(
-    block_hash: BlockHash,
-    rtx: &Rtx,
-    client: &Client,
-  ) -> Result<Vec<(Txid, Vec<BRC20Receipt>)>> {
-    // get block from btc client.
-    let blockinfo = client.get_block_info(&block_hash)?;
-
-    // get blockhash from redb.
-    let Some(block_hash) = rtx.block_hash(Some(u32::try_from(blockinfo.height).unwrap()))? else {
-      return Err(anyhow!(
-        "Can't retrieve block: {} from the database.",
-        blockinfo.height
-      ));
-    };
-
-    // check of conflicting block.
-    if blockinfo.hash != block_hash {
-      return Err(anyhow!(
-        "Conflict with block hash in the database. {} != {}",
-        block_hash,
-        blockinfo.hash
-      ));
-    }
-
-    let mut result = Vec::new();
-    for txid in blockinfo.tx {
-      let Some(inscriptions) = Self::brc20_get_raw_receipts(&txid, rtx)? else {
-        continue;
-      };
-      result.push((txid, inscriptions));
-    }
-    Ok(result)
   }
 }

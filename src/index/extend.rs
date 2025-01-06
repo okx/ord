@@ -26,7 +26,7 @@ impl Index {
     )
   }
 
-  pub fn get_tx(txid: Txid, rtx: &Rtx, index: &Index) -> Result<Option<Transaction>> {
+  pub(crate) fn get_tx(txid: Txid, rtx: &Rtx, index: &Index) -> Result<Option<Transaction>> {
     if txid == index.genesis_block_coinbase_txid {
       return Ok(Some(index.genesis_block_coinbase_transaction.clone()));
     }

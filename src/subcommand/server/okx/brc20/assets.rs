@@ -11,6 +11,35 @@ pub struct ApiTransferableAsset {
   pub location: SatPoint,
 }
 
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiTransferableAssets {
+  pub inscriptions: Vec<ApiTransferableAsset>,
+}
+
+/// Helper function to process assets into `ApiTransferableAsset`
+fn process_assets(
+  assets: Vec<(SatPoint, BRC20TransferAsset)>,
+  utxo_address: &UtxoAddress,
+) -> Vec<ApiTransferableAsset> {
+  let mut api_transferable_assets = assets
+    .into_iter()
+    .map(|(satpoint, asset)| ApiTransferableAsset {
+      inscription_id: asset.inscription_id,
+      inscription_number: asset.inscription_number,
+      amount: asset.amount.to_string(),
+      tick: asset.ticker,
+      owner: ApiUtxoAddress::from(utxo_address),
+      location: satpoint,
+    })
+    .collect::<Vec<_>>();
+
+  // Sort by inscription number
+  api_transferable_assets.sort_by(|a, b| a.inscription_number.cmp(&b.inscription_number));
+
+  api_transferable_assets
+}
+
 /// Get the transferable inscriptions of the address.
 ///
 /// Retrieve the transferable inscriptions with the ticker from the given address.
@@ -23,11 +52,10 @@ pub(crate) async fn brc20_transferable(
 
   let rtx = index.begin_read()?;
 
-  let brc20_ticker =
-    BRC20Ticker::from_str(&ticker).map_err(|_| BRC20ApiError::InvalidTicker(ticker.clone()))?;
+  let brc20_ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::internal)?;
 
-  let utxo_address = UtxoAddress::from_str(&address, settings.chain().network())
-    .map_err(|_| BRC20ApiError::InvalidAddress(address.clone()))?;
+  let utxo_address =
+    UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
 
   Index::brc20_get_ticker_info(&brc20_ticker, &rtx)?
     .ok_or(BRC20ApiError::UnknownTicker(ticker.clone()))?;
@@ -39,33 +67,15 @@ pub(crate) async fn brc20_transferable(
   )?;
 
   log::debug!(
-    "rpc: get brc20_transferable: {ticker} {address} {:?}",
-    assets
+    "rpc: get brc20_transferable: {ticker} {address}, assets count: {}",
+    assets.len()
   );
 
-  let mut api_transferable_assets = Vec::new();
-  for (satpoint, asset) in assets {
-    api_transferable_assets.push(ApiTransferableAsset {
-      inscription_id: asset.inscription_id,
-      inscription_number: asset.inscription_number,
-      amount: asset.amount.to_string(),
-      tick: asset.ticker,
-      owner: ApiUtxoAddress::from(utxo_address.clone()),
-      location: satpoint,
-    });
-  }
-
-  api_transferable_assets.sort_by(|a, b| a.inscription_number.cmp(&b.inscription_number));
+  let api_transferable_assets = process_assets(assets, &utxo_address);
 
   Ok(Json(ApiResponse::ok(ApiTransferableAssets {
     inscriptions: api_transferable_assets,
   })))
-}
-
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ApiTransferableAssets {
-  pub inscriptions: Vec<ApiTransferableAsset>,
 }
 
 /// Get the balance of ticker of the address.
@@ -80,24 +90,17 @@ pub(crate) async fn brc20_all_transferable(
 
   let rtx = index.begin_read()?;
 
-  let utxo_address = UtxoAddress::from_str(&address, settings.chain().network())
-    .map_err(|_| BRC20ApiError::InvalidAddress(address.clone()))?;
+  let utxo_address =
+    UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
 
   let assets = Index::get_brc20_transferring_assets_location_by_address(&utxo_address, &rtx)?;
 
-  let mut api_transferable_assets = Vec::new();
-  for (satpoint, asset) in assets {
-    api_transferable_assets.push(ApiTransferableAsset {
-      inscription_id: asset.inscription_id,
-      inscription_number: asset.inscription_number,
-      amount: asset.amount.to_string(),
-      tick: asset.ticker,
-      owner: ApiUtxoAddress::from(utxo_address.clone()),
-      location: satpoint,
-    });
-  }
+  log::debug!(
+    "rpc: get brc20_all_transferable: {address}, assets count: {}",
+    assets.len()
+  );
 
-  api_transferable_assets.sort_by(|a, b| a.inscription_number.cmp(&b.inscription_number));
+  let api_transferable_assets = process_assets(assets, &utxo_address);
 
   Ok(Json(ApiResponse::ok(ApiTransferableAssets {
     inscriptions: api_transferable_assets,

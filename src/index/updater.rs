@@ -8,6 +8,7 @@ use {
   },
 };
 
+pub(crate) use crate::index::bundle_message::{BundleMessage, InscriptionAction};
 use crate::okx::context::TableContext;
 use crate::okx::OkxUpdater;
 pub(crate) use bundle_message::{BundleMessage, InscriptionAction};
@@ -748,7 +749,6 @@ impl Updater<'_> {
       let mut okx_updater = OkxUpdater {
         height: self.height,
         timestamp: block.header.time,
-        chain: self.index.settings.chain(),
         save_inscription_receipts: self.index.save_inscription_receipts,
       };
       okx_updater.index_block_bundle_messages(&mut context, block, block_bundle_messages)?;
