@@ -1,14 +1,16 @@
-use super::*;
+use super::{
+  brc20::{
+    entry::{
+      BRC20Balance, BRC20BalanceValue, BRC20Receipt, BRC20ReceiptsValue, BRC20TickerInfo,
+      BRC20TickerInfoValue, BRC20TransferAsset, BRC20TransferAssetValue,
+    },
+    BRC20Ticker,
+  },
+  composite_key::AddressTickerKey,
+  entry::{AddressTickerKeyValue, DynamicEntry, InscriptionReceipt, InscriptionReceiptsValue},
+  *,
+};
 use crate::index::entry::{Entry, SatPointValue, TxidValue};
-use crate::okx::brc20::entry::{
-  BRC20Balance, BRC20BalanceValue, BRC20Receipt, BRC20ReceiptsValue, BRC20TickerInfo,
-  BRC20TickerInfoValue, BRC20TransferAsset, BRC20TransferAssetValue,
-};
-use crate::okx::brc20::BRC20Ticker;
-use crate::okx::composite_key::AddressTickerKey;
-use crate::okx::entry::{
-  AddressTickerKeyValue, DynamicEntry, InscriptionReceipt, InscriptionReceiptsValue,
-};
 use redb::{MultimapTable, ReadableTable, Table};
 
 pub(crate) struct TableContext<'a, 'txn> {
