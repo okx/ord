@@ -33,14 +33,11 @@ pub enum BRC20Error {
   #[error("Insufficient balance: {0} {1}")]
   InsufficientBalance(String, String),
 
-  #[error("Self-issuance is not activated")]
-  SelfIssuanceNotActivated,
-
   #[error("Self-mint operation denied: insufficient permissions")]
   SelfMintPermissionDenied,
 
   #[error("Numeric error occurred: {0}")]
-  NumericError(#[from] num::Error),
+  NumericError(#[from] fixed_point::NumParseError),
 
   // TODO: remove this error
   #[error("Invalid inscribe operation: attempted to inscribe to a different transaction (coinbase expected)")]

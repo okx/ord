@@ -1,7 +1,8 @@
-use super::*;
+use super::{
+  composite_key::{AddressEndpoint, AddressTickerKey},
+  *,
+};
 use crate::index::InscriptionAction;
-use crate::okx::brc20::entry::BRC20Balance;
-use crate::okx::composite_key::{AddressEndpoint, AddressTickerKey};
 
 pub(crate) trait DynamicEntry {
   type Value: AsRef<[u8]> + ?Sized;

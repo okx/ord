@@ -31,7 +31,7 @@ impl FromStr for BRC20Ticker {
     let length = bytes.len();
 
     // BRC20Ticker names on the Bitcoin mainnet will be limited to 4 - 5 bytes.
-    if length < Self::MIN_SIZE || length > Self::MAX_SIZE {
+    if !(Self::MIN_SIZE..=Self::MAX_SIZE).contains(&length) {
       return Err(Error::Range);
     }
 

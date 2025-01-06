@@ -1,14 +1,11 @@
 use super::*;
-use crate::index::entry::SatPointValue;
-use crate::index::event::Action;
-use crate::index::event::OkxInscriptionEvent;
-use crate::index::{BlockData, BundleMessage, Curse};
-use crate::okx::bitmap::BitmapMessage;
-use crate::okx::brc20::entry::BRC20TransferAssetValue;
-use crate::okx::brc20::{BRC20ExecutionMessage, BRC20Message};
-use crate::okx::context::TableContext;
-use crate::okx::entry::{AddressTickerKeyValue, InscriptionReceipt};
-use redb::{MultimapTable, Table};
+use crate::index::{
+  event::{Action, OkxInscriptionEvent},
+  BlockData, BundleMessage,
+};
+use bitmap::BitmapMessage;
+use brc20::{BRC20ExecutionMessage, BRC20Message};
+use context::TableContext;
 use std::collections::HashMap;
 
 pub(crate) mod bitmap;
@@ -45,7 +42,7 @@ impl OkxUpdater {
   ) -> Result<()> {
     log::info!("Indexing BRC20 block at height {}", self.height);
 
-    for (tx_offset, (tx, txid)) in block
+    for (_tx_offset, (_tx, txid)) in block
       .txdata
       .iter()
       .enumerate()
@@ -62,9 +59,7 @@ impl OkxUpdater {
 
       for bundle_message in tx_bundle_messages.iter() {
         if let Some(brc20_message) = Option::<BRC20ExecutionMessage>::from(bundle_message) {
-          if let Ok(receipt) =
-            brc20_message.execute(context, self.height, self.chain, self.timestamp)
-          {
+          if let Ok(receipt) = brc20_message.execute(context, self.height, self.timestamp) {
             brc20_tx_receipts.push(receipt);
           }
         } else if let Some(SubMessage::BITMAP(bitmap_message)) = &bundle_message.sub_message {

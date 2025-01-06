@@ -1,27 +1,28 @@
-use super::*;
+use super::{
+  composite_key::AddressTickerKey,
+  entry::{AddressTickerKeyValue, DynamicEntry},
+  *,
+};
 use crate::index::entry::{Entry, SatPointValue};
-use crate::okx::brc20::operation::{BRC20OperationExtractor, Deploy, Mint, RawOperation, Transfer};
-use crate::okx::brc20::policies::HardForks;
-use crate::okx::composite_key::AddressTickerKey;
-use crate::okx::entry::{AddressTickerKeyValue, DynamicEntry};
 use crate::Chain;
+use entry::BRC20TransferAssetValue;
+use fixed_point::FixedPoint;
 use once_cell::sync::Lazy;
+use operation::{BRC20OperationExtractor, Deploy, Mint, RawOperation, Transfer};
+use policies::HardForks;
 use redb::{MultimapTable, Table};
 
 pub(crate) mod entry;
 mod error;
 pub(crate) mod event;
 mod executor;
-mod num;
+mod fixed_point;
 mod operation;
 mod policies;
 mod ticker;
 
-pub const MAX_DECIMAL_WIDTH: u8 = 18;
-
-pub static MAXIMUM_SUPPLY: Lazy<Num> = Lazy::new(|| Num::from(u64::MAX));
-
-pub static BIGDECIMAL_TEN: Lazy<Num> = Lazy::new(|| Num::from(10u64));
+pub static MAXIMUM_SUPPLY: Lazy<FixedPoint> =
+  Lazy::new(|| FixedPoint::new(u128::from(u64::MAX), 0).unwrap());
 
 pub(crate) use self::{
   entry::{BRC20Balance, BRC20Receipt, BRC20TickerInfo, BRC20TransferAsset},
@@ -29,9 +30,7 @@ pub(crate) use self::{
   executor::BRC20ExecutionMessage,
   ticker::{BRC20LowerCaseTicker, BRC20Ticker},
 };
-use crate::okx::brc20::entry::BRC20TransferAssetValue;
-use crate::okx::brc20::num::Num;
-
+const SELF_ISSUANCE_TICKER_LENGTH: usize = 5;
 #[derive(Debug, Clone)]
 pub enum BRC20Message {
   Deploy(Deploy),
@@ -94,7 +93,22 @@ impl<'a, 'tx> BRC20MessageExtractor<'a, 'tx> for OkxInscriptionEvent {
       ) =>
       {
         match inscription.extract_brc20_operation() {
-          Ok(RawOperation::Deploy(deploy)) => Ok(Some(BRC20Message::Deploy(deploy))),
+          Ok(RawOperation::Deploy(mut deploy)) => {
+            // Filter out invalid deployments with a 5-byte ticker.
+            // proposal for issuance self mint token.
+            // https://l1f.discourse.group/t/brc-20-proposal-for-issuance-and-burn-enhancements-brc20-ip-1/621
+            if deploy.tick.len() == SELF_ISSUANCE_TICKER_LENGTH {
+              if !deploy.self_mint.unwrap_or_default() {
+                return Ok(None);
+              }
+              if height < HardForks::self_issuance_activation_height(&chain) {
+                return Ok(None);
+              }
+            } else {
+              deploy.self_mint = None;
+            }
+            Ok(Some(BRC20Message::Deploy(deploy)))
+          }
           Ok(RawOperation::Mint(mint)) => Ok(Some(BRC20Message::Mint {
             op: mint,
             parent: parents.first().cloned(),
@@ -103,7 +117,7 @@ impl<'a, 'tx> BRC20MessageExtractor<'a, 'tx> for OkxInscriptionEvent {
             Ok(Some(BRC20Message::InscribeTransfer(transfer)))
           }
           _ => {
-            return Ok(None);
+            Ok(None)
           }
         }
       }
@@ -132,7 +146,7 @@ impl<'a, 'tx> BRC20MessageExtractor<'a, 'tx> for OkxInscriptionEvent {
         }))
       }
       _ => {
-        return Ok(None);
+        Ok(None)
       }
     }
   }

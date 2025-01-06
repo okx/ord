@@ -78,7 +78,7 @@ mod tests {
     let script = Script::from_bytes(hex_script.as_slice());
 
     assert_eq!(
-      UtxoAddress::from_script(&script, &Chain::Mainnet),
+      UtxoAddress::from_script(script, &Chain::Mainnet),
       UtxoAddress(UtxoAddressInner::ScriptHash {
         script_hash: ScriptHash::from_str("df65c8a338dce7900824e7bd18c336656ca19e57")
           .expect("Failed to parse script hash"),
@@ -94,7 +94,7 @@ mod tests {
     let script = Script::from_bytes(hex_script.as_slice());
 
     assert_eq!(
-      UtxoAddress::from_script(&script, &Chain::Mainnet),
+      UtxoAddress::from_script(script, &Chain::Mainnet),
       UtxoAddress(UtxoAddressInner::ScriptHash {
         script_hash: ScriptHash::from_str("70c382a01444e96a1fd2eeb9041bdef603e0c410")
           .expect("Failed to parse script hash"),
