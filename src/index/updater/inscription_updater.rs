@@ -636,16 +636,16 @@ impl InscriptionUpdater<'_, '_> {
       if let Some(message) = BundleMessage::from_okx_inscription_event(
         event,
         self.height,
-        &index,
+        index,
         self.brc20_satpoint_to_transfer_assets,
         self.brc20_address_ticker_to_transfer_assets,
       )? {
         // We should decide whether to track the inscription based on the message.
-        should_tracking_inscription = message.should_track(&index);
+        should_tracking_inscription = message.should_track(index);
         self
           .block_bundle_messages
           .entry(message.txid)
-          .or_insert_with(Vec::new)
+          .or_default()
           .push(message);
       }
     }

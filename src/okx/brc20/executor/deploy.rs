@@ -47,7 +47,7 @@ impl BRC20ExecutionMessage {
     // validate and parse the max supply.
     let mut max =
       FixedPoint::new_from_str(&deploy.max_supply, decimals).map_err(BRC20Error::NumericError)?;
-    if max > FixedPoint::new_unchecked(u128::from(u64::MAX), 0) {
+    if max > *MAXIMUM_SUPPLY {
       return Err(ExecutionError::ExecutionFailed(BRC20Error::InvalidSupply(
         max.to_string(),
       )));
@@ -67,7 +67,7 @@ impl BRC20ExecutionMessage {
     // limit the mint amount.
     let limit = if let Some(lim) = &deploy.mint_limit {
       let limit = FixedPoint::new_from_str(lim, decimals).map_err(BRC20Error::NumericError)?;
-      if limit > FixedPoint::new_unchecked(u128::from(u64::MAX), 0) {
+      if limit > *MAXIMUM_SUPPLY {
         return Err(ExecutionError::ExecutionFailed(
           BRC20Error::InvalidMaxMintLimit(limit.to_string()),
         ));

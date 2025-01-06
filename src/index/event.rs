@@ -45,7 +45,7 @@ pub enum Event {
 }
 
 #[derive(Debug)]
-pub enum Action {
+pub(crate) enum Action {
   Created {
     inscription: Inscription,
     parents: Vec<InscriptionId>,
@@ -56,15 +56,15 @@ pub enum Action {
 }
 
 #[derive(Debug)]
-pub struct OkxInscriptionEvent {
-  pub txid: Txid,
-  pub offset: u64,
-  pub inscription_id: InscriptionId,
-  pub sequence_number: u32,
-  pub inscription_number: i32,
-  pub old_satpoint: SatPoint,
-  pub new_satpoint: SatPoint,
-  pub sender: UtxoAddress,
-  pub receiver: Option<UtxoAddress>,
-  pub action: Action,
+pub(crate) struct OkxInscriptionEvent {
+  pub(crate) txid: Txid,
+  pub(crate) offset: u64,
+  pub(crate) inscription_id: InscriptionId,
+  pub(crate) sequence_number: u32,
+  pub(crate) inscription_number: i32,
+  pub(crate) old_satpoint: SatPoint,
+  pub(crate) new_satpoint: SatPoint,
+  pub(crate) sender: UtxoAddress,
+  pub(crate) receiver: Option<UtxoAddress>,
+  pub(crate) action: Action,
 }

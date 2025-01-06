@@ -10,12 +10,7 @@ use {
     updater::Updater,
     utxo_entry::{ParsedUtxoEntry, UtxoEntry, UtxoEntryBuf},
   },
-  bitcoin::block::Header,
-  bitcoincore_rpc::{
-    Client,
-    json::{GetBlockHeaderResult, GetBlockStatsResult},
-  },
-  chrono::SubsecRound,
+  super::*,
   crate::{
     okx::{
       brc20::entry::{
@@ -28,11 +23,17 @@ use {
     subcommand::{find::FindRangeOutput, server::query},
     templates::StatusHtml,
   },
+  bitcoin::block::Header,
+  bitcoincore_rpc::{
+    json::{GetBlockHeaderResult, GetBlockStatsResult},
+    Client,
+  },
+  chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
   redb::{
     Database, DatabaseError, MultimapTable, MultimapTableDefinition, MultimapTableHandle,
-    ReadableMultimapTable, ReadableTable, ReadableTableMetadata, ReadOnlyTable, RepairSession,
+    ReadOnlyTable, ReadableMultimapTable, ReadableTable, ReadableTableMetadata, RepairSession,
     StorageError, Table, TableDefinition, TableHandle, TableStats, WriteTransaction,
   },
   std::{
@@ -40,7 +41,6 @@ use {
     io::{BufWriter, Write},
     sync::Once,
   },
-  super::*,
 };
 
 pub use self::entry::RuneEntry;
@@ -59,9 +59,9 @@ mod rtx;
 mod updater;
 mod utxo_entry;
 
+pub(crate) mod bundle_message;
 #[cfg(test)]
 pub(crate) mod testing;
-pub(crate) mod bundle_message;
 
 const SCHEMA_VERSION: u64 = 30;
 
@@ -732,6 +732,10 @@ impl Index {
   }
 
   pub fn update(&self) -> Result {
+    if let Err(e) = logger::init(self.settings.log_level(), self.settings.log_dir()) {
+      bail!("initialize logger error: {}", e);
+    }
+
     loop {
       let wtx = self.begin_write()?;
 
@@ -2479,7 +2483,7 @@ impl Index {
 
 #[cfg(test)]
 mod tests {
-  use {crate::index::testing::Context, super::*};
+  use {super::*, crate::index::testing::Context};
 
   #[test]
   fn height_limit() {

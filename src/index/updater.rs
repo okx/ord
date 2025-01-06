@@ -1,17 +1,17 @@
 use {
-    self::{inscription_updater::InscriptionUpdater, rune_updater::RuneUpdater},
-    futures::future::try_join_all,
-    super::{*, fetcher::Fetcher},
-    tokio::sync::{
-        broadcast::{self, error::TryRecvError},
-        mpsc::{self},
-    },
+  self::{inscription_updater::InscriptionUpdater, rune_updater::RuneUpdater},
+  super::{fetcher::Fetcher, *},
+  futures::future::try_join_all,
+  tokio::sync::{
+    broadcast::{self, error::TryRecvError},
+    mpsc::{self},
+  },
 };
 
+pub(crate) use crate::index::bundle_message::{BundleMessage, InscriptionAction};
 use crate::okx::context::TableContext;
 use crate::okx::OkxUpdater;
 pub(crate) use inscription_updater::Curse;
-pub(crate) use crate::index::bundle_message::{BundleMessage, InscriptionAction};
 
 mod inscription_updater;
 mod rune_updater;
@@ -748,7 +748,6 @@ impl Updater<'_> {
       let mut okx_updater = OkxUpdater {
         height: self.height,
         timestamp: block.header.time,
-        chain: self.index.settings.chain(),
         save_inscription_receipts: self.index.save_inscription_receipts,
       };
       okx_updater.index_block_bundle_messages(&mut context, block, block_bundle_messages)?;

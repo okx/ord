@@ -13,7 +13,6 @@ mod transfer;
 /// Represents a message used for executing BRC20 operations.
 pub(crate) struct BRC20ExecutionMessage {
   txid: Txid,
-  offset: u64,
   inscription_id: InscriptionId,
   sequence_number: u32,
   inscription_number: i32,
@@ -29,7 +28,6 @@ impl From<&BundleMessage> for Option<BRC20ExecutionMessage> {
     match &value.sub_message {
       Some(SubMessage::BRC20(message)) => Some(BRC20ExecutionMessage {
         txid: value.txid,
-        offset: value.offset,
         inscription_id: value.inscription_id,
         sequence_number: value.sequence_number,
         inscription_number: value.inscription_number,

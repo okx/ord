@@ -10,11 +10,15 @@ pub enum ApiUtxoAddress {
 
 impl From<UtxoAddress> for ApiUtxoAddress {
   fn from(utxo_address: UtxoAddress) -> Self {
+    (&utxo_address).into()
+  }
+}
+
+impl From<&UtxoAddress> for ApiUtxoAddress {
+  fn from(utxo_address: &UtxoAddress) -> Self {
     match utxo_address.as_ref() {
       UtxoAddressRef::Address(address) => ApiUtxoAddress::Address(address.clone()),
-      UtxoAddressRef::ScriptHash { script_hash, .. } => {
-        ApiUtxoAddress::NonStandard(script_hash.clone())
-      }
+      UtxoAddressRef::ScriptHash { script_hash, .. } => ApiUtxoAddress::NonStandard(*script_hash),
     }
   }
 }

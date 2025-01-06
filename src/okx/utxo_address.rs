@@ -46,7 +46,7 @@ impl UtxoAddress {
       UtxoAddressInner::ScriptHash { op_return, .. } => *op_return,
     }
   }
-  pub fn as_ref(&self) -> &UtxoAddressRef {
+  pub(crate) fn as_ref(&self) -> &UtxoAddressRef {
     &self.0
   }
 }

@@ -17,38 +17,28 @@ pub(crate) async fn brc20_outpoint(
   log::debug!("rpc: get brc20_outpoint: {outpoint}");
 
   let rtx = index.begin_read()?;
-
-  let (latest_height, latest_blockhash) = Index::latest_block(&rtx)?.ok_or_api_err(|| {
-    BRC20ApiError::Internal("Failed to retrieve the latest block from the database.".to_string())
-      .into()
-  })?;
+  let Some((height, blockhash)) = Index::latest_block(&rtx)? else {
+    return Err(BRC20ApiError::DataBaseNotReady.into());
+  };
 
   let assets = Index::brc20_get_transferring_assets_with_location_by_outpoint(outpoint, &rtx)?;
-
   // If there are no inscriptions on the output, return None and parsed block states.
-  if assets.is_empty() {
-    return Ok(Json(ApiResponse::ok(ApiOutPointResult {
-      result: None,
-      latest_height: latest_height.n(),
-      latest_blockhash: latest_blockhash.to_string(),
-    })));
-  }
 
   Ok(Json(ApiResponse::ok(ApiOutPointResult {
-    result: Some(
+    result: (!assets.is_empty()).then_some(
       assets
         .into_iter()
-        .map(|(satpoint, asset)| ApiTransferableAsset {
+        .map(|(location, asset)| ApiTransferableAsset {
           inscription_id: asset.inscription_id,
           inscription_number: asset.inscription_number,
           amount: asset.amount.to_string(),
           tick: asset.ticker,
           owner: asset.owner.into(),
-          location: satpoint,
+          location,
         })
         .collect(),
     ),
-    latest_height: latest_height.n(),
-    latest_blockhash: latest_blockhash.to_string(),
+    latest_height: height.n(),
+    latest_blockhash: blockhash.to_string(),
   })))
 }

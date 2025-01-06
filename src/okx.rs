@@ -29,7 +29,6 @@ pub enum SubMessage {
 pub(crate) struct OkxUpdater {
   pub(crate) height: u32,
   pub(crate) timestamp: u32,
-  pub(crate) chain: Chain,
   pub(crate) save_inscription_receipts: bool,
 }
 

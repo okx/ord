@@ -13,7 +13,7 @@ impl BitmapMessageExtractor<'_, '_> for OkxInscriptionEvent {
 }
 
 impl BitmapMessage {
-  pub fn execute(&self, context: &mut TableContext, height: u32) -> Result<()> {
+  pub(crate) fn execute(&self, context: &mut TableContext, height: u32) -> Result<()> {
     Ok(())
   }
 }

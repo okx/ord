@@ -5,32 +5,53 @@ mod outpoint;
 mod receipt;
 
 pub(crate) use {inscription::*, outpoint::*, receipt::*};
-
 #[derive(Debug, thiserror::Error)]
 pub enum OrdApiError {
-  #[error("unknown inscription number {0}")]
-  UnknownInscriptionNumber(i32),
-  #[error("transaction {0} not found")]
-  TransactionNotFound(Txid),
-  #[error("transaction receipt {0} not found")]
+  #[error("Unknown inscription number '{0}': no matching inscription found.")]
+  InscriptionNotFoundByNum(i32),
+
+  #[error("Invalid inscription ID '{0}': the inscription does not exist.")]
+  InscriptionNotFoundById(InscriptionId),
+
+  #[error("Inscription entry not found for sequence number '{0}'.")]
+  InscriptionEntryNotFound(u32),
+
+  #[error("Location not found for sequence number '{0}'.")]
+  LocationNotFound(u32),
+
+  #[error("Failed to parse envelope with index '{0}' for transaction '{1}'.")]
+  ParsedEnvelopeError(u32, Txid),
+
+  #[error("Transaction receipt for transaction ID '{0}' not found: no matching receipt exists.")]
   TransactionReceiptNotFound(Txid),
-  #[error("invalid inscription {0}")]
-  InvalidInscription(InscriptionId),
-  #[error("satpoint not found for inscription {0}")]
-  SatPointNotFound(InscriptionId),
-  #[error("internal error: {0}")]
-  Internal(String),
+
+  #[error("Transaction with ID '{0}' not found.")]
+  TransactionNotFound(Txid),
+
+  #[error("Block receipt for hash '{0}' not found: no matching receipt exists.")]
+  BlockReceiptNotFound(BlockHash),
+
+  #[error("Conflict detected for block at height '{0}'.")]
+  ConflictBlockByHeight(Height),
+
+  #[error("Database is not ready: the database is not yet initialized.")]
+  DataBaseNotReady,
 }
 
 impl From<OrdApiError> for ApiError {
   fn from(error: OrdApiError) -> Self {
     match error {
-      OrdApiError::UnknownInscriptionNumber(_) => Self::not_found(error.to_string()),
-      OrdApiError::TransactionReceiptNotFound(_) => Self::not_found(error.to_string()),
-      OrdApiError::TransactionNotFound(_) => Self::not_found(error.to_string()),
-      OrdApiError::InvalidInscription(_) => Self::internal(error.to_string()),
-      OrdApiError::SatPointNotFound(_) => Self::internal(error.to_string()),
-      OrdApiError::Internal(_) => Self::internal(error.to_string()),
+      OrdApiError::InscriptionNotFoundByNum(_)
+      | OrdApiError::InscriptionEntryNotFound(_)
+      | OrdApiError::LocationNotFound(_)
+      | OrdApiError::TransactionReceiptNotFound(_)
+      | OrdApiError::TransactionNotFound(_)
+      | OrdApiError::BlockReceiptNotFound(_) => Self::not_found(error.to_string()),
+
+      OrdApiError::InscriptionNotFoundById(_)
+      | OrdApiError::ParsedEnvelopeError(_, _)
+      | OrdApiError::ConflictBlockByHeight(_)
+      | OrdApiError::DataBaseNotReady => Self::internal(error.to_string()),
     }
   }
 }
