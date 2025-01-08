@@ -46,13 +46,15 @@ pub(crate) async fn ord_inscription_id(
 ) -> ApiResult<ApiInscription> {
   log::debug!("rpc: get ord_inscription_id: {id}");
 
-  let rtx = index.begin_read()?;
-  let inscription_id = InscriptionId::from_str(&id).map_err(ApiError::bad_request)?;
+  task::block_in_place(|| {
+    let rtx = index.begin_read()?;
+    let inscription_id = InscriptionId::from_str(&id).map_err(ApiError::bad_request)?;
 
-  let sequence_number = Index::sequence_number_by_inscription_id(inscription_id, &rtx)?
-    .ok_or(OrdApiError::InscriptionNotFoundById(inscription_id))?;
+    let sequence_number = Index::sequence_number_by_inscription_id(inscription_id, &rtx)?
+      .ok_or(OrdApiError::InscriptionNotFoundById(inscription_id))?;
 
-  ord_inscription_by_sequence_number(sequence_number, &rtx, &index, &settings)
+    ord_inscription_by_sequence_number(sequence_number, &rtx, &index, &settings)
+  })
 }
 
 // /ord/number/:number/inscription
@@ -64,11 +66,13 @@ pub(crate) async fn ord_inscription_number(
 ) -> ApiResult<ApiInscription> {
   log::debug!("rpc: get ord_inscription_number: {number}");
 
-  let rtx = index.begin_read()?;
-  let sequence_number = Index::sequence_number_by_inscription_number(number, &rtx)?
-    .ok_or(OrdApiError::InscriptionNotFoundByNum(number))?;
+  task::block_in_place(|| {
+    let rtx = index.begin_read()?;
+    let sequence_number = Index::sequence_number_by_inscription_number(number, &rtx)?
+      .ok_or(OrdApiError::InscriptionNotFoundByNum(number))?;
 
-  ord_inscription_by_sequence_number(sequence_number, &rtx, &index, &settings)
+    ord_inscription_by_sequence_number(sequence_number, &rtx, &index, &settings)
+  })
 }
 
 fn ord_inscription_by_sequence_number(

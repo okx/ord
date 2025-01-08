@@ -70,21 +70,23 @@ pub(crate) async fn ord_txid_inscriptions(
   Path(txid): Path<String>,
 ) -> ApiResult<ApiTxInscriptions> {
   log::debug!("rpc: get ord_txid_inscriptions: {}", txid);
-  let txid = Txid::from_str(&txid).map_err(ApiError::bad_request)?;
-  let rtx = index.begin_read()?;
+  task::block_in_place(|| {
+    let txid = Txid::from_str(&txid).map_err(ApiError::bad_request)?;
+    let rtx = index.begin_read()?;
 
-  let inscription_receipts = Index::ord_get_raw_receipts(&txid, &rtx)?
-    .ok_or(OrdApiError::TransactionReceiptNotFound(txid))?;
-  log::debug!(
-    "rpc: get ord_txid_inscriptions: {} {:?}",
-    txid,
-    inscription_receipts
-  );
+    let inscription_receipts = Index::ord_get_raw_receipts(&txid, &rtx)?
+      .ok_or(OrdApiError::TransactionReceiptNotFound(txid))?;
+    log::debug!(
+      "rpc: get ord_txid_inscriptions: {} {:?}",
+      txid,
+      inscription_receipts
+    );
 
-  Ok(Json(ApiResponse::ok(ApiTxInscriptions {
-    inscriptions: inscription_receipts.into_iter().map(Into::into).collect(),
-    txid,
-  })))
+    Ok(Json(ApiResponse::ok(ApiTxInscriptions {
+      inscriptions: inscription_receipts.into_iter().map(Into::into).collect(),
+      txid,
+    })))
+  })
 }
 
 // ord/block/:blockhash/inscriptions
@@ -94,50 +96,53 @@ pub(crate) async fn ord_block_inscriptions(
   Path(blockhash): Path<String>,
 ) -> ApiResult<ApiBlockInscriptions> {
   log::debug!("rpc: get ord_block_inscriptions: {}", blockhash);
+  task::block_in_place(|| {
+    let blockhash = BlockHash::from_str(&blockhash).map_err(ApiError::bad_request)?;
 
-  let blockhash = BlockHash::from_str(&blockhash).map_err(ApiError::bad_request)?;
+    let rtx = index.begin_read()?;
 
-  let rtx = index.begin_read()?;
+    let block_info = index
+      .client
+      .get_block_info(&blockhash)
+      .map_err(ApiError::internal)?;
 
-  let block_info = index
-    .client
-    .get_block_info(&blockhash)
-    .map_err(ApiError::internal)?;
-
-  let Some(db_blockhash) = rtx.block_hash(Some(u32::try_from(block_info.height).unwrap()))? else {
-    return Err(OrdApiError::BlockReceiptNotFound(block_info.hash).into());
-  };
-
-  // check of conflicting block.
-  if block_info.hash != db_blockhash || blockhash != block_info.hash {
-    return Err(
-      OrdApiError::ConflictBlockByHeight(Height(u32::try_from(block_info.height).unwrap())).into(),
-    );
-  }
-
-  let mut block_receipts = Vec::new();
-  for txid in block_info.tx {
-    let Some(tx_receipts) = Index::ord_get_raw_receipts(&txid, &rtx)? else {
-      continue;
+    let Some(db_blockhash) = rtx.block_hash(Some(u32::try_from(block_info.height).unwrap()))?
+    else {
+      return Err(OrdApiError::BlockReceiptNotFound(block_info.hash).into());
     };
-    block_receipts.push((txid, tx_receipts));
-  }
 
-  log::debug!(
-    "rpc: get ord_block_inscriptions: {} {:?}",
-    blockhash,
-    block_receipts
-  );
+    // check of conflicting block.
+    if block_info.hash != db_blockhash || blockhash != block_info.hash {
+      return Err(
+        OrdApiError::ConflictBlockByHeight(Height(u32::try_from(block_info.height).unwrap()))
+          .into(),
+      );
+    }
 
-  Ok(Json(ApiResponse::ok(ApiBlockInscriptions {
-    block: block_receipts
-      .into_iter()
-      .map(|(txid, receipts)| ApiTxInscriptions {
-        inscriptions: receipts.into_iter().map(Into::into).collect(),
-        txid,
-      })
-      .collect(),
-  })))
+    let mut block_receipts = Vec::new();
+    for txid in block_info.tx {
+      let Some(tx_receipts) = Index::ord_get_raw_receipts(&txid, &rtx)? else {
+        continue;
+      };
+      block_receipts.push((txid, tx_receipts));
+    }
+
+    log::debug!(
+      "rpc: get ord_block_inscriptions: {} {:?}",
+      blockhash,
+      block_receipts
+    );
+
+    Ok(Json(ApiResponse::ok(ApiBlockInscriptions {
+      block: block_receipts
+        .into_iter()
+        .map(|(txid, receipts)| ApiTxInscriptions {
+          inscriptions: receipts.into_iter().map(Into::into).collect(),
+          txid,
+        })
+        .collect(),
+    })))
+  })
 }
 
 #[cfg(test)]
