@@ -10,7 +10,7 @@ use fixed_point::FixedPoint;
 use once_cell::sync::Lazy;
 use operation::{BRC20OperationExtractor, Deploy, Mint, RawOperation, Transfer};
 use policies::HardForks;
-use redb::{MultimapTable, Table};
+use redb::{MultimapTable, ReadableTable, Table};
 
 pub(crate) mod entry;
 mod error;
@@ -119,16 +119,29 @@ impl<'a, 'tx> BRC20MessageExtractor<'a, 'tx> for OkxInscriptionEvent {
           _ => Ok(None),
         }
       }
-      Action::Transferred => {
+      Action::Transferred
+        if self.inscription_number >= 0
+          && self.old_satpoint.outpoint.txid == self.inscription_id.txid =>
+      {
         let Some(asset) = satpoint_to_assets_table
-          .remove(&self.old_satpoint.store())?
+          .get(&self.old_satpoint.store())?
           .map(|asset| BRC20TransferAsset::load(asset.value()))
         else {
           return Ok(None);
         };
-        assert_eq!(asset.inscription_id, self.inscription_id);
 
-        // Remove the asset from the address-ticker to satpoint mapping.
+        // Since a single old_satpoint may correspond to multiple inscriptions,
+        // we need to verify whether the current inscription_id matches the asset's inscription_id.
+        // Only if they match can it be considered a valid BRC20 transfer message.
+        if self.inscription_id != asset.inscription_id {
+          return Ok(None);
+        }
+
+        // Remove the asset from tables.
+        satpoint_to_assets_table
+          .remove(&self.old_satpoint.store())?
+          .map(|asset| BRC20TransferAsset::load(asset.value()));
+
         address_to_assets_table.remove(
           AddressTickerKey {
             primary: self.sender.clone(),
