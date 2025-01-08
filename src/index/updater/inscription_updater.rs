@@ -222,7 +222,7 @@ impl InscriptionUpdater<'_, '_> {
           offset,
           old_satpoint: SatPoint {
             outpoint: txin.previous_output,
-            offset: offset - total_input_value,
+            offset: 0,
           },
           input_script_buf: input_script_buf.to_vec(),
           origin: Origin::New {
