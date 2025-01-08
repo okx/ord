@@ -45,12 +45,12 @@ impl OkxUpdater {
     let mut total_bitmap_messages = 0;
 
     log::info!(
-            "[OKX] Starting to index block at height {} (timestamp: {}, transaction_count: {}, bundle_message_count: {})",
-            self.height,
-            self.timestamp,
-            block_data.txdata.len(),
-            bundle_messages_map.len()
-        );
+      "[OKX] Starting to index block {} at {}, transaction_count: {}, bundle_message_count: {})",
+      self.height,
+      timestamp(self.timestamp.into()),
+      block_data.txdata.len(),
+      bundle_messages_map.len()
+    );
 
     for (_tx_index, (_transaction, txid)) in block_data
       .txdata
@@ -69,11 +69,13 @@ impl OkxUpdater {
 
         if !brc20_receipts.is_empty() {
           let brc20_receipts_count = brc20_receipts.len();
+          let start_insert_time = Instant::now();
           context.insert_brc20_tx_receipts(txid, brc20_receipts)?;
           log::debug!(
-            "[OKX] Saved {} BRC20 receipts for transaction {}",
+            "[OKX] Saved {} BRC20 receipts for transaction {} in {} ms",
             brc20_receipts_count,
-            txid
+            txid,
+            (Instant::now() - start_insert_time).as_millis()
           );
         }
 
@@ -84,18 +86,20 @@ impl OkxUpdater {
             .into_iter()
             .map(Into::into)
             .collect();
+          let start_insert_time = Instant::now();
           context.insert_inscription_tx_receipts(txid, inscription_receipts)?;
           log::debug!(
-            "[OKX] Saved {} inscription receipts for transaction {}",
+            "[OKX] Saved {} inscription receipts for transaction {} in {} ms",
             transaction_bundle_messages_count,
-            txid
+            txid,
+            (Instant::now() - start_insert_time).as_millis()
           );
         }
       }
     }
 
     log::info!(
-            "[OKX] Finished indexing block at height {}: {{ total_inscriptions: {}, total_brc20: {}, total_bitmaps: {}, duration: {} ms }}",
+            "[OKX] Finished indexing block {} {{ total_inscriptions: {}, total_brc20: {}, total_bitmaps: {} }} in {} ms",
             self.height,
             total_inscription_receipts,
             total_brc20_receipts,
