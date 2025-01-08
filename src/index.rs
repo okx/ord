@@ -251,6 +251,15 @@ impl Index {
     settings: &Settings,
     event_sender: Option<tokio::sync::mpsc::Sender<Event>>,
   ) -> Result<Self> {
+    if let Err(e) = logger::init(settings.log_level(), settings.log_dir()) {
+      bail!(
+        "Failed to initialize logger. Log level: {:?}, Log directory: {}. Error: {}",
+        settings.log_level(),
+        settings.log_dir().display(),
+        e
+      );
+    }
+
     let client = settings.bitcoin_rpc_client(None)?;
 
     let path = settings.index().to_owned();
@@ -732,10 +741,6 @@ impl Index {
   }
 
   pub fn update(&self) -> Result {
-    if let Err(e) = logger::init(self.settings.log_level(), self.settings.log_dir()) {
-      bail!("initialize logger error: {}", e);
-    }
-
     loop {
       let wtx = self.begin_write()?;
 
