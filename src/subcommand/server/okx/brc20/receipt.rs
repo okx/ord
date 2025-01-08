@@ -225,19 +225,20 @@ pub(crate) async fn brc20_tx_events(
   Path(txid): Path<String>,
 ) -> ApiResult<ApiTxEvents> {
   log::debug!("rpc: get brc20_tx_events: {}", txid);
+  task::block_in_place(|| {
+    let txid = Txid::from_str(&txid).map_err(ApiError::bad_request)?;
+    let rtx = index.begin_read()?;
 
-  let txid = Txid::from_str(&txid).map_err(ApiError::bad_request)?;
-  let rtx = index.begin_read()?;
+    let receipts = Index::brc20_get_raw_receipts(&txid, &rtx)?
+      .ok_or(BRC20ApiError::TransactionReceiptNotFound(txid))?;
 
-  let receipts = Index::brc20_get_raw_receipts(&txid, &rtx)?
-    .ok_or(BRC20ApiError::TransactionReceiptNotFound(txid))?;
+    log::debug!("rpc: get brc20_tx_events: {} {:?}", txid, receipts);
 
-  log::debug!("rpc: get brc20_tx_events: {} {:?}", txid, receipts);
-
-  Ok(Json(ApiResponse::ok(ApiTxEvents {
-    txid,
-    events: receipts.into_iter().map(|e| e.into()).collect(),
-  })))
+    Ok(Json(ApiResponse::ok(ApiTxEvents {
+      txid,
+      events: receipts.into_iter().map(|e| e.into()).collect(),
+    })))
+  })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -255,50 +256,52 @@ pub(crate) async fn brc20_block_events(
   Path(blockhash): Path<String>,
 ) -> ApiResult<ApiBlockEvents> {
   log::debug!("rpc: get brc20_block_events: {}", blockhash);
+  task::block_in_place(|| {
+    let blockhash = BlockHash::from_str(&blockhash).map_err(ApiError::bad_request)?;
 
-  let blockhash = BlockHash::from_str(&blockhash).map_err(ApiError::bad_request)?;
+    let rtx = index.begin_read()?;
 
-  let rtx = index.begin_read()?;
+    let block_info = index
+      .client
+      .get_block_info(&blockhash)
+      .map_err(ApiError::internal)?;
 
-  let block_info = index
-    .client
-    .get_block_info(&blockhash)
-    .map_err(ApiError::internal)?;
-
-  let Some(db_blockhash) = rtx.block_hash(Some(u32::try_from(block_info.height).unwrap()))? else {
-    return Err(BRC20ApiError::BlockReceiptNotFound(block_info.hash).into());
-  };
-
-  // check of conflicting block.
-  if block_info.hash != db_blockhash || blockhash != block_info.hash {
-    return Err(
-      BRC20ApiError::ConflictBlockByHeight(Height(u32::try_from(block_info.height).unwrap()))
-        .into(),
-    );
-  }
-
-  let mut block_receipts = Vec::new();
-  for txid in block_info.tx {
-    let Some(tx_receipts) = Index::brc20_get_raw_receipts(&txid, &rtx)? else {
-      continue;
+    let Some(db_blockhash) = rtx.block_hash(Some(u32::try_from(block_info.height).unwrap()))?
+    else {
+      return Err(BRC20ApiError::BlockReceiptNotFound(block_info.hash).into());
     };
-    block_receipts.push((txid, tx_receipts));
-  }
 
-  log::debug!(
-    "rpc: get brc20_block_events: {} {:?}",
-    blockhash,
-    block_receipts
-  );
+    // check of conflicting block.
+    if block_info.hash != db_blockhash || blockhash != block_info.hash {
+      return Err(
+        BRC20ApiError::ConflictBlockByHeight(Height(u32::try_from(block_info.height).unwrap()))
+          .into(),
+      );
+    }
 
-  Ok(Json(ApiResponse::ok(ApiBlockEvents {
-    block: block_receipts
-      .into_iter()
-      .map(|(txid, events)| ApiTxEvents {
-        txid,
-        events: events.into_iter().map(|e| e.into()).collect(),
-      })
-      .filter(|e| !e.events.is_empty())
-      .collect(),
-  })))
+    let mut block_receipts = Vec::new();
+    for txid in block_info.tx {
+      let Some(tx_receipts) = Index::brc20_get_raw_receipts(&txid, &rtx)? else {
+        continue;
+      };
+      block_receipts.push((txid, tx_receipts));
+    }
+
+    log::debug!(
+      "rpc: get brc20_block_events: {} {:?}",
+      blockhash,
+      block_receipts
+    );
+
+    Ok(Json(ApiResponse::ok(ApiBlockEvents {
+      block: block_receipts
+        .into_iter()
+        .map(|(txid, events)| ApiTxEvents {
+          txid,
+          events: events.into_iter().map(|e| e.into()).collect(),
+        })
+        .filter(|e| !e.events.is_empty())
+        .collect(),
+    })))
+  })
 }

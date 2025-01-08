@@ -47,17 +47,18 @@ pub(crate) async fn brc20_tick_info(
   Path(ticker): Path<String>,
 ) -> ApiResult<ApiTickInfo> {
   log::debug!("rpc: get brc20_tick_info: {}", ticker);
+  task::block_in_place(|| {
+    let rtx = index.begin_read()?;
 
-  let rtx = index.begin_read()?;
+    let brc20_ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::internal)?;
 
-  let brc20_ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::internal)?;
+    let tick_info = Index::brc20_get_ticker_info(&brc20_ticker, &rtx)?
+      .ok_or(BRC20ApiError::UnknownTicker(ticker.clone()))?;
 
-  let tick_info = Index::brc20_get_ticker_info(&brc20_ticker, &rtx)?
-    .ok_or(BRC20ApiError::UnknownTicker(ticker.clone()))?;
+    log::debug!("rpc: get brc20_tick_info: {:?} {:?}", ticker, tick_info);
 
-  log::debug!("rpc: get brc20_tick_info: {:?} {:?}", ticker, tick_info);
-
-  Ok(Json(ApiResponse::ok(tick_info.into())))
+    Ok(Json(ApiResponse::ok(tick_info.into())))
+  })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,12 +75,13 @@ pub(crate) async fn brc20_all_tick_info(
   Extension(index): Extension<Arc<Index>>,
 ) -> ApiResult<ApiTickInfos> {
   log::debug!("rpc: get brc20_all_tick_info");
+  task::block_in_place(|| {
+    let rtx = index.begin_read()?;
+    let all_tick_info = Index::brc20_get_all_ticker_info(&rtx)?;
+    log::debug!("rpc: get brc20_all_tick_info: {:?}", all_tick_info);
 
-  let rtx = index.begin_read()?;
-  let all_tick_info = Index::brc20_get_all_ticker_info(&rtx)?;
-  log::debug!("rpc: get brc20_all_tick_info: {:?}", all_tick_info);
-
-  Ok(Json(ApiResponse::ok(ApiTickInfos {
-    tokens: all_tick_info.into_iter().map(|t| t.into()).collect(),
-  })))
+    Ok(Json(ApiResponse::ok(ApiTickInfos {
+      tokens: all_tick_info.into_iter().map(|t| t.into()).collect(),
+    })))
+  })
 }

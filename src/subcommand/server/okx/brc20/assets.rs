@@ -49,33 +49,34 @@ pub(crate) async fn brc20_transferable(
   Path((ticker, address)): Path<(String, String)>,
 ) -> ApiResult<ApiTransferableAssets> {
   log::debug!("rpc: get brc20_transferable: {ticker} {address}");
+  task::block_in_place(|| {
+    let rtx = index.begin_read()?;
 
-  let rtx = index.begin_read()?;
+    let brc20_ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::internal)?;
 
-  let brc20_ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::internal)?;
+    let utxo_address =
+      UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
 
-  let utxo_address =
-    UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
+    Index::brc20_get_ticker_info(&brc20_ticker, &rtx)?
+      .ok_or(BRC20ApiError::UnknownTicker(ticker.clone()))?;
 
-  Index::brc20_get_ticker_info(&brc20_ticker, &rtx)?
-    .ok_or(BRC20ApiError::UnknownTicker(ticker.clone()))?;
+    let assets = Index::brc20_get_transferring_assets_with_location_by_address_ticker(
+      &utxo_address,
+      &brc20_ticker,
+      &rtx,
+    )?;
 
-  let assets = Index::brc20_get_transferring_assets_with_location_by_address_ticker(
-    &utxo_address,
-    &brc20_ticker,
-    &rtx,
-  )?;
+    log::debug!(
+      "rpc: get brc20_transferable: {ticker} {address}, assets count: {}",
+      assets.len()
+    );
 
-  log::debug!(
-    "rpc: get brc20_transferable: {ticker} {address}, assets count: {}",
-    assets.len()
-  );
+    let api_transferable_assets = process_assets(assets, &utxo_address);
 
-  let api_transferable_assets = process_assets(assets, &utxo_address);
-
-  Ok(Json(ApiResponse::ok(ApiTransferableAssets {
-    inscriptions: api_transferable_assets,
-  })))
+    Ok(Json(ApiResponse::ok(ApiTransferableAssets {
+      inscriptions: api_transferable_assets,
+    })))
+  })
 }
 
 /// Get the balance of ticker of the address.
@@ -87,22 +88,23 @@ pub(crate) async fn brc20_all_transferable(
   Path(address): Path<String>,
 ) -> ApiResult<ApiTransferableAssets> {
   log::debug!("rpc: get brc20_all_transferable: {address}");
+  task::block_in_place(|| {
+    let rtx = index.begin_read()?;
 
-  let rtx = index.begin_read()?;
+    let utxo_address =
+      UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
 
-  let utxo_address =
-    UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
+    let assets = Index::get_brc20_transferring_assets_location_by_address(&utxo_address, &rtx)?;
 
-  let assets = Index::get_brc20_transferring_assets_location_by_address(&utxo_address, &rtx)?;
+    log::debug!(
+      "rpc: get brc20_all_transferable: {address}, assets count: {}",
+      assets.len()
+    );
 
-  log::debug!(
-    "rpc: get brc20_all_transferable: {address}, assets count: {}",
-    assets.len()
-  );
+    let api_transferable_assets = process_assets(assets, &utxo_address);
 
-  let api_transferable_assets = process_assets(assets, &utxo_address);
-
-  Ok(Json(ApiResponse::ok(ApiTransferableAssets {
-    inscriptions: api_transferable_assets,
-  })))
+    Ok(Json(ApiResponse::ok(ApiTransferableAssets {
+      inscriptions: api_transferable_assets,
+    })))
+  })
 }
