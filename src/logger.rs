@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use log4rs::{
   append::{
     console::ConsoleAppender,
@@ -55,7 +55,7 @@ pub fn init<P: AsRef<Path>>(level: LogLevel, log_dir: P) -> anyhow::Result<log4r
 
   // using default encoder for now, change it as needed.
   let encoder = PatternEncoder::default();
-  let trigger = SizeTrigger::new(1024 * 1024 * 20);
+  let trigger = SizeTrigger::new(1024 * 1024 * 200);
   let roller = FixedWindowRoller::builder()
     .build(
       log_dir
@@ -65,13 +65,13 @@ pub fn init<P: AsRef<Path>>(level: LogLevel, log_dir: P) -> anyhow::Result<log4r
         .as_ref(),
       50,
     )
-    .map_err(|e| anyhow::format_err!("build FixedWindowRoller error: {}", e))?;
+    .map_err(|e| anyhow!("Failed to build FixedWindowRoller: {}", e))?;
   let policy = CompoundPolicy::new(Box::new(trigger), Box::new(roller));
   let rolling_file = RollingFileAppender::builder()
     .append(true)
     .encoder(Box::new(encoder))
     .build(&log_file, Box::new(policy))
-    .with_context(|| format!("Failed to create rolling file {}", log_file.display()))?;
+    .map_err(|e| anyhow!("Failed to create rolling file {}", e))?;
 
   let cfg = Config::builder()
     .appender(Appender::builder().build("stdout", Box::new(stdout)))
@@ -83,7 +83,7 @@ pub fn init<P: AsRef<Path>>(level: LogLevel, log_dir: P) -> anyhow::Result<log4r
         .appender("rfile")
         .build(level.0),
     )
-    .context("build log config failed")?;
+    .map_err(|e| anyhow!("Failed to build log4rs configuration: {}", e))?;
 
-  log4rs::init_config(cfg).context("log4rs init config error")
+  log4rs::init_config(cfg).map_err(|e| anyhow!("Failed to init log4rs configuration: {}", e))
 }
