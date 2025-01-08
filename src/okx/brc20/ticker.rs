@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, Serialize, DeserializeFromStr)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, SerializeDisplay, DeserializeFromStr)]
 pub struct BRC20Ticker(Box<[u8]>);
 
 impl BRC20Ticker {
@@ -39,7 +39,7 @@ impl FromStr for BRC20Ticker {
   }
 }
 
-#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, SerializeDisplay, Deserialize)]
 pub struct BRC20LowerCaseTicker(Box<[u8]>);
 
 impl BRC20LowerCaseTicker {
@@ -232,6 +232,20 @@ mod tests {
     let lower = obj.to_lowercase();
     let serialized = bincode::serialize(&lower).unwrap();
     assert_eq!(serialized, vec![4, 0, 0, 0, 0, 0, 0, 0, 97, 98, 49, 59]);
+
+    let obj = BRC20Ticker::from_str("XXAİ").unwrap();
+    let serialized = bincode::serialize(&obj).unwrap();
+    assert_eq!(
+      serialized,
+      vec![5, 0, 0, 0, 0, 0, 0, 0, 88, 88, 65, 196, 176]
+    );
+
+    let lower = obj.to_lowercase();
+    let serialized = bincode::serialize(&lower).unwrap();
+    assert_eq!(
+      serialized,
+      vec![6, 0, 0, 0, 0, 0, 0, 0, 120, 120, 97, 105, 204, 135]
+    );
   }
 
   #[test]
@@ -242,6 +256,27 @@ mod tests {
 
     assert_eq!(deserialized, obj);
 
+    let lower = obj.to_lowercase();
+    let deserialized =
+      bincode::deserialize::<BRC20LowerCaseTicker>(&[4, 0, 0, 0, 0, 0, 0, 0, 97, 98, 49, 59])
+        .unwrap();
+
+    assert_eq!(deserialized, lower);
+
+    let obj = BRC20Ticker::from_str("XXAİ").unwrap();
+    let deserialized =
+      bincode::deserialize::<BRC20Ticker>(&[5, 0, 0, 0, 0, 0, 0, 0, 88, 88, 65, 196, 176]).unwrap();
+
+    assert_eq!(deserialized, obj);
+
+    let lower = obj.to_lowercase();
+    let deserialized = bincode::deserialize::<BRC20LowerCaseTicker>(&[
+      6, 0, 0, 0, 0, 0, 0, 0, 120, 120, 97, 105, 204, 135,
+    ])
+    .unwrap();
+
+    assert_eq!(deserialized, lower);
+
     // deserialize with error
     assert_eq!(
       bincode::deserialize::<BRC20Ticker>(&[6, 0, 0, 0, 0, 0, 0, 0, 65, 98, 49, 59, 47, 49])
@@ -249,5 +284,24 @@ mod tests {
         .to_string(),
       Error::Range.to_string()
     );
+  }
+
+  #[test]
+  fn test_tick_serialize_json() {
+    let obj = BRC20Ticker::from_str("Ab1;").unwrap();
+    let serialized = serde_json::to_string(&obj).unwrap();
+    assert_eq!(serialized, "\"Ab1;\"");
+
+    let lower = obj.to_lowercase();
+    let serialized = serde_json::to_string(&lower).unwrap();
+    assert_eq!(serialized, "\"ab1;\"");
+
+    let obj = BRC20Ticker::from_str("XXAİ").unwrap();
+    let serialized = serde_json::to_string(&obj).unwrap();
+    assert_eq!(serialized, "\"XXAİ\"");
+
+    let lower = obj.to_lowercase();
+    let serialized = serde_json::to_string(&lower).unwrap();
+    assert_eq!(serialized, "\"xxai\u{307}\"");
   }
 }

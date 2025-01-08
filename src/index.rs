@@ -45,8 +45,9 @@ use {
 
 pub use self::entry::RuneEntry;
 pub(crate) use self::{
+  bundle_message::{BundleMessage, InscriptionAction},
   rtx::Rtx,
-  updater::{BlockData, BundleMessage, Curse, InscriptionAction},
+  updater::{BlockData, Curse},
 };
 
 pub(crate) mod entry;

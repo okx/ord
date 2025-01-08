@@ -8,10 +8,8 @@ use {
   },
 };
 
-pub(crate) use crate::index::bundle_message::{BundleMessage, InscriptionAction};
 use crate::okx::context::TableContext;
 use crate::okx::OkxUpdater;
-pub(crate) use bundle_message::{BundleMessage, InscriptionAction};
 pub(crate) use inscription_updater::Curse;
 
 mod inscription_updater;
