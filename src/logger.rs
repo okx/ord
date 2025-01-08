@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use log4rs::{
   append::{
     console::ConsoleAppender,

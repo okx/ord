@@ -1,7 +1,7 @@
 use super::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, strum_macros::Display)]
-#[strum(serialize_all = "camelCase")]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum BRC20OpType {
   Deploy,
   Mint,
