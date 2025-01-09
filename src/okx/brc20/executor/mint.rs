@@ -6,7 +6,7 @@ impl BRC20ExecutionMessage {
     context: &mut TableContext,
     height: u32,
   ) -> Result<BRC20Receipt, ExecutionError> {
-    let BRC20Message::Mint { op: mint, parent } = &self.message else {
+    let BRC20Operation::Mint { op: mint, parent } = &self.operation else {
       unreachable!()
     };
 

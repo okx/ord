@@ -45,7 +45,6 @@ use {
 
 pub use self::entry::RuneEntry;
 pub(crate) use self::{
-  bundle_message::{BundleMessage, InscriptionAction},
   rtx::Rtx,
   updater::{BlockData, Curse},
 };

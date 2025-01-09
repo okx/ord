@@ -2,7 +2,6 @@ use super::{
   composite_key::{AddressEndpoint, AddressTickerKey},
   *,
 };
-use crate::index::InscriptionAction;
 
 pub(crate) trait DynamicEntry {
   type Value: AsRef<[u8]> + ?Sized;

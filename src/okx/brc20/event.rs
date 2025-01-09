@@ -9,13 +9,13 @@ pub enum BRC20OpType {
   Transfer,
 }
 
-impl From<&BRC20Message> for BRC20OpType {
-  fn from(value: &BRC20Message) -> Self {
+impl From<&BRC20Operation> for BRC20OpType {
+  fn from(value: &BRC20Operation) -> Self {
     match value {
-      BRC20Message::Deploy(_) => BRC20OpType::Deploy,
-      BRC20Message::Mint { .. } => BRC20OpType::Mint,
-      BRC20Message::InscribeTransfer(_) => BRC20OpType::InscribeTransfer,
-      BRC20Message::Transfer { .. } => BRC20OpType::Transfer,
+      BRC20Operation::Deploy(_) => BRC20OpType::Deploy,
+      BRC20Operation::Mint { .. } => BRC20OpType::Mint,
+      BRC20Operation::InscribeTransfer(_) => BRC20OpType::InscribeTransfer,
+      BRC20Operation::Transfer { .. } => BRC20OpType::Transfer,
     }
   }
 }

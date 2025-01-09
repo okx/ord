@@ -123,7 +123,41 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
     Ok(())
   }
 
-  pub fn update_brc20_transferring_asset(
+  pub fn load_brc20_transferring_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> std::result::Result<Option<BRC20TransferAsset>, redb::StorageError> {
+    Ok(
+      self
+        .brc20_satpoint_to_transfer_assets
+        .get(&satpoint.store())?
+        .map(|v| DynamicEntry::load(v.value())),
+    )
+  }
+
+  pub fn remove_brc20_transferring_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> std::result::Result<(), redb::StorageError> {
+    if let Some(asset) = self
+      .brc20_satpoint_to_transfer_assets
+      .remove(&satpoint.store())?
+      .map(|v| BRC20TransferAsset::load(v.value()))
+    {
+      self.brc20_address_ticker_to_transfer_assets.remove(
+        AddressTickerKey {
+          primary: asset.owner,
+          secondary: asset.ticker.to_lowercase(),
+        }
+        .store()
+        .as_ref(),
+        &satpoint.store(),
+      )?;
+    }
+    Ok(())
+  }
+
+  pub fn insert_brc20_transferring_asset(
     &mut self,
     address: &UtxoAddress,
     ticker: &BRC20Ticker,

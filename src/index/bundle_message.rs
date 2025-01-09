@@ -1,12 +1,25 @@
 use super::*;
-use crate::index::event::{Action, OkxInscriptionEvent};
-use crate::okx::bitmap::BitmapMessageExtractor;
-use crate::okx::brc20::{BRC20Message, BRC20MessageExtractor};
-use crate::okx::{SubMessage, UtxoAddress};
+use crate::{
+  index::event::{Action, OkxInscriptionEvent},
+  okx::{
+    bitmap::{BitmapMessageExtractor, BitmapOperation},
+    brc20::{BRC20CreationOperationExtractor, BRC20Operation, CreatedInscription},
+    UtxoAddress,
+  },
+};
+
+#[derive(Debug, Clone)]
+pub enum SubType {
+  BRC20(BRC20Operation),
+  BITMAP(BitmapOperation),
+}
 
 #[derive(Debug, Clone)]
 pub enum InscriptionAction {
-  Created { charms: u16 },
+  Created {
+    charms: u16,
+    sub_type: Option<SubType>,
+  },
   Transferred,
 }
 
@@ -22,58 +35,38 @@ pub struct BundleMessage {
   pub sender: UtxoAddress,
   pub receiver: Option<UtxoAddress>, // If unbound, no receiver address.
   pub inscription_action: InscriptionAction,
-  pub sub_message: Option<SubMessage>,
 }
 
 impl BundleMessage {
   /// Determines whether this inscription needs to be tracked.
   /// Returns `false` when the message is a BRC20 Mint or Transfer, otherwise `true`.
   pub fn should_track(&self, index: &Index) -> bool {
-    if index.disable_invalid_brc20_tracking {
-      match &self.sub_message {
-        Some(SubMessage::BRC20(BRC20Message::Transfer { .. }))
-        | Some(SubMessage::BRC20(BRC20Message::Mint { .. })) => false,
-        _ => true,
-      }
-    } else {
-      true
+    if !index.disable_invalid_brc20_tracking {
+      return true;
     }
+
+    if let InscriptionAction::Created { sub_type, .. } = &self.inscription_action {
+      if let Some(SubType::BRC20(operation)) = sub_type {
+        return !matches!(
+          operation,
+          BRC20Operation::Mint { .. } | BRC20Operation::InscribeTransfer(_)
+        );
+      }
+    }
+    true
   }
 }
 
 impl BundleMessage {
-  pub(in crate::index) fn from_okx_inscription_event<'tx>(
+  pub(in crate::index) fn from_okx_inscription_event(
     event: OkxInscriptionEvent,
     height: u32,
     index: &Index,
-    brc20_satpoint_to_transfer_assets: &mut Table<
-      'tx,
-      &'static SatPointValue,
-      &'static BRC20TransferAssetValue,
-    >,
-    brc20_address_ticker_to_transfer_assets: &mut MultimapTable<
-      'tx,
-      &'static AddressTickerKeyValue,
-      &'static SatPointValue,
-    >,
-  ) -> Result<Option<BundleMessage>> {
-    let sub_message = if index.index_brc20 {
-      event
-        .extract_brc20_message(
-          height,
-          index.settings.chain(),
-          brc20_satpoint_to_transfer_assets,
-          brc20_address_ticker_to_transfer_assets,
-        )?
-        .map(SubMessage::BRC20)
-    } else if index.index_bitmap {
-      event.extract_bitmap_message()?.map(SubMessage::BITMAP)
-    } else {
-      None
-    };
+  ) -> Result<Option<Self>> {
+    let sub_type = extract_sub_type(&event, height, index)?;
 
-    if sub_message.is_some() || index.save_inscription_receipts {
-      Ok(Some(BundleMessage {
+    if sub_type.is_some() || index.index_brc20 || index.save_inscription_receipts {
+      Ok(Some(Self {
         txid: event.txid,
         offset: event.offset,
         inscription_id: event.inscription_id,
@@ -84,13 +77,35 @@ impl BundleMessage {
         sender: event.sender,
         receiver: event.receiver,
         inscription_action: match event.action {
-          Action::Created { charms, .. } => InscriptionAction::Created { charms },
+          Action::Created { charms, .. } => InscriptionAction::Created { charms, sub_type },
           Action::Transferred => InscriptionAction::Transferred,
         },
-        sub_message,
       }))
     } else {
       Ok(None)
     }
   }
+}
+
+fn extract_sub_type(
+  inscription_event: &OkxInscriptionEvent,
+  block_height: u32,
+  index: &Index,
+) -> Result<Option<SubType>> {
+  if index.index_brc20 {
+    if let Some(inscription) = Option::<CreatedInscription>::from(inscription_event) {
+      if let Some(brc20_op) =
+        inscription.extract_and_validate_creation(block_height, index.settings.chain())
+      {
+        return Ok(Some(SubType::BRC20(brc20_op)));
+      }
+    }
+  }
+
+  if index.index_bitmap {
+    if let Some(bitmap_msg) = inscription_event.extract_bitmap_message()? {
+      return Ok(Some(SubType::BITMAP(bitmap_msg)));
+    }
+  }
+  Ok(None)
 }

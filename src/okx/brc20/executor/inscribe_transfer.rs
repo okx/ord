@@ -5,7 +5,7 @@ impl BRC20ExecutionMessage {
     &self,
     context: &mut TableContext,
   ) -> Result<BRC20Receipt, ExecutionError> {
-    let BRC20Message::InscribeTransfer(transfer) = &self.message else {
+    let BRC20Operation::InscribeTransfer(transfer) = &self.operation else {
       unreachable!()
     };
     if self.new_satpoint.outpoint.txid != self.txid {
@@ -56,7 +56,7 @@ impl BRC20ExecutionMessage {
       inscription_id: self.inscription_id,
     };
 
-    context.update_brc20_transferring_asset(
+    context.insert_brc20_transferring_asset(
       &address,
       &ticker,
       self.new_satpoint,

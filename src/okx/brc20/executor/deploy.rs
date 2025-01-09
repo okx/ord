@@ -8,7 +8,7 @@ impl BRC20ExecutionMessage {
     height: u32,
     blocktime: u32,
   ) -> Result<BRC20Receipt, ExecutionError> {
-    let BRC20Message::Deploy(deploy) = &self.message else {
+    let BRC20Operation::Deploy(deploy) = &self.operation else {
       unreachable!()
     };
 

@@ -1,10 +1,10 @@
 use super::*;
 use crate::index::{
+  bundle_message::{BundleMessage, InscriptionAction, SubType},
   event::{Action, OkxInscriptionEvent},
-  BlockData, BundleMessage,
+  BlockData,
 };
-use bitmap::BitmapMessage;
-use brc20::{BRC20ExecutionMessage, BRC20Message, BRC20Receipt};
+use brc20::{BRC20ExecutionMessage, BRC20Receipt};
 use context::TableContext;
 use std::collections::HashMap;
 
@@ -19,12 +19,6 @@ pub(crate) use self::{
   composite_key::{AddressEndpoint, AddressTickerKey},
   utxo_address::{UtxoAddress, UtxoAddressRef},
 };
-
-#[derive(Debug, Clone)]
-pub enum SubMessage {
-  BRC20(BRC20Message),
-  BITMAP(BitmapMessage),
-}
 
 pub(crate) struct OkxUpdater {
   pub(crate) height: u32,
@@ -119,13 +113,24 @@ impl OkxUpdater {
     let mut bitmap_message_count = 0;
 
     for bundle_message in bundle_messages.iter() {
-      if let Some(brc20_message) = Option::<BRC20ExecutionMessage>::from(bundle_message) {
-        if let Ok(receipt) = brc20_message.execute(context, self.height, self.timestamp) {
+      // process brc20 operation
+      if let Some(brc20_execution_message) =
+        BRC20ExecutionMessage::new_from_bundle_message(bundle_message, context)?
+      {
+        if let Ok(receipt) = brc20_execution_message.execute(context, self.height, self.timestamp) {
           brc20_execution_receipts.push(receipt);
         }
-      } else if let Some(SubMessage::BITMAP(bitmap_message)) = &bundle_message.sub_message {
+        continue;
+      }
+
+      // process bitmap operation
+      if let InscriptionAction::Created {
+        sub_type: Some(SubType::BITMAP(bitmap_operation)),
+        ..
+      } = &bundle_message.inscription_action
+      {
         bitmap_message_count += 1;
-        bitmap_message.execute(context, self.height)?;
+        bitmap_operation.execute(context, self.height)?;
       }
     }
 

@@ -4,7 +4,7 @@ use crate::index::event::{Action, OkxInscriptionEvent};
 use crate::okx::UtxoAddress;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub(crate) enum Curse {
+pub enum Curse {
   DuplicateField,
   IncompleteField,
   NotAtOffsetZero,
@@ -64,10 +64,6 @@ pub(super) struct InscriptionUpdater<'a, 'tx> {
   pub(super) sequence_number_to_entry: &'a mut Table<'tx, u32, InscriptionEntryValue>,
   pub(super) timestamp: u32,
   pub(super) unbound_inscriptions: u64,
-  pub(super) brc20_satpoint_to_transfer_assets:
-    &'a mut Table<'tx, &'static SatPointValue, &'static BRC20TransferAssetValue>,
-  pub(super) brc20_address_ticker_to_transfer_assets:
-    &'a mut MultimapTable<'tx, &'static AddressTickerKeyValue, &'static SatPointValue>,
   pub(super) block_bundle_messages: &'a mut HashMap<Txid, Vec<BundleMessage>>,
 }
 
@@ -633,13 +629,7 @@ impl InscriptionUpdater<'_, '_> {
         },
       };
 
-      if let Some(message) = BundleMessage::from_okx_inscription_event(
-        event,
-        self.height,
-        index,
-        self.brc20_satpoint_to_transfer_assets,
-        self.brc20_address_ticker_to_transfer_assets,
-      )? {
+      if let Some(message) = BundleMessage::from_okx_inscription_event(event, self.height, index)? {
         // We should decide whether to track the inscription based on the message.
         should_tracking_inscription = message.should_track(index);
         self

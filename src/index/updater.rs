@@ -535,9 +535,7 @@ impl Updater<'_> {
       transaction_buffer: Vec::new(),
       transaction_id_to_transaction: &mut transaction_id_to_transaction,
       unbound_inscriptions,
-      brc20_satpoint_to_transfer_assets: &mut brc20_satpoint_to_transfer_assets,
-      brc20_address_ticker_to_transfer_assets: &mut brc20_address_ticker_to_transfer_assets,
-      block_bundle_messages: &mut block_bundle_messages,
+       block_bundle_messages: &mut block_bundle_messages,
     };
 
     let mut coinbase_inputs = Vec::new();

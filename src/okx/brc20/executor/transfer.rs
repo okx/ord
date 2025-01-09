@@ -5,7 +5,7 @@ impl BRC20ExecutionMessage {
     &self,
     context: &mut TableContext,
   ) -> Result<BRC20Receipt, ExecutionError> {
-    let BRC20Message::Transfer { ticker, amount } = &self.message else {
+    let BRC20Operation::Transfer { ticker, amount } = &self.operation else {
       unreachable!()
     };
 
