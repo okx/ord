@@ -38,8 +38,4 @@ pub enum BRC20Error {
 
   #[error("Numeric error occurred: {0}")]
   NumericError(#[from] fixed_point::NumParseError),
-
-  // TODO: remove this error
-  #[error("Invalid inscribe operation: attempted to inscribe to a different transaction (coinbase expected)")]
-  InscribeToDifferentTx,
 }

@@ -12,12 +12,6 @@ impl BRC20ExecutionMessage {
       unreachable!()
     };
 
-    if self.new_satpoint.outpoint.txid != self.txid {
-      return Err(ExecutionError::ExecutionFailed(
-        BRC20Error::InscribeToDifferentTx,
-      ));
-    }
-
     // get the deployer address.
     let deployer = self.receiver.clone().unwrap();
     let ticker = BRC20Ticker::from_str(&deploy.tick).map_err(BRC20Error::TickerParse)?;

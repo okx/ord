@@ -10,12 +10,6 @@ impl BRC20ExecutionMessage {
       unreachable!()
     };
 
-    if self.new_satpoint.outpoint.txid != self.txid {
-      return Err(ExecutionError::ExecutionFailed(
-        BRC20Error::InscribeToDifferentTx,
-      ));
-    }
-
     let ticker = BRC20Ticker::from_str(&mint.tick).map_err(BRC20Error::TickerParse)?;
 
     // load ticker info, ensure the ticker is deployed

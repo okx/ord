@@ -52,13 +52,21 @@ pub trait BRC20TransferOperationExtractor<'a, 'tx> {
 
 #[derive(Debug)]
 pub struct CreatedInscription<'a> {
+  pub txid: Txid,
   pub inscription: &'a Inscription,
   pub inscription_id: InscriptionId,
   pub sequence_number: u32,
   pub inscription_number: i32,
   pub parents: &'a Vec<InscriptionId>,
+  pub new_satpoint: SatPoint,
   pub pre_jubilant_curse_reason: Option<&'a Curse>,
   pub charms: u16,
+}
+
+impl CreatedInscription<'_> {
+  pub fn is_change(&self) -> bool {
+    self.new_satpoint.outpoint.txid != self.txid
+  }
 }
 
 impl<'a> From<&'a OkxInscriptionEvent> for Option<CreatedInscription<'a>> {
@@ -71,11 +79,13 @@ impl<'a> From<&'a OkxInscriptionEvent> for Option<CreatedInscription<'a>> {
         charms,
         ..
       } => Some(CreatedInscription {
+        txid: event.txid,
         inscription,
         inscription_id: event.inscription_id,
         sequence_number: event.sequence_number,
         inscription_number: event.inscription_number,
         parents: &parents,
+        new_satpoint: event.new_satpoint,
         pre_jubilant_curse_reason: pre_jubilant_curse_reason.as_ref(),
         charms: *charms,
       }),
@@ -86,6 +96,11 @@ impl<'a> From<&'a OkxInscriptionEvent> for Option<CreatedInscription<'a>> {
 
 impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
   fn extract_and_validate_creation(&self, height: u32, chain: Chain) -> Option<BRC20Operation> {
+    // Creation inscription transferred to the coinbase as change does not qualify as a BRC20 operation.
+    if self.is_change() {
+      return None;
+    }
+
     if HardForks::check_inscription_preconditions(
       height,
       &chain,

@@ -8,11 +8,6 @@ impl BRC20ExecutionMessage {
     let BRC20Operation::InscribeTransfer(transfer) = &self.operation else {
       unreachable!()
     };
-    if self.new_satpoint.outpoint.txid != self.txid {
-      return Err(ExecutionError::ExecutionFailed(
-        BRC20Error::InscribeToDifferentTx,
-      ));
-    }
 
     let ticker = BRC20Ticker::from_str(&transfer.tick).map_err(BRC20Error::TickerParse)?;
 
