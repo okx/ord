@@ -21,6 +21,8 @@ impl BRC20ExecutionMessage {
       .load_brc20_ticker_info(&ticker)?
       .ok_or(BRC20Error::TickerNotFound(transfer.tick.clone()))?;
 
+    let ticker = ticker_info.ticker;
+
     let amt = FixedPoint::new_from_str(&transfer.amount, ticker_info.decimals)
       .map_err(BRC20Error::NumericError)?;
     if amt.is_zero()

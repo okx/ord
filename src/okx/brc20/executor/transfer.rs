@@ -14,10 +14,12 @@ impl BRC20ExecutionMessage {
       .load_brc20_ticker_info(ticker)?
       .ok_or(BRC20Error::TickerNotFound(ticker.clone().to_string()))?;
 
+    let ticker = ticker_info.ticker.clone();
+
     // check if the sender has enough balance and update the balance
     let mut sender_balance = context
-      .load_brc20_balance(&self.sender, ticker)?
-      .unwrap_or(BRC20Balance::new_with_ticker(ticker));
+      .load_brc20_balance(&self.sender, &ticker)?
+      .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
 
     sender_balance.total = sender_balance
       .total
@@ -26,7 +28,7 @@ impl BRC20ExecutionMessage {
 
     assert!(sender_balance.total >= sender_balance.available,);
 
-    context.update_brc20_balance(&self.sender, ticker, sender_balance)?;
+    context.update_brc20_balance(&self.sender, &ticker, sender_balance)?;
 
     let (receiver, send_to_coinbase) = if self.new_satpoint.outpoint.txid == self.txid {
       (self.receiver.clone().unwrap(), false)
@@ -36,8 +38,8 @@ impl BRC20ExecutionMessage {
 
     // update the recipient balance
     let mut receiver_balance = context
-      .load_brc20_balance(&receiver, ticker)?
-      .unwrap_or(BRC20Balance::new_with_ticker(ticker));
+      .load_brc20_balance(&receiver, &ticker)?
+      .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
 
     receiver_balance.total = receiver_balance
       .total
@@ -49,7 +51,7 @@ impl BRC20ExecutionMessage {
       .checked_add(*amount)
       .expect("Addition overflow");
 
-    context.update_brc20_balance(&receiver, ticker, receiver_balance)?;
+    context.update_brc20_balance(&receiver, &ticker, receiver_balance)?;
 
     let burned = receiver.op_return();
     if burned {
@@ -58,7 +60,7 @@ impl BRC20ExecutionMessage {
         .checked_add(*amount)
         .expect("Addition overflow");
 
-      context.update_brc20_ticker_info(&ticker_info.ticker.clone(), ticker_info)?;
+      context.update_brc20_ticker_info(&ticker, ticker_info)?;
     }
     Ok(BRC20Receipt {
       inscription_id: self.inscription_id,
@@ -70,7 +72,7 @@ impl BRC20ExecutionMessage {
       receiver,
       op_type: BRC20OpType::Transfer,
       result: Ok(BRC20Event::Transfer(TransferEvent {
-        ticker: ticker.clone(),
+        ticker,
         amount: *amount,
         send_to_coinbase,
         burned,

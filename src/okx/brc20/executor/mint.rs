@@ -23,6 +23,8 @@ impl BRC20ExecutionMessage {
       .load_brc20_ticker_info(&ticker)?
       .ok_or(BRC20Error::TickerNotFound(mint.tick.clone()))?;
 
+    let ticker = ticker_info.ticker.clone();
+
     // check if self mint is allowed.
     if ticker_info.self_minted && !parent.is_some_and(|parent| parent == ticker_info.inscription_id)
     {
