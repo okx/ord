@@ -601,7 +601,6 @@ impl InscriptionUpdater<'_, '_> {
     if index.index_addresses {
       let event = OkxInscriptionEvent {
         txid: flotsam.txid,
-        offset: flotsam.offset,
         inscription_id: flotsam.inscription_id,
         sequence_number,
         inscription_number,

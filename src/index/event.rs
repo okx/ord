@@ -58,7 +58,6 @@ pub(crate) enum Action {
 #[derive(Debug)]
 pub(crate) struct OkxInscriptionEvent {
   pub(crate) txid: Txid,
-  pub(crate) offset: u64,
   pub(crate) inscription_id: InscriptionId,
   pub(crate) sequence_number: u32,
   pub(crate) inscription_number: i32,

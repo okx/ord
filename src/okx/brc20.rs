@@ -1,8 +1,4 @@
-use super::{
-  composite_key::AddressTickerKey,
-  entry::{AddressTickerKeyValue, DynamicEntry},
-  *,
-};
+use super::{entry::DynamicEntry, *};
 use crate::index::Curse;
 use crate::Chain;
 use fixed_point::FixedPoint;

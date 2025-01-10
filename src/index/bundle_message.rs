@@ -26,7 +26,6 @@ pub enum InscriptionAction {
 #[derive(Debug, Clone)]
 pub struct BundleMessage {
   pub txid: Txid,
-  pub offset: u64, // Offset of the inscription in the transaction.
   pub inscription_id: InscriptionId,
   pub sequence_number: u32,
   pub inscription_number: i32,
@@ -68,7 +67,6 @@ impl BundleMessage {
     if sub_type.is_some() || index.index_brc20 || index.save_inscription_receipts {
       Ok(Some(Self {
         txid: event.txid,
-        offset: event.offset,
         inscription_id: event.inscription_id,
         sequence_number: event.sequence_number,
         inscription_number: event.inscription_number,

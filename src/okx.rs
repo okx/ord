@@ -53,9 +53,7 @@ impl OkxUpdater {
       .skip(1)
       .chain(block_data.txdata.iter().enumerate().take(1))
     {
-      if let Some(mut transaction_bundle_messages) = bundle_messages_map.remove(txid) {
-        transaction_bundle_messages.sort_by_key(|message| message.offset);
-
+      if let Some(transaction_bundle_messages) = bundle_messages_map.remove(txid) {
         let (brc20_receipts, bitmap_message_count) =
           self.process_bundle_messages(context, &transaction_bundle_messages)?;
         total_brc20_receipts += brc20_receipts.len();
