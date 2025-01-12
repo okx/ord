@@ -195,8 +195,36 @@ pub(crate) async fn brc20_tx_events(
     let txid = Txid::from_str(&txid).map_err(ApiError::bad_request)?;
     let rtx = index.begin_read()?;
 
-    let receipts = Index::brc20_get_raw_receipts(&txid, &rtx)?
-      .ok_or(BRC20ApiError::TransactionReceiptNotFound(txid))?;
+    let receipts = match Index::brc20_get_raw_receipts(&txid, &rtx)? {
+      Some(receipts) => receipts,
+      None => {
+        let tx_info = index
+          .client
+          .get_raw_transaction_info(&txid, None)
+          .map_err(ApiError::internal)?;
+
+        if let Some(blockhash) = tx_info.blockhash {
+          let block_info = index
+            .client
+            .get_block_info(&blockhash)
+            .map_err(ApiError::internal)?;
+
+          let db_blockhash =
+            match rtx.block_hash(Some(u32::try_from(block_info.height).unwrap()))? {
+              Some(hash) => hash,
+              None => return Err(BRC20ApiError::TransactionReceiptNotFound(txid).into()),
+            };
+
+          if db_blockhash == blockhash {
+            Vec::new()
+          } else {
+            return Err(BRC20ApiError::TransactionReceiptNotFound(txid).into());
+          }
+        } else {
+          return Err(BRC20ApiError::TransactionReceiptNotFound(txid).into());
+        }
+      }
+    };
 
     log::debug!("rpc: get brc20_tx_events: {} {:?}", txid, receipts);
 
