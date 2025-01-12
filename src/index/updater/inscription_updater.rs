@@ -605,13 +605,16 @@ impl InscriptionUpdater<'_, '_> {
         sequence_number,
         inscription_number,
         old_satpoint: flotsam.old_satpoint,
-        new_satpoint,
+        new_satpoint: satpoint,
         sender: UtxoAddress::from_script(
           Script::from_bytes(flotsam.input_script_buf.as_slice()),
           &index.settings.chain(),
         ),
-        receiver: new_script_buf
-          .map(|script| UtxoAddress::from_script(script, &index.settings.chain())),
+        receiver: (!unbound)
+          .then_some(
+            new_script_buf.map(|script| UtxoAddress::from_script(script, &index.settings.chain())),
+          )
+          .flatten(),
         action: match flotsam.origin {
           Origin::New {
             inscription,
