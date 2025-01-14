@@ -194,6 +194,14 @@ impl Server {
           "/ord/block/:blockhash/inscriptions",
           get(okx::ord::ord_block_inscriptions),
         )
+        .route(
+          "/ord/debug/bitmap/district/:number",
+          get(okx::ord::ord_debug_bitmap_district),
+        )
+        .route(
+          "/ord/debug/btc/domain/:btc_name",
+          get(okx::ord::ord_debug_btc_domain),
+        )
         .route("/brc20/tick/:tick", get(okx::brc20::brc20_tick_info))
         .route("/brc20/tick", get(okx::brc20::brc20_all_tick_info))
         .route(

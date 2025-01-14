@@ -429,6 +429,11 @@ impl Updater<'_> {
 
     // Inscription receipts table
     let mut inscription_receipts = wtx.open_table(TRANSACTION_ID_TO_INSCRIPTION_RECEIPTS)?;
+    let mut sequence_number_to_collection_type =
+      wtx.open_table(SEQUENCE_NUMBER_TO_COLLECTION_TYPE)?;
+    let mut bitmap_block_height_to_sequence_number =
+      wtx.open_table(BITMAP_BLOCK_HEIGHT_TO_SEQUENCE_NUMBER)?;
+    let mut btc_domain_to_sequence_number = wtx.open_table(BTC_DOMAIN_TO_SEQUENCE_NUMBER)?;
 
     // BRC20 tables
     let mut brc20_ticker_info = wtx.open_table(BRC20_TICKER_ENTRY)?;
@@ -535,7 +540,7 @@ impl Updater<'_> {
       transaction_buffer: Vec::new(),
       transaction_id_to_transaction: &mut transaction_id_to_transaction,
       unbound_inscriptions,
-       block_bundle_messages: &mut block_bundle_messages,
+      block_bundle_messages: &mut block_bundle_messages,
     };
 
     let mut coinbase_inputs = Vec::new();
@@ -740,6 +745,9 @@ impl Updater<'_> {
         &mut brc20_receipts,
         &mut brc20_satpoint_to_transfer_assets,
         &mut brc20_address_ticker_to_transfer_assets,
+        &mut sequence_number_to_collection_type,
+        &mut bitmap_block_height_to_sequence_number,
+        &mut btc_domain_to_sequence_number,
       );
 
       let mut okx_updater = OkxUpdater {

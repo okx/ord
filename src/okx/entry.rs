@@ -2,6 +2,37 @@ use super::{
   composite_key::{AddressEndpoint, AddressTickerKey},
   *,
 };
+use num_enum::TryFromPrimitive;
+
+#[derive(Copy, Clone, TryFromPrimitive)]
+#[repr(u16)]
+pub(crate) enum CollectionType {
+  BRC20 = 0,
+  Bitmap = 1,
+  BtcName = 2,
+  UnisatName = 3,
+  SatsName = 4,
+  XName = 5,
+}
+
+impl Display for CollectionType {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    match self {
+      CollectionType::BRC20 => write!(f, "brc20"),
+      CollectionType::Bitmap => write!(f, "bitmap"),
+      CollectionType::BtcName => write!(f, "btc_name"),
+      CollectionType::UnisatName => write!(f, "unisat_name"),
+      CollectionType::SatsName => write!(f, "sats_name"),
+      CollectionType::XName => write!(f, "x_name"),
+    }
+  }
+}
+
+impl From<CollectionType> for u16 {
+  fn from(collection: CollectionType) -> Self {
+    collection as u16
+  }
+}
 
 pub(crate) trait DynamicEntry {
   type Value: AsRef<[u8]> + ?Sized;

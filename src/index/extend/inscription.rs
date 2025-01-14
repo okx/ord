@@ -106,4 +106,37 @@ impl Index {
         .map(|x| DynamicEntry::load(x.value())),
     )
   }
+
+  pub(crate) fn get_inscription_collection_by_sequence_number(
+    sequence_number: u32,
+    rtx: &Rtx,
+  ) -> Result<Option<CollectionType>> {
+    Ok(
+      rtx
+        .0
+        .open_table(SEQUENCE_NUMBER_TO_COLLECTION_TYPE)?
+        .get(sequence_number)?
+        .and_then(|v| CollectionType::try_from(v.value()).ok()),
+    )
+  }
+
+  pub(crate) fn get_bitmap_by_block_height(height: u32, rtx: &Rtx) -> Result<Option<u32>> {
+    Ok(
+      rtx
+        .0
+        .open_table(BITMAP_BLOCK_HEIGHT_TO_SEQUENCE_NUMBER)?
+        .get(&height)?
+        .map(|v| v.value()),
+    )
+  }
+
+  pub(crate) fn get_btc_domain(domain: &str, rtx: &Rtx) -> Result<Option<u32>> {
+    Ok(
+      rtx
+        .0
+        .open_table(BTC_DOMAIN_TO_SEQUENCE_NUMBER)?
+        .get(domain)?
+        .map(|v| v.value()),
+    )
+  }
 }

@@ -1,10 +1,12 @@
 use super::*;
 
+mod bitmap;
+mod btc_domain;
 mod inscription;
 mod outpoint;
 mod receipt;
 
-pub(crate) use {inscription::*, outpoint::*, receipt::*};
+pub(crate) use {bitmap::*, btc_domain::*, inscription::*, outpoint::*, receipt::*};
 #[derive(Debug, thiserror::Error)]
 pub enum OrdApiError {
   #[error("Unknown inscription number '{0}': no matching inscription found.")]

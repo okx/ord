@@ -24,14 +24,14 @@ pub struct ApiInscription {
   pub content_encoding: Option<ApiContentEncoding>,
   pub metadata: Option<String>,
   pub metaprotocol: Option<String>,
-  pub parents: Vec<u32>,
+  pub parents: Vec<InscriptionId>,
   pub delegate: Option<InscriptionId>,
   pub pointer: Option<u64>,
   pub owner: Option<ApiUtxoAddress>,
   pub genesis_height: u32,
   pub genesis_timestamp: u32,
   pub location: SatPoint,
-  // pub collections: Vec<String>,
+  pub collections: Vec<String>,
   pub charms: Vec<Charm>,
   pub sat: Option<u64>,
 }
@@ -121,6 +121,25 @@ fn ord_inscription_by_sequence_number(
     None
   };
 
+  let mut parents = Vec::new();
+  for parent_sequence_number in inscription_entry.parents {
+    let parent_inscription_id =
+      Index::inscription_entry_by_sequence_number(parent_sequence_number, rtx)?
+        .ok_or(ApiError::Internal(
+          format!(
+            "Failed to find inscription entry for sequence number: {}",
+            parent_sequence_number
+          )
+          .to_string(),
+        ))?
+        .id;
+    parents.push(parent_inscription_id);
+  }
+
+  let collection =
+    Index::get_inscription_collection_by_sequence_number(inscription_entry.sequence_number, rtx)?
+      .map(|c| c.to_string());
+
   Ok(Json(ApiResponse::ok(ApiInscription {
     id: inscription_entry.id,
     number: inscription_entry.inscription_number,
@@ -132,14 +151,14 @@ fn ord_inscription_by_sequence_number(
     metadata: inscription
       .metadata()
       .and_then(|_| inscription.metadata.as_deref().map(hex::encode)),
-    parents: inscription_entry.parents,
+    parents,
     pointer: inscription.pointer(),
     delegate: inscription.delegate(),
     owner,
     genesis_height: inscription_entry.height,
     genesis_timestamp: inscription_entry.timestamp,
     location,
-    // collections: collections.iter().map(|c| c.to_string()).collect(),
+    collections: collection.into_iter().collect(),
     charms: Charm::charms(inscription_entry.charms),
     sat: inscription_entry.sat.map(|s| s.0),
   })))
@@ -190,7 +209,7 @@ mod tests {
       }),
       metaprotocol: Some("mata_protocol".to_string()),
       metadata: Some("0123456789abcdef".to_string()),
-      parents: vec![1],
+      parents: vec![InscriptionId::default()],
       delegate: Some(InscriptionId {
         txid: txid(1),
         index: 0xFFFFFFFD,
@@ -212,7 +231,7 @@ mod tests {
         "5660d06bd69326c18ec63127b37fb3b32ea763c3846b3334c51beb6a800c57d3:1:3000",
       )
       .unwrap(),
-      // collections: Vec::new(),
+      collections: Vec::new(),
       charms: vec![Charm::Vindicated],
       sat: None,
     };
@@ -231,7 +250,7 @@ mod tests {
   "metadata": "0123456789abcdef",
   "metaprotocol": "mata_protocol",
   "parents": [
-    1
+    "0000000000000000000000000000000000000000000000000000000000000000i0"
   ],
   "delegate": "1111111111111111111111111111111111111111111111111111111111111111i4294967293",
   "pointer": 0,
@@ -241,6 +260,7 @@ mod tests {
   "genesisHeight": 1,
   "genesisTimestamp": 100,
   "location": "5660d06bd69326c18ec63127b37fb3b32ea763c3846b3334c51beb6a800c57d3:1:3000",
+  "collections": [],
   "charms": [
     "vindicated"
   ],
@@ -263,7 +283,7 @@ mod tests {
   "metadata": "0123456789abcdef",
   "metaprotocol": "mata_protocol",
   "parents": [
-    1
+    "0000000000000000000000000000000000000000000000000000000000000000i0"
   ],
   "delegate": "1111111111111111111111111111111111111111111111111111111111111111i4294967293",
   "pointer": 0,
@@ -271,6 +291,7 @@ mod tests {
   "genesisHeight": 1,
   "genesisTimestamp": 100,
   "location": "5660d06bd69326c18ec63127b37fb3b32ea763c3846b3334c51beb6a800c57d3:1:3000",
+  "collections": [],
   "charms": [
     "vindicated"
   ],

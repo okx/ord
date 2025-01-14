@@ -1,7 +1,7 @@
 use super::{rtx::Rtx, *};
 use crate::okx::{
   brc20::{BRC20Balance, BRC20Receipt, BRC20Ticker, BRC20TickerInfo, BRC20TransferAsset},
-  entry::{DynamicEntry, InscriptionReceipt},
+  entry::{CollectionType, DynamicEntry, InscriptionReceipt},
   AddressEndpoint, AddressTickerKey, UtxoAddress,
 };
 

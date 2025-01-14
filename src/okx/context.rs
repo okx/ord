@@ -7,7 +7,10 @@ use super::{
     BRC20Ticker,
   },
   composite_key::AddressTickerKey,
-  entry::{AddressTickerKeyValue, DynamicEntry, InscriptionReceipt, InscriptionReceiptsValue},
+  entry::{
+    AddressTickerKeyValue, CollectionType, DynamicEntry, InscriptionReceipt,
+    InscriptionReceiptsValue,
+  },
   *,
 };
 use crate::index::entry::{Entry, SatPointValue, TxidValue};
@@ -24,6 +27,9 @@ pub(crate) struct TableContext<'a, 'txn> {
     &'a mut Table<'txn, &'static SatPointValue, &'static BRC20TransferAssetValue>,
   brc20_address_ticker_to_transfer_assets:
     &'a mut MultimapTable<'txn, &'static AddressTickerKeyValue, &'static SatPointValue>,
+  sequence_number_to_collection_type: &'a mut Table<'txn, u32, u16>,
+  bitmap_block_height_to_sequence_number: &'a mut Table<'txn, u32, u32>,
+  btc_domain_to_sequence_number: &'a mut Table<'txn, &'static str, u32>,
 }
 
 impl<'a, 'txn> TableContext<'a, 'txn> {
@@ -50,6 +56,9 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       &'static AddressTickerKeyValue,
       &'static SatPointValue,
     >,
+    sequence_number_to_collection_type: &'a mut Table<'txn, u32, u16>,
+    bitmap_block_height_to_sequence_number: &'a mut Table<'txn, u32, u32>,
+    btc_domain_to_sequence_number: &'a mut Table<'txn, &'static str, u32>,
   ) -> Self {
     Self {
       inscription_receipts,
@@ -58,6 +67,9 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       brc20_receipts,
       brc20_satpoint_to_transfer_assets,
       brc20_address_ticker_to_transfer_assets,
+      sequence_number_to_collection_type,
+      bitmap_block_height_to_sequence_number,
+      btc_domain_to_sequence_number,
     }
   }
 
@@ -198,6 +210,63 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
     self
       .inscription_receipts
       .insert(&txid.store(), receipts.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn load_bitmap_block_height_to_sequence_number(
+    &mut self,
+    height: u32,
+  ) -> Result<Option<u32>, redb::StorageError> {
+    Ok(
+      self
+        .bitmap_block_height_to_sequence_number
+        .get(&height)?
+        .map(|v| v.value()),
+    )
+  }
+
+  pub fn load_btc_domain_to_sequence_number(
+    &mut self,
+    domain: &str,
+  ) -> Result<Option<u32>, redb::StorageError> {
+    Ok(
+      self
+        .btc_domain_to_sequence_number
+        .get(domain)?
+        .map(|v| v.value()),
+    )
+  }
+
+  pub fn insert_bitmap_block_height_to_sequence_number(
+    &mut self,
+    height: u32,
+    sequence_number: u32,
+  ) -> Result<(), redb::StorageError> {
+    self
+      .bitmap_block_height_to_sequence_number
+      .insert(height, sequence_number)?;
+    Ok(())
+  }
+
+  pub fn insert_btc_domain_to_sequence_number(
+    &mut self,
+    domain: &str,
+    sequence_number: u32,
+  ) -> Result<(), redb::StorageError> {
+    self
+      .btc_domain_to_sequence_number
+      .insert(domain, sequence_number)?;
+    Ok(())
+  }
+
+  pub fn insert_sequence_number_to_collection_type(
+    &mut self,
+    sequence_number: u32,
+    collection_type: CollectionType,
+  ) -> Result<(), redb::StorageError> {
+    self
+      .sequence_number_to_collection_type
+      .insert(sequence_number, u16::from(collection_type))?;
     Ok(())
   }
 }

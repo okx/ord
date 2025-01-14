@@ -97,6 +97,8 @@ pub struct Options {
   pub(crate) save_inscription_receipts: bool,
   #[arg(long, help = "Index bitmap collection inscriptions.")]
   pub(crate) index_bitmap: bool,
+  #[arg(long, help = "Index btc domain collection inscriptions.")]
+  pub(crate) index_btc_domain: bool,
   #[arg(long, help = "Index BRC-20 token operations.")]
   pub(crate) index_brc20: bool,
   #[arg(

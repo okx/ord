@@ -88,6 +88,10 @@ define_table! { WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP, u32, u128 }
 
 // Inscription receipts table
 define_table! { TRANSACTION_ID_TO_INSCRIPTION_RECEIPTS, &TxidValue, &InscriptionReceiptsValue }
+define_table! { SEQUENCE_NUMBER_TO_COLLECTION_TYPE, u32, u16 }
+define_table! { BITMAP_BLOCK_HEIGHT_TO_SEQUENCE_NUMBER, u32, u32 }
+define_table! { BTC_DOMAIN_TO_SEQUENCE_NUMBER, &str, u32}
+
 // BRC-20 tables
 define_table! { BRC20_BALANCES, &AddressTickerKeyValue, &BRC20BalanceValue }
 define_table! { BRC20_TICKER_ENTRY, &BRC20LowerCaseTickerValue, &BRC20TickerInfoValue }
@@ -117,8 +121,9 @@ pub(crate) enum Statistic {
 
   OkxIndexBrc20 = 18,
   OkxIndexBitmap = 19,
-  OkxSaveInscriptionReceipts = 20,
-  OkxNoTrackingInvalidBrc20Inscriptions = 21,
+  OkxIndexBTCDomain = 20,
+  OkxSaveInscriptionReceipts = 21,
+  OkxNoTrackingInvalidBrc20Inscriptions = 22,
 }
 
 impl Statistic {
@@ -239,6 +244,7 @@ pub struct Index {
 
   index_brc20: bool,
   index_bitmap: bool,
+  index_btc_domain: bool,
   save_inscription_receipts: bool,
   disable_invalid_brc20_tracking: bool,
 }
@@ -368,6 +374,9 @@ impl Index {
 
         // Okx tables
         tx.open_table(TRANSACTION_ID_TO_INSCRIPTION_RECEIPTS)?;
+        tx.open_table(SEQUENCE_NUMBER_TO_COLLECTION_TYPE)?;
+        tx.open_table(BITMAP_BLOCK_HEIGHT_TO_SEQUENCE_NUMBER)?;
+        tx.open_table(BTC_DOMAIN_TO_SEQUENCE_NUMBER)?;
         tx.open_table(BRC20_BALANCES)?;
         tx.open_table(BRC20_TICKER_ENTRY)?;
         tx.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
@@ -434,6 +443,12 @@ impl Index {
                 Statistic::OkxIndexBitmap,
                 u64::from(settings.index_bitmap()),
               )?;
+
+              Self::set_statistic(
+                &mut statistics,
+                Statistic::OkxIndexBTCDomain,
+                u64::from(settings.index_btc_domain()),
+              )?;
             }
           }
         }
@@ -497,6 +512,7 @@ impl Index {
 
     let index_brc20;
     let index_bitmap;
+    let index_btc_domain;
     let save_inscription_receipts;
     let disable_invalid_brc20_tracking;
 
@@ -516,6 +532,8 @@ impl Index {
       )?;
 
       index_bitmap = Self::is_statistic_set(&statistics, Statistic::OkxIndexBitmap)?;
+      index_btc_domain = Self::is_statistic_set(&statistics, Statistic::OkxIndexBTCDomain)?;
+
       save_inscription_receipts =
         Self::is_statistic_set(&statistics, Statistic::OkxSaveInscriptionReceipts)?;
     }
@@ -554,6 +572,7 @@ impl Index {
 
       index_brc20,
       index_bitmap,
+      index_btc_domain,
       save_inscription_receipts,
       disable_invalid_brc20_tracking,
     })

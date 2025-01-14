@@ -2,8 +2,9 @@ use super::*;
 use crate::{
   index::event::{Action, OkxInscriptionEvent},
   okx::{
-    bitmap::{BitmapMessageExtractor, BitmapOperation},
+    bitmap::{BitmapDistrict, BitmapMessageExtractor},
     brc20::{BRC20CreationOperationExtractor, BRC20Operation, CreatedInscription},
+    btc_domain::{BTCDomainExtractor, BtcDomain},
     UtxoAddress,
   },
 };
@@ -11,7 +12,8 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum SubType {
   BRC20(BRC20Operation),
-  BITMAP(BitmapOperation),
+  Bitmap(BitmapDistrict),
+  BtcDomain(BtcDomain),
 }
 
 #[derive(Debug, Clone)]
@@ -100,9 +102,19 @@ fn extract_sub_type(
     }
   }
 
-  if index.index_bitmap {
-    if let Some(bitmap_msg) = inscription_event.extract_bitmap_message()? {
-      return Ok(Some(SubType::BITMAP(bitmap_msg)));
+  if index.index_bitmap && !inscription_event.inscription_number.is_negative() {
+    if let Action::Created { inscription, .. } = &inscription_event.action {
+      if let Some(bitmap_msg) = inscription.extract_bitmap_message() {
+        return Ok(Some(SubType::Bitmap(bitmap_msg)));
+      }
+    }
+  }
+
+  if index.index_btc_domain && !inscription_event.inscription_number.is_negative() {
+    if let Action::Created { inscription, .. } = &inscription_event.action {
+      if let Some(btc_domain) = inscription.extract_btc_domain() {
+        return Ok(Some(SubType::BtcDomain(btc_domain)));
+      }
     }
   }
   Ok(None)

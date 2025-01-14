@@ -6,10 +6,12 @@ use crate::index::{
 };
 use brc20::{BRC20ExecutionMessage, BRC20Receipt};
 use context::TableContext;
+use entry::CollectionType;
 use std::collections::HashMap;
 
 pub(crate) mod bitmap;
 pub(crate) mod brc20;
+pub(crate) mod btc_domain;
 mod composite_key;
 pub(crate) mod context;
 pub(crate) mod entry;
@@ -37,6 +39,7 @@ impl OkxUpdater {
     let mut total_inscription_receipts = 0;
     let mut total_brc20_receipts = 0;
     let mut total_bitmap_messages = 0;
+    let mut total_btc_domain_messages = 0;
 
     log::info!(
       "[OKX] Starting to index block {} at {}, transaction_count: {}, bundle_message_count: {})",
@@ -54,14 +57,26 @@ impl OkxUpdater {
       .chain(block_data.txdata.iter().enumerate().take(1))
     {
       if let Some(transaction_bundle_messages) = bundle_messages_map.remove(txid) {
-        let (brc20_receipts, bitmap_message_count) =
+        let (brc20_receipts, bitmap_message_count, btc_domain_message_count) =
           self.process_bundle_messages(context, &transaction_bundle_messages)?;
         total_brc20_receipts += brc20_receipts.len();
         total_bitmap_messages += bitmap_message_count;
+        total_btc_domain_messages += btc_domain_message_count;
 
         if !brc20_receipts.is_empty() {
           let brc20_receipts_count = brc20_receipts.len();
           let start_insert_time = Instant::now();
+
+          let sequence_number_list = brc20_receipts
+            .iter()
+            .map(|receipt| receipt.sequence_number)
+            .collect::<HashSet<_>>();
+
+          for sequence_number in sequence_number_list {
+            context
+              .insert_sequence_number_to_collection_type(sequence_number, CollectionType::BRC20)?;
+          }
+
           context.insert_brc20_tx_receipts(txid, brc20_receipts)?;
           log::debug!(
             "[OKX] Saved {} BRC20 receipts for transaction {} in {} ms",
@@ -91,11 +106,12 @@ impl OkxUpdater {
     }
 
     log::info!(
-            "[OKX] Finished indexing block {} {{ total_inscriptions: {}, total_brc20: {}, total_bitmaps: {} }} in {} ms",
+            "[OKX] Finished indexing block {} {{ total_inscriptions: {}, total_brc20: {}, total_bitmaps: {}, total_btc_domains: {} }} in {} ms",
             self.height,
             total_inscription_receipts,
             total_brc20_receipts,
             total_bitmap_messages,
+            total_btc_domain_messages,
             (Instant::now() - start_time).as_millis(),
         );
 
@@ -106,9 +122,10 @@ impl OkxUpdater {
     &self,
     context: &mut TableContext,
     bundle_messages: &[BundleMessage],
-  ) -> Result<(Vec<BRC20Receipt>, usize)> {
+  ) -> Result<(Vec<BRC20Receipt>, usize, usize)> {
     let mut brc20_execution_receipts = Vec::new();
     let mut bitmap_message_count = 0;
+    let mut btc_domain_message_count = 0;
 
     for bundle_message in bundle_messages.iter() {
       // process brc20 operation
@@ -123,15 +140,38 @@ impl OkxUpdater {
 
       // process bitmap operation
       if let InscriptionAction::Created {
-        sub_type: Some(SubType::BITMAP(bitmap_operation)),
+        sub_type: Some(SubType::Bitmap(bitmap_operation)),
         ..
       } = &bundle_message.inscription_action
       {
         bitmap_message_count += 1;
-        bitmap_operation.execute(context, self.height)?;
+        bitmap_operation.execute(
+          context,
+          bundle_message.sequence_number,
+          bundle_message.inscription_id,
+          self.height,
+        )?;
+      }
+
+      // process btc domain operation
+      if let InscriptionAction::Created {
+        sub_type: Some(SubType::BtcDomain(btc_domain)),
+        ..
+      } = &bundle_message.inscription_action
+      {
+        btc_domain_message_count += 1;
+        btc_domain.execute(
+          context,
+          bundle_message.sequence_number,
+          bundle_message.inscription_id,
+        )?;
       }
     }
 
-    Ok((brc20_execution_receipts, bitmap_message_count))
+    Ok((
+      brc20_execution_receipts,
+      bitmap_message_count,
+      btc_domain_message_count,
+    ))
   }
 }

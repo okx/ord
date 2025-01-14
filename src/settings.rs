@@ -33,6 +33,7 @@ pub struct Settings {
   log_level: Option<LogLevel>,
   save_inscription_receipts: bool,
   index_bitmap: bool,
+  index_btc_domain: bool,
   index_brc20: bool,
   disable_invalid_brc20_tracking: bool,
 }
@@ -153,6 +154,7 @@ impl Settings {
       log_level: self.log_level.or(source.log_level),
       save_inscription_receipts: self.save_inscription_receipts || source.save_inscription_receipts,
       index_bitmap: self.index_bitmap || source.index_bitmap,
+      index_btc_domain: self.index_btc_domain || source.index_btc_domain,
       index_brc20: self.index_brc20 || source.index_brc20,
       disable_invalid_brc20_tracking: self.disable_invalid_brc20_tracking
         || source.disable_invalid_brc20_tracking,
@@ -197,6 +199,7 @@ impl Settings {
       log_level: options.log_level,
       save_inscription_receipts: options.save_inscription_receipts,
       index_bitmap: options.index_bitmap,
+      index_btc_domain: options.index_btc_domain,
       index_brc20: options.index_brc20,
       disable_invalid_brc20_tracking: options.disable_invalid_brc20_tracking,
     }
@@ -294,8 +297,9 @@ impl Settings {
         .transpose()?,
       save_inscription_receipts: get_bool("SAVE_INSCRIPTION_RECEIPTS"),
       index_bitmap: get_bool("INDEX_BITMAP"),
+      index_btc_domain: get_bool("INDEX_BTC_DOMAIN"),
       index_brc20: get_bool("INDEX_BRC20"),
-      disable_invalid_brc20_tracking: get_bool("NO_TRACKING_INVALID_BRC20_INSCRIPTIONS"),
+      disable_invalid_brc20_tracking: get_bool("DISABLE_INVALID_BRC20_TRACKING"),
     })
   }
 
@@ -331,6 +335,7 @@ impl Settings {
       log_level: None,
       save_inscription_receipts: false,
       index_bitmap: false,
+      index_btc_domain: false,
       index_brc20: false,
       disable_invalid_brc20_tracking: false,
     }
@@ -412,6 +417,7 @@ impl Settings {
       log_level: Some(self.log_level.unwrap_or_default()),
       save_inscription_receipts: self.save_inscription_receipts,
       index_bitmap: self.index_bitmap,
+      index_btc_domain: self.index_btc_domain,
       index_brc20: self.index_brc20,
       disable_invalid_brc20_tracking: self.disable_invalid_brc20_tracking,
     })
@@ -654,6 +660,10 @@ impl Settings {
 
   pub(crate) fn index_bitmap(&self) -> bool {
     self.index_bitmap
+  }
+
+  pub(crate) fn index_btc_domain(&self) -> bool {
+    self.index_btc_domain
   }
 }
 
@@ -1132,7 +1142,9 @@ mod tests {
       ("LOG_LEVEL", "debug"),
       ("SAVE_INSCRIPTION_RECEIPTS", "1"),
       ("INDEX_BITMAP", "1"),
+      ("INDEX_BTC_DOMAIN", "1"),
       ("INDEX_BRC20", "1"),
+      ("DISABLE_INVALID_BRC20_TRACKING", "1"),
     ]
     .into_iter()
     .map(|(key, value)| (key.into(), value.into()))
@@ -1181,6 +1193,7 @@ mod tests {
         log_level: Some(LogLevel::from_str("debug").unwrap()),
         save_inscription_receipts: true,
         index_bitmap: true,
+        index_btc_domain: true,
         index_brc20: true,
         disable_invalid_brc20_tracking: true,
       }
@@ -1219,8 +1232,9 @@ mod tests {
           "--log-level=debug",
           "--save-inscription-receipts",
           "--index-bitmap",
+          "--index-btc-domain",
           "--index-brc20",
-          "--no-tracking-invalid-brc20-inscriptions",
+          "--disable-invalid-brc20-tracking",
         ])
         .unwrap()
       ),
@@ -1254,6 +1268,7 @@ mod tests {
         log_level: Some(LogLevel::from_str("debug").unwrap()),
         save_inscription_receipts: true,
         index_bitmap: true,
+        index_btc_domain: true,
         index_brc20: true,
         disable_invalid_brc20_tracking: true,
       }
