@@ -50,7 +50,10 @@ impl BRC20ExecutionMessage {
     let self_minted = deploy.self_mint.unwrap_or_default();
     if max.is_zero() {
       if self_minted {
-        max = FixedPoint::new(u128::from(u64::MAX), decimals).unwrap();
+        max = FixedPoint::new_unchecked(
+          u128::from(u64::MAX) * 10_u128.pow(decimals as u32),
+          decimals,
+        );
       } else {
         return Err(ExecutionError::ExecutionFailed(BRC20Error::InvalidSupply(
           max.to_string(),
