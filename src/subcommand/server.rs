@@ -44,6 +44,7 @@ pub use server_config::ServerConfig;
 mod accept_encoding;
 mod accept_json;
 mod error;
+mod metrics;
 mod okx;
 pub mod query;
 mod server_config;
@@ -137,6 +138,8 @@ pub struct Server {
     help = "Poll Bitcoin Core every <POLLING_INTERVAL>."
   )]
   pub(crate) polling_interval: humantime::Duration,
+  #[arg(long, help = "Enable prometheus metrics.")]
+  pub(crate) enable_metrics: bool,
 }
 
 impl Server {
@@ -341,6 +344,7 @@ impl Server {
         .route("/tx/:txid", get(Self::transaction))
         .route("/decode/:txid", get(Self::decode))
         .route("/update", get(Self::update))
+        .merge(Self::metrics_router(self.enable_metrics))
         .nest("/api", api_router)
         .fallback(Self::fallback)
         .layer(Extension(index))
@@ -425,6 +429,14 @@ impl Server {
 
       Ok(None)
     })
+  }
+
+  fn metrics_router(enable_metrics: bool) -> Router<Arc<ServerConfig>> {
+    if enable_metrics {
+      Router::new().route("/metrics", get(metrics::metrics_handler))
+    } else {
+      Router::new()
+    }
   }
 
   fn spawn(

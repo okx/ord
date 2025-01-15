@@ -1,8 +1,11 @@
 use super::*;
-use crate::index::{
-  bundle_message::{BundleMessage, InscriptionAction, SubType},
-  event::{Action, OkxInscriptionEvent},
-  BlockData,
+use crate::{
+  index::{
+    bundle_message::{BundleMessage, InscriptionAction, SubType},
+    event::{Action, OkxInscriptionEvent},
+    BlockData,
+  },
+  metrics::MetricsExt,
 };
 use brc20::{BRC20ExecutionMessage, BRC20Receipt};
 use context::TableContext;
@@ -25,13 +28,13 @@ pub(crate) use self::{
 pub(crate) struct OkxUpdater {
   pub(crate) height: u32,
   pub(crate) timestamp: u32,
-  pub(crate) save_inscription_receipts: bool,
 }
 
 impl OkxUpdater {
   pub(crate) fn index_block_bundle_messages(
     &mut self,
     context: &mut TableContext,
+    index: &Index,
     block_data: &BlockData,
     mut bundle_messages_map: HashMap<Txid, Vec<BundleMessage>>,
   ) -> Result<()> {
@@ -58,7 +61,7 @@ impl OkxUpdater {
     {
       if let Some(transaction_bundle_messages) = bundle_messages_map.remove(txid) {
         let (brc20_receipts, bitmap_message_count, btc_domain_message_count) =
-          self.process_bundle_messages(context, &transaction_bundle_messages)?;
+          self.process_bundle_messages(context, index, &transaction_bundle_messages)?;
         total_brc20_receipts += brc20_receipts.len();
         total_bitmap_messages += bitmap_message_count;
         total_btc_domain_messages += btc_domain_message_count;
@@ -85,8 +88,7 @@ impl OkxUpdater {
             (Instant::now() - start_insert_time).as_millis()
           );
         }
-
-        if self.save_inscription_receipts {
+        if index.has_inscription_receipts() {
           let transaction_bundle_messages_count = transaction_bundle_messages.len();
           total_inscription_receipts += transaction_bundle_messages_count;
           let inscription_receipts = transaction_bundle_messages
@@ -105,6 +107,17 @@ impl OkxUpdater {
       }
     }
 
+    if index.has_brc20_index() {
+      index
+        .metrics
+        .increment_brc20_event_count(u32::try_from(total_brc20_receipts).unwrap());
+    }
+    if index.has_inscription_receipts() {
+      index
+        .metrics
+        .increment_inscription_event_count(u32::try_from(total_inscription_receipts).unwrap());
+    }
+
     log::info!(
             "[OKX] Finished indexing block {} {{ total_inscriptions: {}, total_brc20: {}, total_bitmaps: {}, total_btc_domains: {} }} in {} ms",
             self.height,
@@ -121,6 +134,7 @@ impl OkxUpdater {
   fn process_bundle_messages(
     &self,
     context: &mut TableContext,
+    index: &Index,
     bundle_messages: &[BundleMessage],
   ) -> Result<(Vec<BRC20Receipt>, usize, usize)> {
     let mut brc20_execution_receipts = Vec::new();
@@ -129,42 +143,49 @@ impl OkxUpdater {
 
     for bundle_message in bundle_messages.iter() {
       // process brc20 operation
-      if let Some(brc20_execution_message) =
-        BRC20ExecutionMessage::new_from_bundle_message(bundle_message, context)?
-      {
-        if let Ok(receipt) = brc20_execution_message.execute(context, self.height, self.timestamp) {
-          brc20_execution_receipts.push(receipt);
+      if index.has_brc20_index() {
+        if let Some(brc20_execution_message) =
+          BRC20ExecutionMessage::new_from_bundle_message(bundle_message, context)?
+        {
+          if let Ok(receipt) = brc20_execution_message.execute(context, self.height, self.timestamp)
+          {
+            brc20_execution_receipts.push(receipt);
+          }
+          continue;
         }
-        continue;
       }
 
       // process bitmap operation
-      if let InscriptionAction::Created {
-        sub_type: Some(SubType::Bitmap(bitmap_operation)),
-        ..
-      } = &bundle_message.inscription_action
-      {
-        bitmap_message_count += 1;
-        bitmap_operation.execute(
-          context,
-          bundle_message.sequence_number,
-          bundle_message.inscription_id,
-          self.height,
-        )?;
+      if index.has_bitmap_index() {
+        if let InscriptionAction::Created {
+          sub_type: Some(SubType::Bitmap(bitmap_operation)),
+          ..
+        } = &bundle_message.inscription_action
+        {
+          bitmap_message_count += 1;
+          bitmap_operation.execute(
+            context,
+            bundle_message.sequence_number,
+            bundle_message.inscription_id,
+            self.height,
+          )?;
+        }
       }
 
       // process btc domain operation
-      if let InscriptionAction::Created {
-        sub_type: Some(SubType::BtcDomain(btc_domain)),
-        ..
-      } = &bundle_message.inscription_action
-      {
-        btc_domain_message_count += 1;
-        btc_domain.execute(
-          context,
-          bundle_message.sequence_number,
-          bundle_message.inscription_id,
-        )?;
+      if index.has_btc_domain_index() {
+        if let InscriptionAction::Created {
+          sub_type: Some(SubType::BtcDomain(btc_domain)),
+          ..
+        } = &bundle_message.inscription_action
+        {
+          btc_domain_message_count += 1;
+          btc_domain.execute(
+            context,
+            bundle_message.sequence_number,
+            bundle_message.inscription_id,
+          )?;
+        }
       }
     }
 

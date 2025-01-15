@@ -1,6 +1,10 @@
 use {
   self::{inscription_updater::InscriptionUpdater, rune_updater::RuneUpdater},
   super::{fetcher::Fetcher, *},
+  crate::{
+    metrics::MetricsExt,
+    okx::{context::TableContext, OkxUpdater},
+  },
   futures::future::try_join_all,
   tokio::sync::{
     broadcast::{self, error::TryRecvError},
@@ -8,8 +12,6 @@ use {
   },
 };
 
-use crate::okx::context::TableContext;
-use crate::okx::OkxUpdater;
 pub(crate) use inscription_updater::Curse;
 
 mod inscription_updater;
@@ -391,6 +393,16 @@ impl Updater<'_> {
 
     height_to_block_header.insert(&self.height, &block.header.store())?;
 
+    self.index.metrics.set_current_block_height(self.height);
+    self
+      .index
+      .metrics
+      .increment_transaction_count(u32::try_from(block.txdata.len()).unwrap());
+    self
+      .index
+      .metrics
+      .observe_block_parse_duration((Instant::now() - start).as_secs_f64());
+
     self.height += 1;
     self.outputs_traversed += outputs_in_block;
 
@@ -753,9 +765,13 @@ impl Updater<'_> {
       let mut okx_updater = OkxUpdater {
         height: self.height,
         timestamp: block.header.time,
-        save_inscription_receipts: self.index.save_inscription_receipts,
       };
-      okx_updater.index_block_bundle_messages(&mut context, block, block_bundle_messages)?;
+      okx_updater.index_block_bundle_messages(
+        &mut context,
+        self.index,
+        block,
+        block_bundle_messages,
+      )?;
     }
 
     Ok(())

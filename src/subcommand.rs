@@ -72,7 +72,11 @@ impl Subcommand {
       Self::Parse(parse) => parse.run(),
       Self::Runes => runes::run(settings),
       Self::Server(server) => {
-        let index = Arc::new(Index::open(&settings)?);
+        let mut index = Index::open(&settings)?;
+        if server.enable_metrics {
+          index = index.with_metrics();
+        }
+        let index = Arc::new(index);
         let handle = axum_server::Handle::new();
         LISTENERS.lock().unwrap().push(handle.clone());
         server.run(settings, index, handle)

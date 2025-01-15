@@ -12,6 +12,7 @@ use {
   },
   super::*,
   crate::{
+    metrics::Metrics,
     okx::{
       brc20::entry::{
         BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
@@ -31,6 +32,7 @@ use {
   chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
+  prometheus::Registry,
   redb::{
     Database, DatabaseError, MultimapTable, MultimapTableDefinition, MultimapTableHandle,
     ReadOnlyTable, ReadableMultimapTable, ReadableTable, ReadableTableMetadata, RepairSession,
@@ -242,6 +244,7 @@ pub struct Index {
   first_index_height: u32,
   unrecoverably_reorged: AtomicBool,
 
+  pub(crate) metrics: Option<Metrics>,
   index_brc20: bool,
   index_bitmap: bool,
   index_btc_domain: bool,
@@ -570,12 +573,23 @@ impl Index {
       started: Utc::now(),
       unrecoverably_reorged: AtomicBool::new(false),
 
+      metrics: None,
       index_brc20,
       index_bitmap,
       index_btc_domain,
       save_inscription_receipts,
       disable_invalid_brc20_tracking,
     })
+  }
+  pub(crate) fn with_metrics(mut self) -> Self {
+    if self.metrics.is_none() {
+      self.metrics = Some(metrics::setup_metrics());
+    }
+    self
+  }
+
+  pub(crate) fn get_metric_registry(&self) -> Option<&Registry> {
+    self.metrics.as_ref().map(|metrics| metrics.registry())
   }
 
   pub fn have_full_utxo_index(&self) -> bool {
@@ -621,6 +635,22 @@ impl Index {
 
   pub fn has_sat_index(&self) -> bool {
     self.index_sats
+  }
+
+  pub fn has_brc20_index(&self) -> bool {
+    self.index_brc20
+  }
+
+  pub fn has_bitmap_index(&self) -> bool {
+    self.index_bitmap
+  }
+
+  pub fn has_btc_domain_index(&self) -> bool {
+    self.index_btc_domain
+  }
+
+  pub fn has_inscription_receipts(&self) -> bool {
+    self.save_inscription_receipts
   }
 
   pub fn status(&self, json_api: bool) -> Result<StatusHtml> {

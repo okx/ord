@@ -125,6 +125,7 @@ mod object;
 mod okx;
 pub mod options;
 pub mod outgoing;
+mod metrics;
 mod re;
 mod representation;
 pub mod runes;
