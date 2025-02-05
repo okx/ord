@@ -29,7 +29,7 @@ impl BRC20ExecutionMessage {
       let (value, scale) = uncheck.to_u128_and_scale();
       if scale != 0 || value > u128::from(FixedPoint::MAX_SCALE) {
         return Err(ExecutionError::ExecutionFailed(
-          BRC20Error::DecimalsExceedLimit(uncheck.to_string()),
+          BRC20Error::DecimalsExceedLimit(uncheck),
         ));
       } else {
         u8::try_from(value).unwrap()
@@ -43,7 +43,7 @@ impl BRC20ExecutionMessage {
       FixedPoint::new_from_str(&deploy.max_supply, decimals).map_err(BRC20Error::NumericError)?;
     if max > *MAXIMUM_SUPPLY {
       return Err(ExecutionError::ExecutionFailed(BRC20Error::InvalidSupply(
-        max.to_string(),
+        max,
       )));
     }
 
@@ -56,7 +56,7 @@ impl BRC20ExecutionMessage {
         );
       } else {
         return Err(ExecutionError::ExecutionFailed(BRC20Error::InvalidSupply(
-          max.to_string(),
+          max,
         )));
       }
     }
@@ -66,7 +66,7 @@ impl BRC20ExecutionMessage {
       let limit = FixedPoint::new_from_str(lim, decimals).map_err(BRC20Error::NumericError)?;
       if limit > *MAXIMUM_SUPPLY {
         return Err(ExecutionError::ExecutionFailed(
-          BRC20Error::InvalidMaxMintLimit(limit.to_string()),
+          BRC20Error::InvalidMaxMintLimit(limit),
         ));
       }
       if limit.is_zero() {
@@ -74,7 +74,7 @@ impl BRC20ExecutionMessage {
           FixedPoint::new(u128::from(u64::MAX), decimals).unwrap()
         } else {
           return Err(ExecutionError::ExecutionFailed(
-            BRC20Error::InvalidMaxMintLimit(limit.to_string()),
+            BRC20Error::InvalidMaxMintLimit(limit),
           ));
         }
       } else {

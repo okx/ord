@@ -13,25 +13,25 @@ pub enum BRC20Error {
   TickerNotFound(String),
 
   #[error("Decimals value {0} exceeds the maximum allowed limit of 18")]
-  DecimalsExceedLimit(String),
+  DecimalsExceedLimit(FixedPoint),
 
   #[error("Ticker has an invalid supply: {0}")]
-  InvalidSupply(String),
+  InvalidSupply(FixedPoint),
 
   #[error("Ticker has an invalid max mint limit: {0}")]
-  InvalidMaxMintLimit(String),
+  InvalidMaxMintLimit(FixedPoint),
 
   #[error("Mint amount exceeds the allowed limit: {0}")]
-  MintAmountExceedLimit(String),
+  MintAmountExceedLimit(FixedPoint),
 
   #[error("Ticker has an invalid amount: {0}")]
-  InvalidAmount(String),
+  InvalidAmount(FixedPoint),
 
   #[error("Minting has reached the maximum supply limit")]
   MintingLimitReached,
 
   #[error("Insufficient balance: {0} {1}")]
-  InsufficientBalance(String, String),
+  InsufficientBalance(FixedPoint, FixedPoint),
 
   #[error("Self-mint operation denied: insufficient permissions")]
   SelfMintPermissionDenied,

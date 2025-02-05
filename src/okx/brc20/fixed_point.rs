@@ -9,7 +9,7 @@ use std::{
   str::FromStr,
 };
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Copy)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Copy, Deserialize, Serialize)]
 pub struct FixedPoint {
   value: u128,
   scale: u8,

@@ -24,7 +24,7 @@ impl BRC20ExecutionMessage {
       || amt > FixedPoint::new_unchecked(ticker_info.total_supply, ticker_info.decimals)
     {
       return Err(ExecutionError::ExecutionFailed(BRC20Error::InvalidAmount(
-        amt.to_string(),
+        amt,
       )));
     }
 
@@ -34,10 +34,11 @@ impl BRC20ExecutionMessage {
       .load_brc20_balance(&address, &ticker)?
       .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
 
-    balance.available = FixedPoint::new_unchecked(balance.available, ticker_info.decimals)
+    let available = FixedPoint::new_unchecked(balance.available, ticker_info.decimals);
+    balance.available = available
       .checked_sub(amt)
       .ok_or(ExecutionError::ExecutionFailed(
-        BRC20Error::InsufficientBalance(balance.total.to_string(), amt.to_string()),
+        BRC20Error::InsufficientBalance(available, amt),
       ))?
       .to_u128_and_scale()
       .0;

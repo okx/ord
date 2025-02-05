@@ -40,14 +40,14 @@ impl BRC20ExecutionMessage {
     // can not mint zero amount.
     if amt.is_zero() {
       return Err(ExecutionError::ExecutionFailed(BRC20Error::InvalidAmount(
-        amt.to_string(),
+        amt,
       )));
     }
 
     // check if the mint amount exceeds the allowed limit.
     if amt > FixedPoint::new_unchecked(ticker_info.max_mint_limit, ticker_info.decimals) {
       return Err(ExecutionError::ExecutionFailed(
-        BRC20Error::MintAmountExceedLimit(amt.to_string()),
+        BRC20Error::MintAmountExceedLimit(amt),
       ));
     }
 
