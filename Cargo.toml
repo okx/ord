@@ -80,6 +80,7 @@ bigdecimal = "0.4.7"
 once_cell = "1.20.2"
 num_enum = "0.7.3"
 prometheus = "0.13.4"
+openssl = { version = "0.10.70", optional = true }
 
 [dev-dependencies]
 criterion = "0.5.1"
@@ -101,3 +102,7 @@ path = "src/lib.rs"
 [[test]]
 name = "integration"
 path = "tests/lib.rs"
+
+[features]
+default = []
+openssl = ["openssl/vendored"]
