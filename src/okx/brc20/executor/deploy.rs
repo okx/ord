@@ -64,22 +64,12 @@ impl BRC20ExecutionMessage {
     // limit the mint amount.
     let limit = if let Some(lim) = &deploy.mint_limit {
       let limit = FixedPoint::new_from_str(lim, decimals).map_err(BRC20Error::NumericError)?;
-      if limit > *MAXIMUM_SUPPLY {
+      if limit.is_zero() || limit > *MAXIMUM_SUPPLY {
         return Err(ExecutionError::ExecutionFailed(
           BRC20Error::InvalidMaxMintLimit(limit),
         ));
       }
-      if limit.is_zero() {
-        if self_minted {
-          max
-        } else {
-          return Err(ExecutionError::ExecutionFailed(
-            BRC20Error::InvalidMaxMintLimit(limit),
-          ));
-        }
-      } else {
-        limit
-      }
+      limit
     } else {
       max
     };
