@@ -71,7 +71,7 @@ impl BRC20ExecutionMessage {
       }
       if limit.is_zero() {
         if self_minted {
-          FixedPoint::new(u128::from(u64::MAX), decimals).unwrap()
+          max
         } else {
           return Err(ExecutionError::ExecutionFailed(
             BRC20Error::InvalidMaxMintLimit(limit),
