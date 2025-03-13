@@ -22,10 +22,10 @@ pub(crate) async fn brc20_balance(
   task::block_in_place(|| {
     let rtx = index.begin_read()?;
 
-    let ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::internal)?;
+    let ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::bad_request)?;
 
     let utxo_address =
-      UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
+      UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::bad_request)?;
 
     Index::brc20_get_ticker_info(&ticker, &rtx)?
       .ok_or(BRC20ApiError::UnknownTicker(ticker.to_string()))?;
@@ -68,7 +68,7 @@ pub(crate) async fn brc20_all_balance(
     let rtx = index.begin_read()?;
 
     let utxo_address =
-      UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::internal)?;
+      UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::bad_request)?;
 
     let all_balance = Index::brc20_get_balances_by_address(&utxo_address, &rtx)?;
     log::debug!("rpc: get brc20_all_balance: {} {:?}", address, all_balance);

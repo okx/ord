@@ -50,7 +50,7 @@ pub(crate) async fn brc20_tick_info(
   task::block_in_place(|| {
     let rtx = index.begin_read()?;
 
-    let brc20_ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::internal)?;
+    let brc20_ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::bad_request)?;
 
     let tick_info = Index::brc20_get_ticker_info(&brc20_ticker, &rtx)?
       .ok_or(BRC20ApiError::UnknownTicker(ticker.clone()))?;
