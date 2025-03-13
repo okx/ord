@@ -42,9 +42,9 @@ pub(crate) async fn brc20_balance(
 
     Ok(Json(ApiResponse::ok(ApiBalance {
       tick: balance.ticker,
-      available_balance: balance.total.to_string(),
+      available_balance: balance.available.to_string(),
       transferable_balance: (balance.total - balance.available).to_string(),
-      overall_balance: balance.available.to_string(),
+      overall_balance: balance.total.to_string(),
     })))
   })
 }
