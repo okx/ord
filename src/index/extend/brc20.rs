@@ -146,7 +146,10 @@ impl Index {
     Ok(transferable_assets)
   }
 
-  pub(crate) fn brc20_get_raw_receipts(txid: &Txid, rtx: &Rtx) -> Result<Option<Vec<BRC20Receipt>>> {
+  pub(crate) fn brc20_get_raw_receipts(
+    txid: &Txid,
+    rtx: &Rtx,
+  ) -> Result<Option<Vec<BRC20Receipt>>> {
     let table = rtx.0.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
     Ok(
       table
