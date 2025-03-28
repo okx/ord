@@ -26,6 +26,10 @@ impl HardForks {
     }
   }
 
+  pub fn check_inscription_vindicated(charms: u16) -> bool {
+    Charm::Vindicated.is_set(charms)
+  }
+
   /// Check if the inscription preconditions are met for the given curse, charms, height, and chain.
   pub fn check_inscription_preconditions(
     height: u32,
@@ -38,13 +42,12 @@ impl HardForks {
       return false;
     }
 
-    let vindicated_set = Charm::Vindicated.is_set(charms);
     let below_activation_height = height < Self::draft_reinscription_activation_height(chain);
-
     if below_activation_height {
-      !vindicated_set
+      true
     } else {
-      !vindicated_set || matches!(pre_jubilant_curse_reason, Some(Curse::Reinscription))
+      // fixme: check vindicated
+      matches!(pre_jubilant_curse_reason, Some(Curse::Reinscription))
     }
   }
 }

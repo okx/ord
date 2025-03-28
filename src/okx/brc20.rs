@@ -114,8 +114,13 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
       self.charms,
       self.pre_jubilant_curse_reason,
     ) {
+      let vindicated_set = HardForks::check_inscription_vindicated(self.charms);
+
       match self.inscription.extract_brc20_operation() {
         Ok(RawOperation::Deploy(mut deploy)) => {
+          if vindicated_set {
+            return None;
+          }
           // Filter out invalid deployments with a 5-byte ticker.
           // proposal for issuance self mint token.
           // https://l1f.discourse.group/t/brc-20-proposal-for-issuance-and-burn-enhancements-brc20-ip-1/621
@@ -141,10 +146,15 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
           }
           Some(BRC20Operation::Deploy(deploy))
         }
-        Ok(RawOperation::Mint(mint)) => Some(BRC20Operation::Mint {
-          op: mint,
-          parent: self.parents.first().cloned(),
-        }),
+        Ok(RawOperation::Mint(mint)) => {
+          if vindicated_set {
+            return None;
+          }
+          Some(BRC20Operation::Mint {
+            op: mint,
+            parent: self.parents.first().cloned(),
+          })
+        }
         Ok(RawOperation::Transfer(transfer)) => {
           let address_type = self.tapscript_pk[34];
           let signer = if address_type > 0 {
@@ -153,6 +163,11 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
           } else {
             None
           };
+
+          if vindicated_set && signer.is_none() {
+            return None;
+          }
+
           Some(BRC20Operation::InscribeTransfer{
             signer,
             transfer,
