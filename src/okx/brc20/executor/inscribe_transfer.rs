@@ -5,7 +5,7 @@ impl BRC20ExecutionMessage {
     &self,
     context: &mut TableContext,
   ) -> Result<BRC20Receipt, ExecutionError> {
-    let BRC20Operation::InscribeTransfer(transfer) = &self.operation else {
+    let BRC20Operation::InscribeTransfer{ signer, transfer } = &self.operation else {
       unreachable!()
     };
 
@@ -35,14 +35,14 @@ impl BRC20ExecutionMessage {
       .load_brc20_balance(&sender, &ticker)?
       .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
 
-    if sender_balance.single_step_transfer && self.signer == None {
+    if sender_balance.single_step_transfer && signer.is_none() {
       return Err(ExecutionError::ExecutionFailed(
         BRC20Error::LegacyTransferPermissionDenied,
       ));
     }
 
     let mut receiver_balance: Option<BRC20Balance> = None;
-    if let Some(signer) = self.signer.clone() {
+    if let Some(signer) = signer.clone() {
       sender_or_legacy = signer.clone();
       if signer != sender {
         receiver_balance = Some(sender_balance);

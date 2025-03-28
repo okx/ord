@@ -21,7 +21,6 @@ pub(crate) struct BRC20ExecutionMessage {
   sender: UtxoAddress,
   receiver: Option<UtxoAddress>, // no address, if unbound
   operation: BRC20Operation,
-  signer: Option<UtxoAddress>,
 }
 
 impl BRC20ExecutionMessage {
@@ -29,7 +28,7 @@ impl BRC20ExecutionMessage {
     value: &BundleMessage,
     context: &mut TableContext,
   ) -> Result<Option<Self>> {
-    let build_message = |operation, signer| {
+    let build_message = |operation| {
       Ok(Some(Self {
         txid: value.txid,
         inscription_id: value.inscription_id,
@@ -39,15 +38,14 @@ impl BRC20ExecutionMessage {
         new_satpoint: value.new_satpoint,
         sender: value.sender.clone(),
         receiver: value.receiver.clone(),
-        signer: signer,
         operation,
       }))
     };
 
     match &value.inscription_action {
-      InscriptionAction::Created { sub_type, signer, .. } => {
+      InscriptionAction::Created { sub_type, .. } => {
         if let Some(SubType::BRC20(brc20_operation)) = sub_type {
-          build_message(brc20_operation.clone(), signer.clone())
+          build_message(brc20_operation.clone())
         } else {
           Ok(None)
         }
@@ -55,7 +53,7 @@ impl BRC20ExecutionMessage {
       InscriptionAction::Transferred => match Option::<TransferredInscription>::from(value) {
         Some(transferred_inscription) => {
           match transferred_inscription.extract_and_validate_transfer(context) {
-            Ok(Some(brc20_operation)) => build_message(brc20_operation, None),
+            Ok(Some(brc20_operation)) => build_message(brc20_operation),
             Ok(None) => Ok(None),
             Err(err) => Err(err),
           }
@@ -76,7 +74,7 @@ impl BRC20ExecutionMessage {
     let result = match &self.operation {
       BRC20Operation::Deploy(..) => self.execute_deploy(context, height, blocktime),
       BRC20Operation::Mint { .. } => self.execute_mint(context, height),
-      BRC20Operation::InscribeTransfer(_) => self.execute_inscribe_transfer(context),
+      BRC20Operation::InscribeTransfer{ .. } => self.execute_inscribe_transfer(context),
       BRC20Operation::Transfer { .. } => self.execute_transfer(context),
     };
 

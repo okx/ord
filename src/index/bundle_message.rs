@@ -8,13 +8,6 @@ use crate::{
     UtxoAddress,
   },
 };
-use {
-  bitcoin::{
-    secp256k1::{XOnlyPublicKey},
-    script::{ScriptBuf},
-    key::{TweakedPublicKey},
-  },
-};
 
 #[derive(Debug, Clone)]
 pub enum SubType {
@@ -28,7 +21,6 @@ pub enum InscriptionAction {
   Created {
     charms: u16,
     sub_type: Option<SubType>,
-    signer: Option<UtxoAddress>,
   },
   Transferred,
 }
@@ -58,7 +50,7 @@ impl BundleMessage {
       if let Some(SubType::BRC20(operation)) = sub_type {
         return !matches!(
           operation,
-          BRC20Operation::Mint { .. } | BRC20Operation::InscribeTransfer(_)
+          BRC20Operation::Mint { .. } | BRC20Operation::InscribeTransfer{ .. }
         );
       }
     }
@@ -85,16 +77,7 @@ impl BundleMessage {
         sender: event.sender,
         receiver: event.receiver,
         inscription_action: match event.action {
-          Action::Created { charms, tapscript_pk, .. } => {
-            let address_type = tapscript_pk[34];
-            let signer = if address_type > 0 {
-              let script = get_pk_script_by_pubkey_and_type(&tapscript_pk[1..33], address_type);
-              Some(UtxoAddress::from_script(script.as_script(), &index.settings.chain()))
-            } else {
-              None
-            };
-            InscriptionAction::Created { charms, sub_type, signer, }
-          },
+          Action::Created { charms, .. } => InscriptionAction::Created { charms, sub_type },
           Action::Transferred => InscriptionAction::Transferred,
         },
       }))
@@ -135,44 +118,4 @@ fn extract_sub_type(
     }
   }
   Ok(None)
-}
-
-/// Get a script pubkey based on the provided pubkey and address type
-pub fn get_pk_script_by_pubkey_and_type(x_only_pubkey_bytes: &[u8], address_type: u8) -> ScriptBuf {
-  const BRC20_PUBKEY_ADDRESS_P2TR_SCRIPT: u8 = 0x51;
-  const BRC20_PUBKEY_ADDRESS_P2PKH_EVEN: u8 = 0x52;
-  const BRC20_PUBKEY_ADDRESS_P2PKH_ODD: u8 = 0x53;
-  const BRC20_PUBKEY_ADDRESS_P2WPKH: u8 = 0x54;
-  const BRC20_PUBKEY_ADDRESS_P2TR_KEY: u8 = 0x55;
-  const BRC20_PUBKEY_ADDRESS_P2SH_P2WPKH: u8 = 0x56;
-
-  let x_only_pubkey = XOnlyPublicKey::from_slice(x_only_pubkey_bytes).unwrap();
-  match address_type {
-    BRC20_PUBKEY_ADDRESS_P2TR_SCRIPT => {
-      let secp = bitcoin::secp256k1::Secp256k1::verification_only();
-      ScriptBuf::new_p2tr(&secp, x_only_pubkey, None)
-    },
-    BRC20_PUBKEY_ADDRESS_P2PKH_EVEN | BRC20_PUBKEY_ADDRESS_P2PKH_ODD => {
-      let parity = if address_type == BRC20_PUBKEY_ADDRESS_P2PKH_EVEN {
-        bitcoin::secp256k1::Parity::Even
-      } else {
-        bitcoin::secp256k1::Parity::Odd
-      };
-      let pubkey = bitcoin::PublicKey::new(x_only_pubkey.public_key(parity));
-      ScriptBuf::new_p2pkh(&pubkey.pubkey_hash())
-    },
-    BRC20_PUBKEY_ADDRESS_P2WPKH | BRC20_PUBKEY_ADDRESS_P2SH_P2WPKH => {
-      let pubkey = bitcoin::PublicKey::new(x_only_pubkey.public_key(bitcoin::secp256k1::Parity::Even));
-      let wpkh_script = ScriptBuf::new_p2wpkh(&pubkey.wpubkey_hash().unwrap());
-      if address_type == BRC20_PUBKEY_ADDRESS_P2WPKH {
-        wpkh_script
-      } else {
-        ScriptBuf::new_p2sh(&wpkh_script.script_hash())
-      }
-    },
-    BRC20_PUBKEY_ADDRESS_P2TR_KEY => {
-      ScriptBuf::new_p2tr_tweaked(TweakedPublicKey::dangerous_assume_tweaked(x_only_pubkey))
-    },
-    _ => ScriptBuf::new(),
-  }
 }
