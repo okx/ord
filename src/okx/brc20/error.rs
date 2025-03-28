@@ -38,4 +38,7 @@ pub enum BRC20Error {
 
   #[error("Numeric error occurred: {0}")]
   NumericError(#[from] fixed_point::NumParseError),
+
+  #[error("Legacy-transfer operation denied: insufficient permissions")]
+  LegacyTransferPermissionDenied,
 }

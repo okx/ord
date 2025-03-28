@@ -7,6 +7,7 @@ pub struct ApiBalance {
   pub available_balance: String,
   pub transferable_balance: String,
   pub overall_balance: String,
+  pub single_step_transfer: bool,
 }
 
 /// Get the ticker balance of the address.
@@ -45,6 +46,7 @@ pub(crate) async fn brc20_balance(
       available_balance: balance.available.to_string(),
       transferable_balance: (balance.total - balance.available).to_string(),
       overall_balance: balance.total.to_string(),
+      single_step_transfer: balance.single_step_transfer,
     })))
   })
 }
@@ -81,6 +83,7 @@ pub(crate) async fn brc20_all_balance(
           available_balance: balance.available.to_string(),
           transferable_balance: (balance.total - balance.available).to_string(),
           overall_balance: balance.total.to_string(),
+          single_step_transfer: balance.single_step_transfer,
         })
         .collect(),
     })))

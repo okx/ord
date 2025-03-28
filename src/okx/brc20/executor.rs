@@ -21,6 +21,7 @@ pub(crate) struct BRC20ExecutionMessage {
   sender: UtxoAddress,
   receiver: Option<UtxoAddress>, // no address, if unbound
   operation: BRC20Operation,
+  signer: Option<UtxoAddress>,
 }
 
 impl BRC20ExecutionMessage {
@@ -28,7 +29,7 @@ impl BRC20ExecutionMessage {
     value: &BundleMessage,
     context: &mut TableContext,
   ) -> Result<Option<Self>> {
-    let build_message = |operation| {
+    let build_message = |operation, signer| {
       Ok(Some(Self {
         txid: value.txid,
         inscription_id: value.inscription_id,
@@ -38,14 +39,15 @@ impl BRC20ExecutionMessage {
         new_satpoint: value.new_satpoint,
         sender: value.sender.clone(),
         receiver: value.receiver.clone(),
+        signer: signer,
         operation,
       }))
     };
 
     match &value.inscription_action {
-      InscriptionAction::Created { sub_type, .. } => {
+      InscriptionAction::Created { sub_type, signer, .. } => {
         if let Some(SubType::BRC20(brc20_operation)) = sub_type {
-          build_message(brc20_operation.clone())
+          build_message(brc20_operation.clone(), signer.clone())
         } else {
           Ok(None)
         }
@@ -53,7 +55,7 @@ impl BRC20ExecutionMessage {
       InscriptionAction::Transferred => match Option::<TransferredInscription>::from(value) {
         Some(transferred_inscription) => {
           match transferred_inscription.extract_and_validate_transfer(context) {
-            Ok(Some(brc20_operation)) => build_message(brc20_operation),
+            Ok(Some(brc20_operation)) => build_message(brc20_operation, None),
             Ok(None) => Ok(None),
             Err(err) => Err(err),
           }

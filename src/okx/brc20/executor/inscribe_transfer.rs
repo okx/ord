@@ -28,14 +28,39 @@ impl BRC20ExecutionMessage {
       )));
     }
 
-    let address = self.receiver.clone().unwrap();
-
-    let mut balance = context
-      .load_brc20_balance(&address, &ticker)?
+    let mut sender_or_legacy = self.sender.clone();
+    let receiver = self.receiver.clone().unwrap();
+    let mut sender = receiver.clone();
+    let mut sender_balance = context
+      .load_brc20_balance(&sender, &ticker)?
       .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
 
-    let available = FixedPoint::new_unchecked(balance.available, ticker_info.decimals);
-    balance.available = available
+    if sender_balance.single_step_transfer && self.signer == None {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::LegacyTransferPermissionDenied,
+      ));
+    }
+
+    let mut receiver_balance: Option<BRC20Balance> = None;
+    if let Some(signer) = self.signer.clone() {
+      sender_or_legacy = signer.clone();
+      if signer != sender {
+        receiver_balance = Some(sender_balance);
+
+        sender = signer;
+        sender_balance = context
+          .load_brc20_balance(&sender, &ticker)?
+          .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
+      }
+
+      if !sender_balance.single_step_transfer {
+        sender_balance.single_step_transfer = true;
+        context.update_brc20_balance(&sender, &ticker, sender_balance.clone())?;
+      }
+    }
+
+    let available = FixedPoint::new_unchecked(sender_balance.available, ticker_info.decimals);
+    sender_balance.available = available
       .checked_sub(amt)
       .ok_or(ExecutionError::ExecutionFailed(
         BRC20Error::InsufficientBalance(available, amt),
@@ -43,19 +68,35 @@ impl BRC20ExecutionMessage {
       .to_u128_and_scale()
       .0;
 
-    context.update_brc20_balance(&address, &ticker, balance)?;
+    let amount = amt.to_u128_and_scale().0;
+
+    if let Some(mut receiver_balance) = receiver_balance {
+      sender_balance.total = sender_balance
+        .total
+        .checked_sub(amount)
+        .expect("Subtraction overflow");
+
+      receiver_balance.total = receiver_balance
+        .total
+        .checked_add(amount)
+        .expect("Addition overflow");
+
+      context.update_brc20_balance(&receiver, &ticker, receiver_balance)?;
+    }
+
+    context.update_brc20_balance(&sender, &ticker, sender_balance)?;
 
     let transferring_asset = BRC20TransferAsset {
       ticker: ticker.clone(),
-      amount: amt.to_u128_and_scale().0,
-      owner: address.clone(),
+      amount: amount,
+      owner: receiver.clone(),
       sequence_number: self.sequence_number,
       inscription_number: self.inscription_number,
       inscription_id: self.inscription_id,
     };
 
     context.insert_brc20_transferring_asset(
-      &address,
+      &receiver,
       &ticker,
       self.new_satpoint,
       transferring_asset,
@@ -67,12 +108,12 @@ impl BRC20ExecutionMessage {
       inscription_number: self.inscription_number,
       old_satpoint: self.old_satpoint,
       new_satpoint: self.new_satpoint,
-      sender: self.sender.clone(),
-      receiver: address,
+      sender: sender_or_legacy,
+      receiver: receiver,
       op_type: BRC20OpType::InscribeTransfer,
       result: Ok(BRC20Event::InscribeTransfer(InscribeTransferEvent {
         ticker,
-        amount: amt.to_u128_and_scale().0,
+        amount: amount,
       })),
     })
   }
