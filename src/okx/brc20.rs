@@ -156,18 +156,20 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
           })
         }
         Ok(RawOperation::Transfer(transfer)) => {
-          let address_type = self.tapscript_pk[34];
+          let address_type = if height < HardForks::self_single_step_transfer_activation_height(&chain) {
+            self.tapscript_pk[34]
+          }else {
+            0
+          };
+          if vindicated_set && address_type == 0 {
+            return None;
+          }
           let signer = if address_type > 0 {
             let script = utils::get_pk_script_by_pubkey_and_type(&self.tapscript_pk[1..33], address_type);
             Some(UtxoAddress::from_script(script.as_script(), &chain))
           } else {
             None
           };
-
-          if vindicated_set && signer.is_none() {
-            return None;
-          }
-
           Some(BRC20Operation::InscribeTransfer{
             signer,
             transfer,
