@@ -6,7 +6,7 @@ impl BRC20ExecutionMessage {
     context: &mut TableContext,
     height: u32,
   ) -> Result<BRC20Receipt, ExecutionError> {
-    let BRC20Operation::Mint { op: mint, parent } = &self.operation else {
+    let BRC20Operation::Mint { op: mint, signer, parent } = &self.operation else {
       unreachable!()
     };
 
@@ -61,7 +61,12 @@ impl BRC20ExecutionMessage {
     }
 
     // get user's balances
-    let receiver = self.receiver.clone().unwrap();
+    let receiver = if let Some(signer) = signer.clone() {
+      signer
+    } else {
+      self.receiver.clone().unwrap()
+    };
+
     let mut receiver_balance = context
       .load_brc20_balance(&receiver, &ticker)?
       .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
