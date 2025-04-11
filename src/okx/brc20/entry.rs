@@ -8,7 +8,6 @@ pub struct BRC20Balance {
   pub ticker: BRC20Ticker,
   pub total: u128,
   pub available: u128,
-  pub single_step_transfer: bool,
 }
 
 impl BRC20Balance {
@@ -17,7 +16,6 @@ impl BRC20Balance {
       ticker: ticker.clone(),
       total: 0,
       available: 0,
-      single_step_transfer: false,
     }
   }
 }

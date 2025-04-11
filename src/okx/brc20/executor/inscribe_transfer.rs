@@ -35,13 +35,6 @@ impl BRC20ExecutionMessage {
       .load_brc20_balance(&sender, &ticker)?
       .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
 
-    let single_step_transfer = signer.is_some();
-    if sender_balance.single_step_transfer && !single_step_transfer {
-      return Err(ExecutionError::ExecutionFailed(
-        BRC20Error::LegacyTransferPermissionDenied,
-      ));
-    }
-
     let mut receiver_balance: Option<BRC20Balance> = None;
     if let Some(signer) = signer.clone() {
       sender_or_legacy = signer.clone();
@@ -79,9 +72,6 @@ impl BRC20ExecutionMessage {
       context.update_brc20_balance(&receiver, &ticker, receiver_balance)?;
     }
 
-    if single_step_transfer {
-      sender_balance.single_step_transfer = true;
-    }
     context.update_brc20_balance(&sender, &ticker, sender_balance)?;
 
     let transferring_asset = BRC20TransferAsset {
