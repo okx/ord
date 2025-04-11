@@ -116,12 +116,12 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
       self.pre_jubilant_curse_reason,
     ) {
       let vindicated_set = HardForks::check_inscription_vindicated(self.charms);
-      let address_type = if height < HardForks::self_single_step_transfer_activation_height(&chain) {
+      let mut address_type = if height < HardForks::self_single_step_transfer_activation_height(&chain) {
         0
       }else {
         self.tapscript_pk[34]
       };
-      let signer = if address_type > 0 {
+      let mut signer = if address_type > 0 {
         let script = utils::get_pk_script_by_pubkey_and_type(&self.tapscript_pk[1..33], address_type);
         Some(UtxoAddress::from_script(script.as_script(), &chain))
       } else {
@@ -162,6 +162,9 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
           if vindicated_set {
             return None;
           }
+          if mint.tick.len() != SELF_ISSUANCE_TICKER_LENGTH {
+            signer = None;
+          }
           Some(BRC20Operation::Mint {
             op: mint,
             signer,
@@ -169,6 +172,10 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
           })
         }
         Ok(RawOperation::Transfer(transfer)) => {
+          if transfer.tick.len() != SELF_ISSUANCE_TICKER_LENGTH {
+            signer = None;
+            address_type = 0;
+          }
           if vindicated_set && address_type == 0 {
             return None;
           }
