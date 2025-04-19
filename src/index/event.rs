@@ -49,8 +49,8 @@ pub(crate) enum Action {
   Created {
     inscription: Inscription,
     parents: Vec<InscriptionId>,
-    pre_jubilant_curse_reason: Option<Curse>,
     charms: u16,
+    tapscript_pk: [u8; 35],
   },
   Transferred,
 }

@@ -50,7 +50,7 @@ impl BundleMessage {
       if let Some(SubType::BRC20(operation)) = sub_type {
         return !matches!(
           operation,
-          BRC20Operation::Mint { .. } | BRC20Operation::InscribeTransfer(_)
+          BRC20Operation::Mint { .. } | BRC20Operation::InscribeTransfer{ .. }
         );
       }
     }

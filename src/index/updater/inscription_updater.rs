@@ -1,4 +1,5 @@
 use super::*;
+use bitcoin::blockdata::opcodes;
 use crate::index::bundle_message::BundleMessage;
 use crate::index::event::{Action, OkxInscriptionEvent};
 use crate::okx::UtxoAddress;
@@ -37,7 +38,7 @@ enum Origin {
     unbound: bool,
     vindicated: bool,
     inscription: Inscription,
-    pre_jubilant_curse_reason: Option<Curse>,
+    tapscript_pk: [u8; 35],
   },
   Old {
     sequence_number: u32,
@@ -155,6 +156,19 @@ impl InscriptionUpdater<'_, '_> {
           break;
         }
 
+        let mut tapscript_pk = [0u8; 35];
+        if let Some(tapscript) = txin.witness.tapscript() {
+          if tapscript.len() >= 35 {
+            let script_bytes = tapscript.as_bytes();
+            if script_bytes[0] == opcodes::all::OP_PUSHBYTES_32.to_u8()
+              && script_bytes[33] == opcodes::all::OP_CHECKSIGVERIFY.to_u8()
+              && script_bytes[34] >= opcodes::all::OP_PUSHNUM_1.to_u8()
+              && script_bytes[34] <= opcodes::all::OP_PUSHNUM_8.to_u8() {
+                tapscript_pk.copy_from_slice(&script_bytes[..35]);
+              }
+          }
+        }
+
         let inscription = envelopes.next().unwrap();
 
         let inscription_id = InscriptionId {
@@ -232,7 +246,7 @@ impl InscriptionUpdater<'_, '_> {
               || inscription.payload.unrecognized_even_field,
             vindicated: curse.is_some() && jubilant,
             inscription: inscription.payload,
-            pre_jubilant_curse_reason: curse,
+            tapscript_pk: tapscript_pk,
           },
         });
 
@@ -619,13 +633,13 @@ impl InscriptionUpdater<'_, '_> {
           Origin::New {
             inscription,
             parents,
-            pre_jubilant_curse_reason,
+            tapscript_pk,
             ..
           } => Action::Created {
             inscription,
             parents,
-            pre_jubilant_curse_reason,
             charms: charms.unwrap(),
+            tapscript_pk,
           },
           Origin::Old { .. } => Action::Transferred,
         },

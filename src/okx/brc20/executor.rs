@@ -74,7 +74,7 @@ impl BRC20ExecutionMessage {
     let result = match &self.operation {
       BRC20Operation::Deploy(..) => self.execute_deploy(context, height, blocktime),
       BRC20Operation::Mint { .. } => self.execute_mint(context, height),
-      BRC20Operation::InscribeTransfer(_) => self.execute_inscribe_transfer(context),
+      BRC20Operation::InscribeTransfer{ .. } => self.execute_inscribe_transfer(context),
       BRC20Operation::Transfer { .. } => self.execute_transfer(context),
     };
 
