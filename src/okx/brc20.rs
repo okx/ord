@@ -113,9 +113,8 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
       height,
       &chain,
       self.charms,
-      self.pre_jubilant_curse_reason,
     ) {
-      let vindicated_set = HardForks::check_inscription_vindicated(self.charms);
+      let first_inscription = self.inscription_id.index == 0;
       let mut address_type = if height < HardForks::self_single_step_transfer_activation_height(&chain) {
         0
       }else {
@@ -130,7 +129,7 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
 
       match self.inscription.extract_brc20_operation() {
         Ok(RawOperation::Deploy(mut deploy)) => {
-          if vindicated_set {
+          if !first_inscription {
             return None;
           }
           // Filter out invalid deployments with a 5-byte ticker.
@@ -159,7 +158,7 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
           Some(BRC20Operation::Deploy(deploy))
         }
         Ok(RawOperation::Mint(mint)) => {
-          if vindicated_set {
+          if !first_inscription {
             return None;
           }
           if mint.tick.len() != SELF_ISSUANCE_TICKER_LENGTH {
@@ -176,7 +175,7 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
             signer = None;
             address_type = 0;
           }
-          if vindicated_set && address_type == 0 {
+          if address_type == 0 && !first_inscription {
             return None;
           }
           Some(BRC20Operation::InscribeTransfer {

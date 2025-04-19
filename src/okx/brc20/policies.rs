@@ -26,38 +26,22 @@ impl HardForks {
     }
   }
 
-  pub fn draft_reinscription_activation_height(chain: &Chain) -> u32 {
-    match chain {
-      Chain::Mainnet => u32::MAX, // todo: not set yet
-      Chain::Testnet => u32::MAX,
-      Chain::Regtest => u32::MAX,
-      Chain::Signet => u32::MAX,
-      Chain::Testnet4 => u32::MAX,
-    }
-  }
-
-  pub fn check_inscription_vindicated(charms: u16) -> bool {
-    Charm::Vindicated.is_set(charms)
-  }
-
   /// Check if the inscription preconditions are met for the given curse, charms, height, and chain.
   pub fn check_inscription_preconditions(
     height: u32,
     chain: &Chain,
     charms: u16,
-    pre_jubilant_curse_reason: Option<&Curse>,
   ) -> bool {
     // can not be unbound or cursed
     if Charm::Unbound.is_set(charms) || Charm::Cursed.is_set(charms) {
       return false;
     }
 
-    let below_activation_height = height < Self::draft_reinscription_activation_height(chain);
+    let below_activation_height = height < Self::self_single_step_transfer_activation_height(chain);
     if below_activation_height {
-      true
+      !Charm::Vindicated.is_set(charms)
     } else {
-      // fixme: check vindicated
-      matches!(pre_jubilant_curse_reason, Some(Curse::Reinscription))
+      true
     }
   }
 }
