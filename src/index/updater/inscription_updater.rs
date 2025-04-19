@@ -164,7 +164,7 @@ impl InscriptionUpdater<'_, '_> {
             if script_bytes[0] == opcodes::all::OP_PUSHBYTES_32.to_u8()
               && script_bytes[33] == opcodes::all::OP_CHECKSIGVERIFY.to_u8()
               && script_bytes[34] >= opcodes::all::OP_PUSHNUM_1.to_u8()
-              && script_bytes[34] <= opcodes::all::OP_PUSHNUM_6.to_u8() {
+              && script_bytes[34] <= opcodes::all::OP_PUSHNUM_8.to_u8() {
                 tapscript_pk.copy_from_slice(&script_bytes[..35]);
               }
           }
