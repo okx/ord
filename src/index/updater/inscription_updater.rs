@@ -38,7 +38,6 @@ enum Origin {
     unbound: bool,
     vindicated: bool,
     inscription: Inscription,
-    pre_jubilant_curse_reason: Option<Curse>,
     tapscript_pk: [u8; 35],
   },
   Old {
@@ -247,7 +246,6 @@ impl InscriptionUpdater<'_, '_> {
               || inscription.payload.unrecognized_even_field,
             vindicated: curse.is_some() && jubilant,
             inscription: inscription.payload,
-            pre_jubilant_curse_reason: curse,
             tapscript_pk: tapscript_pk,
           },
         });
@@ -635,13 +633,11 @@ impl InscriptionUpdater<'_, '_> {
           Origin::New {
             inscription,
             parents,
-            pre_jubilant_curse_reason,
             tapscript_pk,
             ..
           } => Action::Created {
             inscription,
             parents,
-            pre_jubilant_curse_reason,
             charms: charms.unwrap(),
             tapscript_pk,
           },
