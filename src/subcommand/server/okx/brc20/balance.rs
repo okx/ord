@@ -1,4 +1,5 @@
 use super::*;
+use crate::subcommand::server::okx::brc20::ticker_info::ApiTickReq;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +18,27 @@ pub(crate) async fn brc20_balance(
   Extension(settings): Extension<Arc<Settings>>,
   Extension(index): Extension<Arc<Index>>,
   Path((ticker, address)): Path<(String, String)>,
+) -> ApiResult<ApiBalance> {
+  get_brc20_balance(settings, index, ticker, address)
+}
+
+pub(crate) async fn brc20_balance_post(
+  Extension(settings): Extension<Arc<Settings>>,
+  Extension(index): Extension<Arc<Index>>,
+  Json(args): Json<ApiTickReq>,
+) -> ApiResult<ApiBalance> {
+  let ApiTickReq { ticker, address } = args;
+  if address.is_none() {
+    return Err(ApiError::BadRequest("address must not be empty".into()));
+  }
+  get_brc20_balance(settings, index, ticker, address.unwrap())
+}
+
+fn get_brc20_balance(
+  settings: Arc<Settings>,
+  index: Arc<Index>,
+  ticker: String,
+  address: String,
 ) -> ApiResult<ApiBalance> {
   log::debug!("rpc: get brc20_balance: {} {}", ticker, address);
   task::block_in_place(|| {

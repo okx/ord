@@ -206,11 +206,15 @@ impl Server {
           get(okx::ord::ord_debug_btc_domain),
         )
         .route("/brc20/tick/:tick", get(okx::brc20::brc20_tick_info))
-        .route("/brc20/tick", get(okx::brc20::brc20_all_tick_info))
+        .route(
+          "/brc20/tick",
+          get(okx::brc20::brc20_all_tick_info).post(okx::brc20::brc20_tick_info_post),
+        )
         .route(
           "/brc20/tick/:tick/address/:address/balance",
           get(okx::brc20::brc20_balance),
         )
+        .route("/brc20/balance", post(okx::brc20::brc20_balance_post))
         .route(
           "/brc20/address/:address/balance",
           get(okx::brc20::brc20_all_balance),
@@ -218,6 +222,10 @@ impl Server {
         .route(
           "/brc20/tick/:tick/address/:address/transferable",
           get(okx::brc20::brc20_transferable),
+        )
+        .route(
+          "/brc20/transferable",
+          post(okx::brc20::brc20_transferable_post),
         )
         .route(
           "/brc20/address/:address/transferable",

@@ -7,11 +7,11 @@ mod receipt;
 mod ticker_info;
 
 pub(crate) use self::{
-  assets::{brc20_all_transferable, brc20_transferable},
-  balance::{brc20_all_balance, brc20_balance},
+  assets::{brc20_all_transferable, brc20_transferable, brc20_transferable_post},
+  balance::{brc20_all_balance, brc20_balance, brc20_balance_post},
   outpoint::brc20_outpoint,
   receipt::{brc20_block_events, brc20_tx_events},
-  ticker_info::{brc20_all_tick_info, brc20_tick_info},
+  ticker_info::{brc20_all_tick_info, brc20_tick_info, brc20_tick_info_post},
 };
 #[derive(Debug, thiserror::Error)]
 pub(super) enum BRC20ApiError {

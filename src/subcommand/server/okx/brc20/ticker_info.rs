@@ -18,6 +18,13 @@ pub struct ApiTickInfo {
   pub deploy_blocktime: u32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiTickReq {
+  #[serde(default)]
+  pub address: Option<String>,
+  pub ticker: String,
+}
+
 impl From<BRC20TickerInfo> for ApiTickInfo {
   fn from(tick_info: BRC20TickerInfo) -> Self {
     Self {
@@ -46,6 +53,18 @@ pub(crate) async fn brc20_tick_info(
   Extension(index): Extension<Arc<Index>>,
   Path(ticker): Path<String>,
 ) -> ApiResult<ApiTickInfo> {
+  get_brc20_tick_info(index, ticker)
+}
+
+pub(crate) async fn brc20_tick_info_post(
+  Extension(index): Extension<Arc<Index>>,
+  Json(ticker_req): Json<ApiTickReq>,
+) -> ApiResult<ApiTickInfo> {
+  let ticker = ticker_req.ticker;
+  get_brc20_tick_info(index, ticker)
+}
+
+fn get_brc20_tick_info(index: Arc<Index>, ticker: String) -> ApiResult<ApiTickInfo> {
   log::debug!("rpc: get brc20_tick_info: {}", ticker);
   task::block_in_place(|| {
     let rtx = index.begin_read()?;

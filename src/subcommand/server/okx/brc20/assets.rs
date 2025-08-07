@@ -1,4 +1,5 @@
 use super::*;
+use crate::subcommand::server::okx::brc20::ticker_info::ApiTickReq;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,6 +48,27 @@ pub(crate) async fn brc20_transferable(
   Extension(settings): Extension<Arc<Settings>>,
   Extension(index): Extension<Arc<Index>>,
   Path((ticker, address)): Path<(String, String)>,
+) -> ApiResult<ApiTransferableAssets> {
+  get_brc20_transferable(settings, index, ticker, address)
+}
+
+pub(crate) async fn brc20_transferable_post(
+  Extension(settings): Extension<Arc<Settings>>,
+  Extension(index): Extension<Arc<Index>>,
+  Json(args): Json<ApiTickReq>,
+) -> ApiResult<ApiTransferableAssets> {
+  let ApiTickReq { ticker, address } = args;
+  if address.is_none() {
+    return Err(ApiError::BadRequest("address must be set".into()));
+  }
+  get_brc20_transferable(settings, index, ticker, address.unwrap())
+}
+
+fn get_brc20_transferable(
+  settings: Arc<Settings>,
+  index: Arc<Index>,
+  ticker: String,
+  address: String,
 ) -> ApiResult<ApiTransferableAssets> {
   log::debug!("rpc: get brc20_transferable: {ticker} {address}");
   task::block_in_place(|| {
