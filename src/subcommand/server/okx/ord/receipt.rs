@@ -53,6 +53,8 @@ impl From<InscriptionReceipt> for ApiTxInscription {
 #[serde(rename_all = "camelCase")]
 pub struct ApiTxInscriptions {
   pub inscriptions: Vec<ApiTxInscription>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub original_tx_index: Option<usize>,
   pub txid: Txid,
 }
 
@@ -111,6 +113,7 @@ pub(crate) async fn ord_txid_inscriptions(
 
     Ok(Json(ApiResponse::ok(ApiTxInscriptions {
       inscriptions: inscription_receipts.into_iter().map(Into::into).collect(),
+      original_tx_index: None,
       txid,
     })))
   })
@@ -147,11 +150,11 @@ pub(crate) async fn ord_block_inscriptions(
     }
 
     let mut block_receipts = Vec::new();
-    for txid in block_info.tx {
+    for (id, txid) in block_info.tx.into_iter().enumerate() {
       let Some(tx_receipts) = Index::ord_get_raw_receipts(&txid, &rtx)? else {
         continue;
       };
-      block_receipts.push((txid, tx_receipts));
+      block_receipts.push((id, txid, tx_receipts));
     }
 
     log::debug!(
@@ -163,8 +166,9 @@ pub(crate) async fn ord_block_inscriptions(
     Ok(Json(ApiResponse::ok(ApiBlockInscriptions {
       block: block_receipts
         .into_iter()
-        .map(|(txid, receipts)| ApiTxInscriptions {
+        .map(|(id, txid, receipts)| ApiTxInscriptions {
           inscriptions: receipts.into_iter().map(Into::into).collect(),
+          original_tx_index: Some(id),
           txid,
         })
         .collect(),
