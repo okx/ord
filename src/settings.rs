@@ -35,7 +35,6 @@ pub struct Settings {
   index_bitmap: bool,
   index_btc_domain: bool,
   index_brc20: bool,
-  disable_invalid_brc20_tracking: bool,
 }
 
 impl Settings {
@@ -156,8 +155,6 @@ impl Settings {
       index_bitmap: self.index_bitmap || source.index_bitmap,
       index_btc_domain: self.index_btc_domain || source.index_btc_domain,
       index_brc20: self.index_brc20 || source.index_brc20,
-      disable_invalid_brc20_tracking: self.disable_invalid_brc20_tracking
-        || source.disable_invalid_brc20_tracking,
     }
   }
 
@@ -201,7 +198,6 @@ impl Settings {
       index_bitmap: options.index_bitmap,
       index_btc_domain: options.index_btc_domain,
       index_brc20: options.index_brc20,
-      disable_invalid_brc20_tracking: options.disable_invalid_brc20_tracking,
     }
   }
 
@@ -299,7 +295,6 @@ impl Settings {
       index_bitmap: get_bool("INDEX_BITMAP"),
       index_btc_domain: get_bool("INDEX_BTC_DOMAIN"),
       index_brc20: get_bool("INDEX_BRC20"),
-      disable_invalid_brc20_tracking: get_bool("DISABLE_INVALID_BRC20_TRACKING"),
     })
   }
 
@@ -337,7 +332,6 @@ impl Settings {
       index_bitmap: false,
       index_btc_domain: false,
       index_brc20: false,
-      disable_invalid_brc20_tracking: false,
     }
   }
 
@@ -419,7 +413,6 @@ impl Settings {
       index_bitmap: self.index_bitmap,
       index_btc_domain: self.index_btc_domain,
       index_brc20: self.index_brc20,
-      disable_invalid_brc20_tracking: self.disable_invalid_brc20_tracking,
     })
   }
 
@@ -652,10 +645,6 @@ impl Settings {
 
   pub(crate) fn index_brc20(&self) -> bool {
     self.index_brc20
-  }
-
-  pub(crate) fn disable_invalid_brc20_tracking(&self) -> bool {
-    self.disable_invalid_brc20_tracking
   }
 
   pub(crate) fn index_bitmap(&self) -> bool {
@@ -1144,7 +1133,6 @@ mod tests {
       ("INDEX_BITMAP", "1"),
       ("INDEX_BTC_DOMAIN", "1"),
       ("INDEX_BRC20", "1"),
-      ("DISABLE_INVALID_BRC20_TRACKING", "1"),
     ]
     .into_iter()
     .map(|(key, value)| (key.into(), value.into()))
@@ -1195,7 +1183,6 @@ mod tests {
         index_bitmap: true,
         index_btc_domain: true,
         index_brc20: true,
-        disable_invalid_brc20_tracking: true,
       }
     );
   }
@@ -1234,7 +1221,6 @@ mod tests {
           "--index-bitmap",
           "--index-btc-domain",
           "--index-brc20",
-          "--disable-invalid-brc20-tracking",
         ])
         .unwrap()
       ),
@@ -1270,7 +1256,6 @@ mod tests {
         index_bitmap: true,
         index_btc_domain: true,
         index_brc20: true,
-        disable_invalid_brc20_tracking: true,
       }
     );
   }

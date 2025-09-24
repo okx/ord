@@ -94,10 +94,13 @@ pub struct CompositeKey<T, U> {
 }
 
 impl<T: Clone, U> CompositeKey<T, U> {
+  
+  #[allow(unused)]
   pub fn primary_left_endpoint(&self) -> Endpoint<T> {
     Endpoint::Left(self.primary.clone())
   }
 
+  #[allow(unused)]
   pub fn primary_right_endpoint(&self) -> Endpoint<T> {
     Endpoint::Right(self.primary.clone())
   }

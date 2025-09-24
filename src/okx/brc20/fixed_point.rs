@@ -27,6 +27,7 @@ impl FixedPoint {
   #[cfg(test)]
   const MIN: Self = Self { value: 0, scale: 0 };
 
+  #[allow(unused)]
   pub fn new(value: u128, scale: u8) -> Result<Self, NumParseError> {
     if scale > Self::MAX_SCALE {
       return Err(NumParseError::OutOfMaxScale(i64::from(scale)));

@@ -125,7 +125,6 @@ pub(crate) enum Statistic {
   OkxIndexBitmap = 19,
   OkxIndexBTCDomain = 20,
   OkxSaveInscriptionReceipts = 21,
-  OkxNoTrackingInvalidBrc20Inscriptions = 22,
 }
 
 impl Statistic {
@@ -249,7 +248,6 @@ pub struct Index {
   index_bitmap: bool,
   index_btc_domain: bool,
   save_inscription_receipts: bool,
-  disable_invalid_brc20_tracking: bool,
 }
 
 impl Index {
@@ -430,12 +428,6 @@ impl Index {
 
             Self::set_statistic(
               &mut statistics,
-              Statistic::OkxNoTrackingInvalidBrc20Inscriptions,
-              u64::from(settings.disable_invalid_brc20_tracking()),
-            )?;
-
-            Self::set_statistic(
-              &mut statistics,
               Statistic::OkxSaveInscriptionReceipts,
               u64::from(settings.save_inscription_receipts()),
             )?;
@@ -517,7 +509,6 @@ impl Index {
     let index_bitmap;
     let index_btc_domain;
     let save_inscription_receipts;
-    let disable_invalid_brc20_tracking;
 
     {
       let tx = database.begin_read()?;
@@ -529,10 +520,6 @@ impl Index {
       index_transactions = Self::is_statistic_set(&statistics, Statistic::IndexTransactions)?;
 
       index_brc20 = Self::is_statistic_set(&statistics, Statistic::OkxIndexBrc20)?;
-      disable_invalid_brc20_tracking = Self::is_statistic_set(
-        &statistics,
-        Statistic::OkxNoTrackingInvalidBrc20Inscriptions,
-      )?;
 
       index_bitmap = Self::is_statistic_set(&statistics, Statistic::OkxIndexBitmap)?;
       index_btc_domain = Self::is_statistic_set(&statistics, Statistic::OkxIndexBTCDomain)?;
@@ -578,7 +565,6 @@ impl Index {
       index_bitmap,
       index_btc_domain,
       save_inscription_receipts,
-      disable_invalid_brc20_tracking,
     })
   }
   pub(crate) fn with_metrics(mut self) -> Self {

@@ -39,26 +39,6 @@ pub struct BundleMessage {
 }
 
 impl BundleMessage {
-  /// Determines whether this inscription needs to be tracked.
-  /// Returns `false` when the message is a BRC20 Mint or Transfer, otherwise `true`.
-  pub fn should_track(&self, index: &Index) -> bool {
-    if !index.disable_invalid_brc20_tracking {
-      return true;
-    }
-
-    if let InscriptionAction::Created { sub_type, .. } = &self.inscription_action {
-      if let Some(SubType::BRC20(operation)) = sub_type {
-        return !matches!(
-          operation,
-          BRC20Operation::Mint { .. } | BRC20Operation::InscribeTransfer(_)
-        );
-      }
-    }
-    true
-  }
-}
-
-impl BundleMessage {
   pub(in crate::index) fn from_okx_inscription_event(
     event: OkxInscriptionEvent,
     height: u32,

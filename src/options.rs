@@ -101,9 +101,4 @@ pub struct Options {
   pub(crate) index_btc_domain: bool,
   #[arg(long, help = "Index BRC-20 token operations.")]
   pub(crate) index_brc20: bool,
-  #[arg(
-    long,
-    help = "Disable tracking of invalid BRC-20 inscriptions. [default: false]"
-  )]
-  pub(crate) disable_invalid_brc20_tracking: bool,
 }

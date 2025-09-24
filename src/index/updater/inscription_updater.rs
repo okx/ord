@@ -595,8 +595,6 @@ impl InscriptionUpdater<'_, '_> {
         .or_insert(UtxoEntryBuf::empty(index))
     });
 
-    let mut should_tracking_inscription = true;
-
     // input_script_buf will only have a valid value when index_addresses is true.
     if index.index_addresses {
       let event = OkxInscriptionEvent {
@@ -632,8 +630,6 @@ impl InscriptionUpdater<'_, '_> {
       };
 
       if let Some(message) = BundleMessage::from_okx_inscription_event(event, self.height, index)? {
-        // We should decide whether to track the inscription based on the message.
-        should_tracking_inscription = message.should_track(index);
         self
           .block_bundle_messages
           .entry(message.txid)
@@ -642,10 +638,7 @@ impl InscriptionUpdater<'_, '_> {
       }
     }
 
-    // If we are tracking the inscription, we need to push the inscription into the output UTXO entry.
-    if should_tracking_inscription {
-      output_utxo_entry.push_inscription(sequence_number, satpoint.offset, index);
-    }
+    output_utxo_entry.push_inscription(sequence_number, satpoint.offset, index);
 
     Ok(())
   }
