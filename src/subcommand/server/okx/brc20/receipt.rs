@@ -180,6 +180,8 @@ pub struct ApiTransferEvent {
 #[serde(rename_all = "camelCase")]
 pub struct ApiTxEvents {
   pub events: Vec<ApiTxEvent>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub original_tx_index: Option<usize>,
   pub txid: Txid,
 }
 
@@ -230,6 +232,7 @@ pub(crate) async fn brc20_tx_events(
 
     Ok(Json(ApiResponse::ok(ApiTxEvents {
       txid,
+      original_tx_index: None,
       events: receipts.into_iter().map(|e| e.into()).collect(),
     })))
   })
@@ -274,11 +277,11 @@ pub(crate) async fn brc20_block_events(
     }
 
     let mut block_receipts = Vec::new();
-    for txid in block_info.tx {
+    for (id, txid) in block_info.tx.into_iter().enumerate() {
       let Some(tx_receipts) = Index::brc20_get_raw_receipts(&txid, &rtx)? else {
         continue;
       };
-      block_receipts.push((txid, tx_receipts));
+      block_receipts.push((id, txid, tx_receipts));
     }
 
     log::debug!(
@@ -290,8 +293,9 @@ pub(crate) async fn brc20_block_events(
     Ok(Json(ApiResponse::ok(ApiBlockEvents {
       block: block_receipts
         .into_iter()
-        .map(|(txid, events)| ApiTxEvents {
+        .map(|(id, txid, events)| ApiTxEvents {
           txid,
+          original_tx_index: Some(id),
           events: events.into_iter().map(|e| e.into()).collect(),
         })
         .filter(|e| !e.events.is_empty())
