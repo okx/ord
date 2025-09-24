@@ -1,6 +1,52 @@
 Changelog
 =========
 
+[0.22.3.1](https://github.com/ordinals/ord/releases/tag/0.22.3.1) - 2025-01-15
+--------------------------------------------------------------------------
+
+### Major Changes
+- Rebase from ord 0.14.1 to 0.22.3, incorporating all upstream improvements and features
+- Major version upgrade with significant performance and feature enhancements
+
+### Added
+- Add Prometheus metrics support for monitoring and observability
+- Add original transaction index in block RPC endpoint
+- Add support for bitmap and BTC domain indexing
+- Add BRC20 protocol implementation with comprehensive token support
+- Add interfaces for enhanced API functionality
+- Add fixed-point number handling for improved precision in BRC20 operations
+
+### Fixed
+- Fix Axum memory leak issues for improved stability
+- Fix incorrect BRC20 balance field calculations
+- Fix incorrect recognition of deploy operation when 5-byte ticker and lim=0
+- Fix error value handling when lim is zero and self-mint is active
+- Fix incorrect default supply value for self-issued ticker
+- Fix incorrect new_satpoint for unbound inscription
+- Fix incorrect order when sorting by offset
+- Fix ticker and BRC20 operation type display issues
+- Fix BRC20 losing message when inscribe and transfer operations occur in the same block
+- Fix duplicate logger initialization
+- Fix blocking issues in async API
+- Fix error in old satpoint offset and BRC20 transfer precondition checks
+- Fix missing gzip feature in log4rs and preference logs
+- Remove invalid BRC20 inscription tracking feature
+
+### Changed
+- Upgrade redb to fix slow reorganization issues
+- Use fixed-point numbers instead of strings in BRC20 error enum for better precision
+- Change error handling from internal to bad_request for BRC20Ticker and UtxoAddress parsing
+- Remove the case of BRC20 error: InscribeToDifferentTx
+- Remove inscription updater hook for cleaner architecture
+- Optimize OKX API performance
+- Refactor number handling to use fixed-point arithmetic
+- Improve print log formatting for better debugging
+
+### Misc
+- Reorganize imports and format code for better maintainability
+- Handle empty transaction receipts gracefully
+- Remove BRC20 error: InscribeToDifferentTx case
+
 [0.22.1](https://github.com/ordinals/ord/releases/tag/0.22.1) - 2024-12-23
 --------------------------------------------------------------------------
 
