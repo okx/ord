@@ -1,6 +1,6 @@
 use super::{entry::DynamicEntry, *};
-use crate::index::Curse;
 use crate::Chain;
+use crate::{index::Curse, okx::brc20::operation::Predeploy};
 use fixed_point::FixedPoint;
 use once_cell::sync::Lazy;
 use operation::{BRC20OperationExtractor, Deploy, Mint, RawOperation, Transfer};
@@ -25,9 +25,15 @@ pub(crate) use self::{
   ticker::{BRC20LowerCaseTicker, BRC20Ticker},
 };
 const SELF_ISSUANCE_TICKER_LENGTH: usize = 5;
+const PREDEPLOYED_TICKER_LENGTH: usize = 6;
+
 #[derive(Debug, Clone)]
 pub enum BRC20Operation {
-  Deploy(Deploy),
+  Predeploy(Predeploy),
+  Deploy {
+    deploy: Deploy,
+    parent: Option<InscriptionId>,
+  },
   Mint {
     op: Mint,
     parent: Option<InscriptionId>,
@@ -108,6 +114,17 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
       self.pre_jubilant_curse_reason,
     ) {
       match self.inscription.extract_brc20_operation() {
+        Ok(RawOperation::Predeploy(predeploy)) => {
+          if height < HardForks::predeploy_activation_height(&chain) {
+            log::debug!(
+              "Pre-deploy feature is not activated at height: {} for inscription: {}",
+              height,
+              self.inscription_id
+            );
+            return None;
+          }
+          Some(BRC20Operation::Predeploy(predeploy))
+        }
         Ok(RawOperation::Deploy(mut deploy)) => {
           // Filter out invalid deployments with a 5-byte ticker.
           // proposal for issuance self mint token.
@@ -132,7 +149,21 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
           } else {
             deploy.self_mint = None;
           }
-          Some(BRC20Operation::Deploy(deploy))
+          if deploy.tick.len() == PREDEPLOYED_TICKER_LENGTH {
+            if height < HardForks::six_byte_deploy_activation_height(&chain) {
+              log::debug!(
+                "Pre-deployed 6-byte tickers are not activated at height: {} for inscription: {} with ticker length: {}",
+                height,
+                self.inscription_id,
+                PREDEPLOYED_TICKER_LENGTH
+              );
+              return None;
+            }
+          }
+          Some(BRC20Operation::Deploy {
+            deploy,
+            parent: self.parents.first().cloned(),
+          })
         }
         Ok(RawOperation::Mint(mint)) => Some(BRC20Operation::Mint {
           op: mint,

@@ -3,9 +3,10 @@ use serde_json::{json, Value};
 
 mod deploy;
 mod mint;
+mod predeploy;
 mod transfer;
 
-pub use self::{deploy::Deploy, mint::Mint, transfer::Transfer};
+pub use self::{deploy::Deploy, mint::Mint, predeploy::Predeploy, transfer::Transfer};
 
 pub const PROTOCOL_LITERAL: &str = "brc-20";
 
@@ -16,6 +17,8 @@ pub trait BRC20OperationExtractor {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(tag = "op")]
 pub enum RawOperation {
+  #[serde(rename = "predeploy")]
+  Predeploy(Predeploy),
   #[serde(rename = "deploy")]
   Deploy(Deploy),
   #[serde(rename = "mint")]
@@ -87,6 +90,36 @@ mod tests {
   use super::*;
 
   #[test]
+  fn test_predeploy_deserialize() {
+    let hash = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
+    let decoded_hash = hex::decode(hash).unwrap().as_slice().try_into().unwrap();
+    let json_str = format!(
+      r##"{{
+      "p": "brc-20",
+      "op": "predeploy",
+      "hash": "{hash}"
+    }}"##
+    );
+    assert_eq!(
+      deserialize_brc20_operation(&json_str).unwrap(),
+      RawOperation::Predeploy(Predeploy { hash: decoded_hash })
+    );
+  }
+
+  #[test]
+  fn test_predeploy_deserialize_invalid_hash() {
+    let hash = "invalidhash";
+    let json_str = format!(
+      r##"{{
+      "p": "brc-20",
+      "op": "predeploy",
+      "hash": "{hash}"
+    }}"##
+    );
+    assert!(deserialize_brc20_operation(&json_str).is_err());
+  }
+
+  #[test]
   fn test_deploy_deserialize() {
     let max_supply = "21000000".to_string();
     let mint_limit = "1000".to_string();
@@ -109,6 +142,7 @@ mod tests {
         mint_limit: Some(mint_limit),
         decimals: None,
         self_mint: None,
+        salt: None,
       })
     );
   }
@@ -161,7 +195,7 @@ mod tests {
   fn test_json_duplicate_field() {
     let json_str = r#"{"p":"brc-20","op":"mint","tick":"smol","amt":"333","amt":"33"}"#;
     assert_eq!(
-      deserialize_brc20_operation(json_str).unwrap(),
+      deserialize_brc20_operation(&json_str).unwrap(),
       RawOperation::Mint(Mint {
         tick: String::from("smol"),
         amount: String::from("33"),
@@ -172,7 +206,8 @@ mod tests {
   #[test]
   fn test_missing_required_key() {
     assert_eq!(
-      deserialize_brc20_operation(r#"{"p":"brc-20","op":"transfer","tick":"abcd"}"#).unwrap_err(),
+      deserialize_brc20_operation(r#"{"p":"brc-20","op":"transfer","tick":"abcd"}"#)
+        .unwrap_err(),
       Error::ParseOperationJsonError("missing field `amt`".to_string())
     );
   }
@@ -180,7 +215,7 @@ mod tests {
   #[test]
   fn test_json_non_string() {
     let json_str = r#"{"p":"brc-20","op":"mint","tick":"smol","amt":33}"#;
-    assert!(deserialize_brc20_operation(json_str).is_err())
+    assert!(deserialize_brc20_operation(&json_str).is_err())
   }
 
   #[test]
@@ -208,19 +243,20 @@ mod tests {
   fn test_duplicate_key() {
     let json_str = r#"{"p":"brc-20","op":"deploy","tick":"smol","max":"100","lim":"10","dec":"17","max":"200","lim":"20","max":"300"}"#;
     assert_eq!(
-      deserialize_brc20_operation(json_str).unwrap(),
+      deserialize_brc20_operation(&json_str).unwrap(),
       RawOperation::Deploy(Deploy {
         tick: "smol".to_string(),
         max_supply: "300".to_string(),
         mint_limit: Some("20".to_string()),
         decimals: Some("17".to_string()),
         self_mint: None,
+        salt: None,
       })
     );
 
     let json_str = r#"{"p":"brc-20","op":"mint","tick":"smol","amt":"100","tick":"hhaa","amt":"200","tick":"actt"}"#;
     assert_eq!(
-      deserialize_brc20_operation(json_str).unwrap(),
+      deserialize_brc20_operation(&json_str).unwrap(),
       RawOperation::Mint(Mint {
         tick: "actt".to_string(),
         amount: "200".to_string(),
@@ -229,7 +265,7 @@ mod tests {
 
     let json_str = r#"{"p":"brc-20","op":"transfer","tick":"smol","amt":"100","tick":"hhaa","amt":"200","tick":"actt"}"#;
     assert_eq!(
-      deserialize_brc20_operation(json_str).unwrap(),
+      deserialize_brc20_operation(&json_str).unwrap(),
       RawOperation::Transfer(Transfer {
         tick: "actt".to_string(),
         amount: "200".to_string(),

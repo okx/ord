@@ -12,6 +12,8 @@ pub struct Deploy {
   pub decimals: Option<String>,
   #[serde(default, with = "parse_bool", skip_serializing_if = "Option::is_none")]
   pub self_mint: Option<bool>,
+  #[serde(rename = "salt", default, skip_serializing_if = "Option::is_none")]
+  pub salt: Option<String>,
 }
 
 mod parse_bool {
@@ -53,6 +55,7 @@ mod tests {
       mint_limit: Some("12".to_string()),
       decimals: Some("11".to_string()),
       self_mint: None,
+      salt: None,
     };
 
     assert_eq!(
@@ -78,6 +81,7 @@ mod tests {
         mint_limit: Some("12".to_string()),
         decimals: Some("11".to_string()),
         self_mint: None,
+        salt: None,
       }
     );
   }
@@ -90,6 +94,7 @@ mod tests {
       mint_limit: Some("12".to_string()),
       decimals: Some("11".to_string()),
       self_mint: None,
+      salt: None,
     };
 
     assert_eq!(
@@ -148,6 +153,7 @@ mod tests {
         mint_limit: Some("10".to_string()),
         decimals: Some("10".to_string()),
         self_mint: Some(true),
+        salt: None,
       }
     );
 
@@ -160,6 +166,7 @@ mod tests {
         mint_limit: Some("10".to_string()),
         decimals: Some("10".to_string()),
         self_mint: Some(true),
+        salt: None,
       }
     );
 
@@ -172,6 +179,7 @@ mod tests {
         mint_limit: Some("10".to_string()),
         decimals: Some("10".to_string()),
         self_mint: Some(false),
+        salt: None,
       }
     );
   }
@@ -227,6 +235,7 @@ mod tests {
         mint_limit: None,
         decimals: Some("10".to_string()),
         self_mint: None,
+        salt: None,
       }
     );
 
@@ -239,6 +248,7 @@ mod tests {
         mint_limit: Some("10".to_string()),
         decimals: None,
         self_mint: None,
+        salt: None,
       }
     );
 
@@ -251,7 +261,40 @@ mod tests {
         mint_limit: None,
         decimals: None,
         self_mint: None,
+        salt: None,
       }
+    );
+  }
+
+  #[test]
+  fn test_with_salt() {
+    let obj = Deploy {
+      tick: "abcd".to_string(),
+      max_supply: "12000".to_string(),
+      mint_limit: Some("12".to_string()),
+      decimals: Some("11".to_string()),
+      self_mint: None,
+      salt: Some("random_salt".to_string()),
+    };
+
+    assert_eq!(
+      serde_json::to_string(&obj).unwrap(),
+      format!(
+        r##"{{"tick":"{}","max":"{}","lim":"{}","dec":"{}","salt":"{}"}}"##,
+        obj.tick,
+        obj.max_supply,
+        obj.mint_limit.as_ref().unwrap(),
+        obj.decimals.as_ref().unwrap(),
+        obj.salt.as_ref().unwrap()
+      )
+    );
+
+    assert_eq!(
+      serde_json::from_str::<Deploy>(
+        r#"{"tick":"abcd","max":"12000","lim":"12","dec":"11","salt":"random_salt"}"#
+      )
+      .unwrap(),
+      obj
     );
   }
 }

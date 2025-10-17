@@ -3,6 +3,7 @@ use super::*;
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BRC20OpType {
+  Predeploy,
   Deploy,
   Mint,
   InscribeTransfer,
@@ -12,7 +13,8 @@ pub enum BRC20OpType {
 impl From<&BRC20Operation> for BRC20OpType {
   fn from(value: &BRC20Operation) -> Self {
     match value {
-      BRC20Operation::Deploy(_) => BRC20OpType::Deploy,
+      BRC20Operation::Predeploy(_) => BRC20OpType::Predeploy,
+      BRC20Operation::Deploy { .. } => BRC20OpType::Deploy,
       BRC20Operation::Mint { .. } => BRC20OpType::Mint,
       BRC20Operation::InscribeTransfer(_) => BRC20OpType::InscribeTransfer,
       BRC20Operation::Transfer { .. } => BRC20OpType::Transfer,
@@ -22,10 +24,18 @@ impl From<&BRC20Operation> for BRC20OpType {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum BRC20Event {
+  Predeploy(PredeployEvent),
   Deploy(DeployEvent),
   Mint(MintEvent),
   InscribeTransfer(InscribeTransferEvent),
   Transfer(TransferEvent),
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct PredeployEvent {
+  pub hash: [u8; 32],
+  pub predeployer: UtxoAddress,
+  pub block_height: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

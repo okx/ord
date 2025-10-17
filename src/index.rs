@@ -15,8 +15,8 @@ use {
     metrics::Metrics,
     okx::{
       brc20::entry::{
-        BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
-        BRC20TransferAssetValue,
+        BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20PredeployValue, BRC20ReceiptsValue,
+        BRC20TickerInfoValue, BRC20TransferAssetValue,
       },
       entry::{AddressTickerKeyValue, InscriptionReceiptsValue},
     },
@@ -96,6 +96,7 @@ define_table! { BTC_DOMAIN_TO_SEQUENCE_NUMBER, &str, u32}
 
 // BRC-20 tables
 define_table! { BRC20_BALANCES, &AddressTickerKeyValue, &BRC20BalanceValue }
+define_table! { BRC20_PREDEPLOYS, &str, &BRC20PredeployValue }
 define_table! { BRC20_TICKER_ENTRY, &BRC20LowerCaseTickerValue, &BRC20TickerInfoValue }
 define_table! { BRC20_TRANSACTION_ID_TO_RECEIPTS, &TxidValue, &BRC20ReceiptsValue }
 define_table! { BRC20_SATPOINT_TO_TRANSFER_ASSETS, &SatPointValue, &BRC20TransferAssetValue }

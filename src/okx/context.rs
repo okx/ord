@@ -1,8 +1,9 @@
 use super::{
   brc20::{
     entry::{
-      BRC20Balance, BRC20BalanceValue, BRC20Receipt, BRC20ReceiptsValue, BRC20TickerInfo,
-      BRC20TickerInfoValue, BRC20TransferAsset, BRC20TransferAssetValue,
+      BRC20Balance, BRC20BalanceValue, BRC20Predeploy, BRC20PredeployValue, BRC20Receipt,
+      BRC20ReceiptsValue, BRC20TickerInfo, BRC20TickerInfoValue, BRC20TransferAsset,
+      BRC20TransferAssetValue,
     },
     BRC20Ticker,
   },
@@ -20,6 +21,8 @@ pub(crate) struct TableContext<'a, 'txn> {
   inscription_receipts: &'a mut Table<'txn, &'static TxidValue, &'static InscriptionReceiptsValue>,
   // BRC20 tables
   brc20_balances: &'a mut Table<'txn, &'static AddressTickerKeyValue, &'static BRC20BalanceValue>,
+  // Inscription ID as str -> BRC20 Predeploy Hash, Deployer Address and Block Height
+  brc20_predeploys: &'a mut Table<'txn, &'static str, &'static BRC20PredeployValue>,
   brc20_ticker_info:
     &'a mut Table<'txn, &'static AddressTickerKeyValue, &'static BRC20TickerInfoValue>,
   brc20_receipts: &'a mut Table<'txn, &'static TxidValue, &'static BRC20ReceiptsValue>,
@@ -40,6 +43,7 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       &'static InscriptionReceiptsValue,
     >,
     brc20_balances: &'a mut Table<'txn, &'static AddressTickerKeyValue, &'static BRC20BalanceValue>,
+    brc20_predeploys: &'a mut Table<'txn, &'static str, &'static BRC20PredeployValue>,
     brc20_ticker_info: &'a mut Table<
       'txn,
       &'static AddressTickerKeyValue,
@@ -63,6 +67,7 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
     Self {
       inscription_receipts,
       brc20_balances,
+      brc20_predeploys,
       brc20_ticker_info,
       brc20_receipts,
       brc20_satpoint_to_transfer_assets,
@@ -71,6 +76,30 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       bitmap_block_height_to_sequence_number,
       btc_domain_to_sequence_number,
     }
+  }
+
+  pub fn insert_brc20_predeploy(
+    &mut self,
+    inscription_id: &InscriptionId,
+    predeploy: BRC20Predeploy,
+  ) -> Result<(), redb::StorageError> {
+    self.brc20_predeploys.insert(
+      inscription_id.to_string().as_str(),
+      predeploy.store().as_ref(),
+    )?;
+    Ok(())
+  }
+
+  pub fn load_brc20_predeploy(
+    &mut self,
+    inscription_id: &InscriptionId,
+  ) -> Result<Option<BRC20Predeploy>, redb::StorageError> {
+    Ok(
+      self
+        .brc20_predeploys
+        .get(inscription_id.to_string().as_str())?
+        .map(|v| DynamicEntry::load(v.value())),
+    )
   }
 
   pub fn load_brc20_ticker_info(

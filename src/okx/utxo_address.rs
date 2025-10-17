@@ -32,6 +32,18 @@ impl UtxoAddress {
     )
   }
 
+  pub fn to_script_bytes(&self) -> Vec<u8> {
+    match &self.0 {
+      UtxoAddressInner::Address(address) => address
+        .clone()
+        .assume_checked()
+        .script_pubkey()
+        .as_bytes()
+        .to_vec(),
+      UtxoAddressInner::ScriptHash { script_hash, .. } => script_hash.as_byte_array().to_vec(),
+    }
+  }
+
   pub fn from_str(address: &str, network: Network) -> Result<Self> {
     Ok(
       Address::from_str(address)?

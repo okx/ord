@@ -36,6 +36,21 @@ pub enum BRC20Error {
   #[error("Self-mint operation denied: insufficient permissions")]
   SelfMintPermissionDenied,
 
+  #[error("Salt not found for ticker: {0}")]
+  SaltNotFound(String),
+
+  #[error("Salt is an invalid hex string for ticker: {0}")]
+  SaltInvalidHex(String),
+
+  #[error("Predeploy not found for ticker: {0}")]
+  PredeployNotFound(String),
+
+  #[error("Predeploy too young for ticker: {0}, block height: {1}")]
+  PredeployTooYoung(String, u32),
+
+  #[error("Predeploy hash invalid for ticker: {0}")]
+  PredeployHashInvalid(String),
+
   #[error("Numeric error occurred: {0}")]
   NumericError(#[from] fixed_point::NumParseError),
 }

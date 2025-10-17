@@ -26,6 +26,15 @@ impl_bincode_dynamic_entry!(BRC20Ticker, BRC20TickerValue);
 pub type BRC20LowerCaseTickerValue = [u8];
 impl_bincode_dynamic_entry!(BRC20LowerCaseTicker, BRC20LowerCaseTickerValue);
 
+pub type BRC20PredeployValue = [u8];
+impl_bincode_dynamic_entry!(BRC20Predeploy, BRC20PredeployValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20Predeploy {
+  pub hash: [u8; 32],
+  pub predeployer: UtxoAddress,
+  pub block_height: u32,
+}
+
 pub(crate) type BRC20TickerInfoValue = [u8];
 impl_bincode_dynamic_entry!(BRC20TickerInfo, BRC20TickerInfoValue);
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -104,6 +113,22 @@ mod tests {
       lower_ticker,
       BRC20Ticker::from_str("abcd").unwrap().to_lowercase()
     );
+  }
+
+  #[test]
+  fn test_predeploy_store_load() {
+    let predeploy = BRC20Predeploy {
+      hash: [1u8; 32],
+      predeployer: UtxoAddress::from_str(
+        "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        bitcoin::Network::Bitcoin,
+      )
+      .unwrap(),
+      block_height: 100,
+    };
+    let value = predeploy.store();
+    let loaded_predeploy = BRC20Predeploy::load(&value);
+    assert_eq!(predeploy, loaded_predeploy);
   }
 
   #[test]

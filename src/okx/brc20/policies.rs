@@ -16,6 +16,26 @@ impl HardForks {
     }
   }
 
+  /// Proposed block activation height for pre-deploy feature.
+  /// It is 10 blocks earlier than the 6-byte deployment activation height to allow users
+  /// to pre-deploy their desired tickers before the actual deployment.
+  /// Proposal content: https://github.com/bestinslot-xyz/brc20-proposals/tree/main/001-6-byte-namespace/index.md
+  pub fn predeploy_activation_height(chain: &Chain) -> u32 {
+    Self::six_byte_deploy_activation_height(chain) - 10
+  }
+
+  /// Proposed block activation height for 6-byte deployment feature.
+  /// Proposal content: https://github.com/bestinslot-xyz/brc20-proposals/tree/main/001-6-byte-namespace/index.md
+  pub fn six_byte_deploy_activation_height(chain: &Chain) -> u32 {
+    match chain {
+      Chain::Mainnet => 912690, // decided by community
+      Chain::Testnet => 0,
+      Chain::Regtest => 0,
+      Chain::Signet => 230000,
+      Chain::Testnet4 => 0,
+    }
+  }
+
   pub fn draft_reinscription_activation_height(chain: &Chain) -> u32 {
     match chain {
       Chain::Mainnet => u32::MAX, // todo: not set yet

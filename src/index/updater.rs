@@ -450,6 +450,7 @@ impl Updater<'_> {
     // BRC20 tables
     let mut brc20_ticker_info = wtx.open_table(BRC20_TICKER_ENTRY)?;
     let mut brc20_balances = wtx.open_table(BRC20_BALANCES)?;
+    let mut brc20_predeploys = wtx.open_table(BRC20_PREDEPLOYS)?;
     let mut brc20_receipts = wtx.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
     let mut brc20_satpoint_to_transfer_assets =
       wtx.open_table(BRC20_SATPOINT_TO_TRANSFER_ASSETS)?;
@@ -753,6 +754,7 @@ impl Updater<'_> {
       let mut context = TableContext::new(
         &mut inscription_receipts,
         &mut brc20_balances,
+        &mut brc20_predeploys,
         &mut brc20_ticker_info,
         &mut brc20_receipts,
         &mut brc20_satpoint_to_transfer_assets,

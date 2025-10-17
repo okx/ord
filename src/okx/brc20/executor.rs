@@ -8,6 +8,7 @@ use super::{
 mod deploy;
 mod inscribe_transfer;
 mod mint;
+mod predeploy;
 mod transfer;
 
 /// Represents a message used for executing BRC20 operations.
@@ -72,7 +73,8 @@ impl BRC20ExecutionMessage {
     blocktime: u32,
   ) -> Result<BRC20Receipt> {
     let result = match &self.operation {
-      BRC20Operation::Deploy(..) => self.execute_deploy(context, height, blocktime),
+      BRC20Operation::Predeploy(_) => self.execute_predeploy(context, height),
+      BRC20Operation::Deploy { .. } => self.execute_deploy(context, height, blocktime),
       BRC20Operation::Mint { .. } => self.execute_mint(context, height),
       BRC20Operation::InscribeTransfer(_) => self.execute_inscribe_transfer(context),
       BRC20Operation::Transfer { .. } => self.execute_transfer(context),

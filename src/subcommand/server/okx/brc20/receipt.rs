@@ -8,6 +8,7 @@ use crate::okx::brc20::{
 #[serde(untagged)]
 #[serde(rename_all = "camelCase")]
 pub enum ApiTxEvent {
+  PredeployEvent(ApiPredeployEvent),
   Deploy(ApiDeployEvent),
   Mint(ApiMintEvent),
   InscribeTransfer(ApiInscribeTransferEvent),
@@ -18,6 +19,18 @@ pub enum ApiTxEvent {
 impl From<BRC20Receipt> for ApiTxEvent {
   fn from(event: BRC20Receipt) -> Self {
     match event.result {
+      Ok(BRC20Event::Predeploy(predeploy_event)) => Self::PredeployEvent(ApiPredeployEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        hash: hex::encode(predeploy_event.hash),
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
       Ok(BRC20Event::Deploy(deploy_event)) => Self::Deploy(ApiDeployEvent {
         inscription_id: event.inscription_id,
         inscription_number: event.inscription_number,
@@ -101,6 +114,22 @@ pub struct ApiErrorEvent {
   pub new_satpoint: SatPoint,
   pub from: ApiUtxoAddress,
   pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiPredeployEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub hash: String,
   pub valid: bool,
   pub msg: String,
 }
@@ -308,6 +337,49 @@ mod tests {
   use super::*;
   #[test]
   fn test_serialize_api_event() {
+    let predeploy: ApiPredeployEvent = ApiPredeployEvent {
+      event: BRC20OpType::Predeploy,
+      inscription_id: Default::default(),
+      inscription_number: 0,
+      old_satpoint: Default::default(),
+      new_satpoint: Default::default(),
+      from: UtxoAddress::from_str(
+        "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+        Network::Bitcoin,
+      )
+      .unwrap()
+      .into(),
+      to: UtxoAddress::from_str(
+        "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+        Network::Bitcoin,
+      )
+      .unwrap()
+      .into(),
+      hash: "abcdef".to_string(),
+      valid: true,
+      msg: "ok".to_string(),
+    };
+
+    assert_eq!(
+      serde_json::to_string_pretty(&predeploy).unwrap(),
+      r#"{
+  "type": "predeploy",
+  "inscriptionId": "0000000000000000000000000000000000000000000000000000000000000000i0",
+  "inscriptionNumber": 0,
+  "oldSatpoint": "0000000000000000000000000000000000000000000000000000000000000000:4294967295:0",
+  "newSatpoint": "0000000000000000000000000000000000000000000000000000000000000000:4294967295:0",
+  "from": {
+    "address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+  },
+  "to": {
+    "address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+  },
+  "hash": "abcdef",
+  "valid": true,
+  "msg": "ok"
+}"#
+    );
+
     let deploy = ApiDeployEvent {
       event: BRC20OpType::Deploy,
       tick: BRC20Ticker::from_str("ordi").unwrap(),
