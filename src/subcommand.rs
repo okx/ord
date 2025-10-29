@@ -72,6 +72,14 @@ impl Subcommand {
       Self::Parse(parse) => parse.run(),
       Self::Runes => runes::run(settings),
       Self::Server(server) => {
+        if let Err(e) = logger::init(settings.log_level(), settings.log_dir()) {
+          bail!(
+            "Failed to initialize logger. Log level: {:?}, Log directory: {}. Error: {}",
+            settings.log_level(),
+            settings.log_dir().display(),
+            e
+          );
+        }
         let mut index = Index::open(&settings)?;
         if server.enable_metrics {
           index = index.with_metrics();
