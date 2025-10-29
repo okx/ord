@@ -104,7 +104,7 @@ impl InscriptionUpdater<'_, '_> {
 
       let input_script_buf = index
         .index_addresses
-        .then_some(input_utxo_entries[input_index].script_pubkey())
+        .then(|| input_utxo_entries[input_index].script_pubkey())
         .unwrap_or_default();
 
       transferred_inscriptions.sort_by_key(|(sequence_number, _)| *sequence_number);
