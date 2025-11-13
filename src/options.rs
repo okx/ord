@@ -101,4 +101,14 @@ pub struct Options {
   pub(crate) index_btc_domain: bool,
   #[arg(long, help = "Index BRC-20 token operations.")]
   pub(crate) index_brc20: bool,
+  #[arg(long, help = "BRC-20 prog API URL.")]
+  pub(crate) brc20_prog_url: Option<String>,
+  #[arg(long, help = "BRC-20 prog API username.")]
+  pub(crate) brc20_prog_username: Option<String>,
+  #[arg(long, help = "BRC-20 prog API password.")]
+  pub(crate) brc20_prog_password: Option<String>,
+  #[arg(long, help = "Enable OPI validation for BRC20 indexing.")]
+  pub(crate) opi_validation: bool,
+  #[arg(long, help = "Enable strict OPI validation for BRC20 indexing.")]
+  pub(crate) opi_validation_strict: bool,
 }

@@ -17,8 +17,6 @@ impl BRC20ExecutionMessage {
       .load_brc20_ticker_info(&ticker)?
       .ok_or(BRC20Error::TickerNotFound(mint.tick.clone()))?;
 
-    let ticker = ticker_info.ticker.clone();
-
     // check if self mint is allowed.
     if ticker_info.self_minted && !parent.is_some_and(|parent| parent == ticker_info.inscription_id)
     {
@@ -79,6 +77,8 @@ impl BRC20ExecutionMessage {
     // update the ticker info.
     ticker_info.minted = (minted + amt).to_u128_and_scale().0;
     ticker_info.latest_minted_block_height = height;
+
+    let decimals = ticker_info.decimals;
     context.update_brc20_ticker_info(&ticker, ticker_info)?;
 
     Ok(BRC20Receipt {
@@ -93,8 +93,11 @@ impl BRC20ExecutionMessage {
       result: Ok(BRC20Event::Mint(MintEvent {
         ticker,
         amount: amt.to_u128_and_scale().0,
+        decimals,
         clipped,
+        parent_id: parent.map(|parent| parent.to_string()),
       })),
+      prog_tx_count: 0,
     })
   }
 }

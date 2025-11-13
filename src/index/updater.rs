@@ -5,7 +5,9 @@ use {
     metrics::MetricsExt,
     okx::{context::TableContext, OkxUpdater},
   },
+  brc20_prog::Brc20ProgApiClient,
   futures::future::try_join_all,
+  jsonrpsee::http_client::HttpClientBuilder,
   tokio::sync::{
     broadcast::{self, error::TryRecvError},
     mpsc::{self},
@@ -81,6 +83,22 @@ impl Updater<'_> {
 
     let (mut output_sender, mut txout_receiver) = Self::spawn_fetcher(self.index)?;
 
+    let runtime = tokio::runtime::Builder::new_current_thread()
+      .enable_all()
+      .build()
+      .expect("rt");
+    let brc20_prog_http_client = HttpClientBuilder::new()
+      .max_request_size(u32::MAX)
+      .max_response_size(u32::MAX)
+      .set_headers(self.index.settings.brc20_prog_auth_header())
+      .build(self.index.settings.brc20_prog_url())?;
+    runtime.block_on(async {
+      brc20_prog_http_client
+        .brc20_clear_caches()
+        .await
+        .expect("Clear BRC20 caches");
+    });
+
     let mut uncommitted = 0;
     let mut utxo_cache = HashMap::new();
     while let Ok(block) = rx.recv() {
@@ -131,6 +149,17 @@ impl Updater<'_> {
               .duration_since(SystemTime::UNIX_EPOCH)?
               .as_millis(),
           )?;
+
+        if self.index.settings.index_brc20()
+          && self.height >= self.index.settings.first_brc20_prog_height()
+        {
+          runtime.block_on(async {
+            brc20_prog_http_client
+              .brc20_commit_to_database()
+              .await
+              .expect("BRC20 commit to database failed");
+          });
+        }
       }
 
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
@@ -454,6 +483,14 @@ impl Updater<'_> {
     let mut brc20_receipts = wtx.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
     let mut brc20_satpoint_to_transfer_assets =
       wtx.open_table(BRC20_SATPOINT_TO_TRANSFER_ASSETS)?;
+    let mut brc20_satpoint_to_prog_deploy_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_PROG_DEPLOY_ASSETS)?;
+    let mut brc20_satpoint_to_prog_call_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_PROG_CALL_ASSETS)?;
+    let mut brc20_satpoint_to_prog_transact_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_PROG_TRANSACT_ASSETS)?;
+    let mut brc20_satpoint_to_withdraw_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_WITHDRAW_ASSETS)?;
     let mut brc20_address_ticker_to_transfer_assets =
       wtx.open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS)?;
 
@@ -762,15 +799,35 @@ impl Updater<'_> {
         &mut sequence_number_to_collection_type,
         &mut bitmap_block_height_to_sequence_number,
         &mut btc_domain_to_sequence_number,
+        &mut brc20_satpoint_to_prog_deploy_assets,
+        &mut brc20_satpoint_to_prog_call_assets,
+        &mut brc20_satpoint_to_prog_transact_assets,
+        &mut brc20_satpoint_to_withdraw_assets,
       );
+
+      let http_client = HttpClientBuilder::new()
+        .max_request_size(u32::MAX)
+        .max_response_size(u32::MAX)
+        .set_headers(self.index.settings.brc20_prog_auth_header())
+        .build(self.index.settings.brc20_prog_url())?;
 
       let mut okx_updater = OkxUpdater {
         height: self.height,
         timestamp: block.header.time,
+        block_hash: block
+          .header
+          .block_hash()
+          .as_byte_array()
+          .as_slice()
+          .try_into()
+          .expect("32 bytes"),
+        first_inscription_height: self.index.settings.first_inscription_height(),
+        first_brc20_prog_height: self.index.settings.first_brc20_prog_height(),
       };
       okx_updater.index_block_bundle_messages(
         &mut context,
-        self.index,
+        &http_client,
+        &self.index,
         block,
         block_bundle_messages,
       )?;

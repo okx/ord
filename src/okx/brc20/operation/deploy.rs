@@ -17,7 +17,7 @@ pub struct Deploy {
 }
 
 mod parse_bool {
-  use serde::{de, Deserialize, Deserializer};
+  use serde::{Deserialize, Deserializer};
   pub fn serialize<S>(v: &Option<bool>, serializer: S) -> Result<S::Ok, S::Error>
   where
     S: serde::Serializer,
@@ -32,13 +32,14 @@ mod parse_bool {
   where
     D: Deserializer<'de>,
   {
-    let s: Option<String> = Deserialize::deserialize(deserializer)?;
+    let s: Option<String> = match Deserialize::deserialize(deserializer) {
+      Ok(v) => v,
+      Err(_) => return Ok(None),
+    };
 
     match s.as_deref() {
       Some("true") => Ok(Some(true)),
-      Some("false") => Ok(Some(false)),
-      Some(v) => Err(de::Error::unknown_variant(v, &["true", "false"])),
-      None => Ok(None),
+      _ => Ok(None),
     }
   }
 }

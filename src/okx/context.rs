@@ -1,9 +1,9 @@
 use super::{
   brc20::{
     entry::{
-      BRC20Balance, BRC20BalanceValue, BRC20Predeploy, BRC20PredeployValue, BRC20Receipt,
-      BRC20ReceiptsValue, BRC20TickerInfo, BRC20TickerInfoValue, BRC20TransferAsset,
-      BRC20TransferAssetValue,
+      BRC20Balance, BRC20BalanceValue, BRC20Predeploy, BRC20PredeployValue, BRC20ProgTransactValue,
+      BRC20Receipt, BRC20ReceiptsValue, BRC20TickerInfo, BRC20TickerInfoValue, BRC20TransferAsset,
+      BRC20TransferAssetValue, BRC20WithdrawValue,
     },
     BRC20Ticker,
   },
@@ -14,7 +14,13 @@ use super::{
   },
   *,
 };
-use crate::index::entry::{Entry, SatPointValue, TxidValue};
+use crate::{
+  index::entry::{Entry, SatPointValue, TxidValue},
+  okx::brc20::entry::{
+    BRC20ProgCall, BRC20ProgCallValue, BRC20ProgDeploy, BRC20ProgDeployValue, BRC20ProgTransact,
+    BRC20Withdraw,
+  },
+};
 use redb::{MultimapTable, ReadableTable, Table};
 
 pub(crate) struct TableContext<'a, 'txn> {
@@ -33,6 +39,16 @@ pub(crate) struct TableContext<'a, 'txn> {
   sequence_number_to_collection_type: &'a mut Table<'txn, u32, u16>,
   bitmap_block_height_to_sequence_number: &'a mut Table<'txn, u32, u32>,
   btc_domain_to_sequence_number: &'a mut Table<'txn, &'static str, u32>,
+
+  brc20_satpoint_to_prog_deploy_assets:
+    &'a mut Table<'txn, &'static SatPointValue, &'static BRC20ProgDeployValue>,
+  brc20_satpoint_to_prog_call_assets:
+    &'a mut Table<'txn, &'static SatPointValue, &'static BRC20ProgCallValue>,
+  brc20_satpoint_to_prog_transact_assets:
+    &'a mut Table<'txn, &'static SatPointValue, &'static BRC20ProgTransactValue>,
+
+  brc20_satpoint_to_withdraw_assets:
+    &'a mut Table<'txn, &'static SatPointValue, &'static BRC20WithdrawValue>,
 }
 
 impl<'a, 'txn> TableContext<'a, 'txn> {
@@ -63,6 +79,26 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
     sequence_number_to_collection_type: &'a mut Table<'txn, u32, u16>,
     bitmap_block_height_to_sequence_number: &'a mut Table<'txn, u32, u32>,
     btc_domain_to_sequence_number: &'a mut Table<'txn, &'static str, u32>,
+    brc20_satpoint_to_prog_deploy_assets: &'a mut Table<
+      'txn,
+      &'static SatPointValue,
+      &'static BRC20ProgDeployValue,
+    >,
+    brc20_satpoint_to_prog_call_assets: &'a mut Table<
+      'txn,
+      &'static SatPointValue,
+      &'static BRC20ProgCallValue,
+    >,
+    brc20_satpoint_to_prog_transact_assets: &'a mut Table<
+      'txn,
+      &'static SatPointValue,
+      &'static BRC20ProgTransactValue,
+    >,
+    brc20_satpoint_to_withdraw_assets: &'a mut Table<
+      'txn,
+      &'static SatPointValue,
+      &'static BRC20WithdrawValue,
+    >,
   ) -> Self {
     Self {
       inscription_receipts,
@@ -75,6 +111,10 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       sequence_number_to_collection_type,
       bitmap_block_height_to_sequence_number,
       btc_domain_to_sequence_number,
+      brc20_satpoint_to_prog_deploy_assets,
+      brc20_satpoint_to_prog_call_assets,
+      brc20_satpoint_to_prog_transact_assets,
+      brc20_satpoint_to_withdraw_assets,
     }
   }
 
@@ -161,6 +201,114 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       .as_ref(),
       balance.store().as_ref(),
     )?;
+    Ok(())
+  }
+
+  pub fn pop_brc20_prog_call_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> Result<Option<BRC20ProgCall>, redb::StorageError> {
+    let value = self
+      .brc20_satpoint_to_prog_call_assets
+      .get(&satpoint.store())?
+      .map(|v| DynamicEntry::load(v.value()));
+    if value.is_some() {
+      self
+        .brc20_satpoint_to_prog_call_assets
+        .remove(&satpoint.store())?;
+    }
+    Ok(value)
+  }
+
+  pub fn pop_brc20_prog_transact_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> Result<Option<BRC20ProgTransact>, redb::StorageError> {
+    let value = self
+      .brc20_satpoint_to_prog_transact_assets
+      .get(&satpoint.store())?
+      .map(|v| DynamicEntry::load(v.value()));
+    if value.is_some() {
+      self
+        .brc20_satpoint_to_prog_transact_assets
+        .remove(&satpoint.store())?;
+    }
+    Ok(value)
+  }
+
+  pub fn pop_brc20_prog_deploy_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> Result<Option<BRC20ProgDeploy>, redb::StorageError> {
+    let value = self
+      .brc20_satpoint_to_prog_deploy_assets
+      .get(&satpoint.store())?
+      .map(|v| DynamicEntry::load(v.value()));
+    if value.is_some() {
+      self
+        .brc20_satpoint_to_prog_deploy_assets
+        .remove(&satpoint.store())?;
+    }
+    Ok(value)
+  }
+
+  pub fn pop_brc20_prog_withdraw_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> Result<Option<BRC20Withdraw>, redb::StorageError> {
+    let value = self
+      .brc20_satpoint_to_withdraw_assets
+      .get(&satpoint.store())?
+      .map(|v| DynamicEntry::load(v.value()));
+    if value.is_some() {
+      self
+        .brc20_satpoint_to_withdraw_assets
+        .remove(&satpoint.store())?;
+    }
+    Ok(value)
+  }
+
+  pub fn insert_brc20_prog_deploy_asset(
+    &mut self,
+    satpoint: SatPoint,
+    asset: BRC20ProgDeploy,
+  ) -> std::result::Result<(), redb::StorageError> {
+    self
+      .brc20_satpoint_to_prog_deploy_assets
+      .insert(&satpoint.store(), asset.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn insert_brc20_prog_call_asset(
+    &mut self,
+    satpoint: SatPoint,
+    asset: BRC20ProgCall,
+  ) -> std::result::Result<(), redb::StorageError> {
+    self
+      .brc20_satpoint_to_prog_call_assets
+      .insert(&satpoint.store(), asset.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn insert_brc20_prog_transact_asset(
+    &mut self,
+    satpoint: SatPoint,
+    asset: BRC20ProgTransact,
+  ) -> std::result::Result<(), redb::StorageError> {
+    self
+      .brc20_satpoint_to_prog_transact_assets
+      .insert(&satpoint.store(), asset.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn insert_brc20_withdraw_asset(
+    &mut self,
+    satpoint: SatPoint,
+    asset: BRC20Withdraw,
+  ) -> std::result::Result<(), redb::StorageError> {
+    self
+      .brc20_satpoint_to_withdraw_assets
+      .insert(&satpoint.store(), asset.store().as_ref())?;
     Ok(())
   }
 

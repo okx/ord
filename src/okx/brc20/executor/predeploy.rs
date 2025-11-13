@@ -1,12 +1,4 @@
-use crate::okx::{
-  brc20::{
-    entry::BRC20Predeploy,
-    event::{BRC20Event, BRC20OpType, PredeployEvent},
-    executor::ExecutionError,
-    BRC20ExecutionMessage, BRC20Operation, BRC20Receipt,
-  },
-  context::TableContext,
-};
+use super::*;
 
 impl BRC20ExecutionMessage {
   pub(super) fn execute_predeploy(
@@ -40,6 +32,7 @@ impl BRC20ExecutionMessage {
         predeployer: self.receiver.clone().unwrap(),
         block_height: height,
       })),
+      prog_tx_count: 0,
     })
   }
 }

@@ -67,6 +67,50 @@ pub struct BRC20TransferAsset {
   pub inscription_id: InscriptionId,
 }
 
+pub(crate) type BRC20ProgDeployValue = [u8];
+impl_bincode_dynamic_entry!(BRC20ProgDeploy, BRC20ProgDeployValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20ProgDeploy {
+  pub data: Option<String>,
+  pub base64_data: Option<String>,
+  pub inscription_id: InscriptionId,
+  pub inscription_byte_length: u64,
+}
+
+pub(crate) type BRC20ProgCallValue = [u8];
+impl_bincode_dynamic_entry!(BRC20ProgCall, BRC20ProgCallValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20ProgCall {
+  pub contract_address: Option<String>,
+  pub contract_inscription_id: Option<String>,
+  pub data: Option<String>,
+  pub base64_data: Option<String>,
+  pub inscription_id: InscriptionId,
+  pub inscription_byte_length: u64,
+}
+
+pub(crate) type BRC20ProgTransactValue = [u8];
+impl_bincode_dynamic_entry!(BRC20ProgTransact, BRC20ProgTransactValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20ProgTransact {
+  pub data: Option<String>,
+  pub base64_data: Option<String>,
+  pub inscription_id: InscriptionId,
+  pub inscription_byte_length: u64,
+}
+
+pub(crate) type BRC20WithdrawValue = [u8];
+impl_bincode_dynamic_entry!(BRC20Withdraw, BRC20WithdrawValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20Withdraw {
+  pub ticker: BRC20Ticker,
+  pub amount: u128,
+  pub owner: UtxoAddress,
+  pub sequence_number: u32,
+  pub inscription_number: i32,
+  pub inscription_id: InscriptionId,
+}
+
 pub(crate) type BRC20ReceiptsValue = [u8];
 impl_bincode_dynamic_entry!(Vec<BRC20Receipt>, BRC20ReceiptsValue);
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -80,6 +124,7 @@ pub struct BRC20Receipt {
   pub sender: UtxoAddress,
   pub receiver: UtxoAddress,
   pub result: Result<BRC20Event, BRC20Error>,
+  pub prog_tx_count: u64,
 }
 
 #[cfg(test)]

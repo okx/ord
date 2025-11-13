@@ -13,6 +13,14 @@ pub enum ApiTxEvent {
   Mint(ApiMintEvent),
   InscribeTransfer(ApiInscribeTransferEvent),
   Transfer(ApiTransferEvent),
+  InscribeWithdraw(ApiInscribeWithdrawEvent),
+  Withdraw(ApiWithdrawEvent),
+  InscribeProgDeploy(ApiInscribeProgDeployEvent),
+  InscribeProgCall(ApiInscribeProgCallEvent),
+  InscribeProgTransact(ApiInscribeProgTransactEvent),
+  ProgDeploy(ApiProgDeployEvent),
+  ProgCall(ApiProgCallEvent),
+  ProgTransact(ApiProgTransactEvent),
   Error(ApiErrorEvent),
 }
 
@@ -85,6 +93,104 @@ impl From<BRC20Receipt> for ApiTxEvent {
         valid: true,
         tick: transfer_event.ticker,
         amount: transfer_event.amount.to_string(),
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::InscribeWithdraw(inscribe_withdraw_event)) => {
+        Self::InscribeTransfer(ApiInscribeTransferEvent {
+          inscription_id: event.inscription_id,
+          inscription_number: event.inscription_number,
+          old_satpoint: event.old_satpoint,
+          new_satpoint: event.new_satpoint,
+          from: event.sender.into(),
+          to: event.receiver.into(),
+          valid: true,
+          tick: inscribe_withdraw_event.ticker,
+          amount: inscribe_withdraw_event.amount.to_string(),
+          msg: "ok".to_string(),
+          event: event.op_type,
+        })
+      }
+      Ok(BRC20Event::Withdraw(withdraw_event)) => Self::Withdraw(ApiWithdrawEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: withdraw_event.valid,
+        tick: withdraw_event.ticker,
+        amount: withdraw_event.amount.to_string(),
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::InscribeProgDeploy(_)) => {
+        Self::InscribeProgDeploy(ApiInscribeProgDeployEvent {
+          inscription_id: event.inscription_id,
+          inscription_number: event.inscription_number,
+          old_satpoint: event.old_satpoint,
+          new_satpoint: event.new_satpoint,
+          from: event.sender.into(),
+          to: event.receiver.into(),
+          valid: true,
+          msg: "ok".to_string(),
+          event: event.op_type,
+        })
+      }
+      Ok(BRC20Event::ProgDeploy(_)) => Self::ProgDeploy(ApiProgDeployEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::InscribeProgCall(_)) => Self::InscribeProgCall(ApiInscribeProgCallEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::ProgCall(_)) => Self::ProgCall(ApiProgCallEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::InscribeProgTransact(_)) => {
+        Self::InscribeProgTransact(ApiInscribeProgTransactEvent {
+          inscription_id: event.inscription_id,
+          inscription_number: event.inscription_number,
+          old_satpoint: event.old_satpoint,
+          new_satpoint: event.new_satpoint,
+          from: event.sender.into(),
+          to: event.receiver.into(),
+          valid: true,
+          msg: "ok".to_string(),
+          event: event.op_type,
+        })
+      }
+      Ok(BRC20Event::ProgTransact(_)) => Self::ProgTransact(ApiProgTransactEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
         msg: "ok".to_string(),
         event: event.op_type,
       }),
@@ -199,6 +305,130 @@ pub struct ApiTransferEvent {
   pub old_satpoint: SatPoint,
   pub new_satpoint: SatPoint,
   pub amount: String,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInscribeWithdrawEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub tick: BRC20Ticker,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub amount: String,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiWithdrawEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub tick: BRC20Ticker,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub amount: String,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInscribeProgDeployEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiProgDeployEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInscribeProgCallEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiProgCallEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInscribeProgTransactEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiProgTransactEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
   pub from: ApiUtxoAddress,
   pub to: ApiUtxoAddress,
   pub valid: bool,

@@ -1,4 +1,9 @@
-use {super::*, bitcoincore_rpc::Auth};
+use {
+  super::*,
+  base64::{prelude::BASE64_STANDARD, Engine},
+  bitcoincore_rpc::Auth,
+  jsonrpsee::http_client::{HeaderMap, HeaderValue},
+};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default, deny_unknown_fields)]
@@ -35,6 +40,13 @@ pub struct Settings {
   index_bitmap: bool,
   index_btc_domain: bool,
   index_brc20: bool,
+
+  brc20_prog_url: Option<String>,
+  brc20_prog_username: Option<String>,
+  brc20_prog_password: Option<String>,
+
+  opi_validation: bool,
+  opi_validation_strict: bool,
 }
 
 impl Settings {
@@ -155,6 +167,11 @@ impl Settings {
       index_bitmap: self.index_bitmap || source.index_bitmap,
       index_btc_domain: self.index_btc_domain || source.index_btc_domain,
       index_brc20: self.index_brc20 || source.index_brc20,
+      brc20_prog_url: self.brc20_prog_url.or(source.brc20_prog_url),
+      brc20_prog_username: self.brc20_prog_username.or(source.brc20_prog_username),
+      brc20_prog_password: self.brc20_prog_password.or(source.brc20_prog_password),
+      opi_validation: self.opi_validation || source.opi_validation,
+      opi_validation_strict: self.opi_validation_strict || source.opi_validation_strict,
     }
   }
 
@@ -198,6 +215,12 @@ impl Settings {
       index_bitmap: options.index_bitmap,
       index_btc_domain: options.index_btc_domain,
       index_brc20: options.index_brc20,
+      brc20_prog_url: options.brc20_prog_url,
+      brc20_prog_username: options.brc20_prog_username,
+      brc20_prog_password: options.brc20_prog_password,
+
+      opi_validation: options.opi_validation,
+      opi_validation_strict: options.opi_validation_strict,
     }
   }
 
@@ -295,6 +318,11 @@ impl Settings {
       index_bitmap: get_bool("INDEX_BITMAP"),
       index_btc_domain: get_bool("INDEX_BTC_DOMAIN"),
       index_brc20: get_bool("INDEX_BRC20"),
+      brc20_prog_url: get_string("BRC20_PROG_URL"),
+      brc20_prog_username: get_string("BRC20_PROG_USERNAME"),
+      brc20_prog_password: get_string("BRC20_PROG_PASSWORD"),
+      opi_validation: get_bool("OPI_VALIDATION"),
+      opi_validation_strict: get_bool("OPI_VALIDATION_STRICT"),
     })
   }
 
@@ -332,6 +360,12 @@ impl Settings {
       index_bitmap: false,
       index_btc_domain: false,
       index_brc20: false,
+      brc20_prog_url: None,
+      brc20_prog_username: None,
+      brc20_prog_password: None,
+
+      opi_validation: false,
+      opi_validation_strict: false,
     }
   }
 
@@ -413,6 +447,12 @@ impl Settings {
       index_bitmap: self.index_bitmap,
       index_btc_domain: self.index_btc_domain,
       index_brc20: self.index_brc20,
+      brc20_prog_url: self.brc20_prog_url,
+      brc20_prog_username: self.brc20_prog_username,
+      brc20_prog_password: self.brc20_prog_password,
+
+      opi_validation: self.opi_validation,
+      opi_validation_strict: self.opi_validation_strict,
     })
   }
 
@@ -571,6 +611,14 @@ impl Settings {
     }
   }
 
+  pub fn first_brc20_prog_height(&self) -> u32 {
+    if self.integration_test {
+      0
+    } else {
+      self.chain.unwrap().first_brc20_prog_height()
+    }
+  }
+
   pub fn height_limit(&self) -> Option<u32> {
     self.height_limit
   }
@@ -653,6 +701,39 @@ impl Settings {
 
   pub(crate) fn index_btc_domain(&self) -> bool {
     self.index_btc_domain
+  }
+
+  pub(crate) fn opi_validation(&self) -> bool {
+    self.opi_validation
+  }
+
+  pub(crate) fn opi_validation_strict(&self) -> bool {
+    self.opi_validation_strict
+  }
+
+  pub(crate) fn brc20_prog_url(&self) -> &str {
+    self.brc20_prog_url.as_deref().unwrap_or("")
+  }
+
+  pub(crate) fn brc20_prog_auth_header(&self) -> HeaderMap {
+    match (
+      self.brc20_prog_username.as_deref(),
+      self.brc20_prog_password.as_deref(),
+    ) {
+      (Some(username), Some(password)) => {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+          "Authorization",
+          HeaderValue::from_str(&format!(
+            "Basic {}",
+            BASE64_STANDARD.encode(format!("{}:{}", username, password))
+          ))
+          .unwrap(),
+        );
+        headers
+      }
+      _ => HeaderMap::new(),
+    }
   }
 }
 
@@ -1183,6 +1264,12 @@ mod tests {
         index_bitmap: true,
         index_btc_domain: true,
         index_brc20: true,
+        brc20_prog_url: None,
+        brc20_prog_username: None,
+        brc20_prog_password: None,
+
+        opi_validation: false,
+        opi_validation_strict: false,
       }
     );
   }
@@ -1221,6 +1308,11 @@ mod tests {
           "--index-bitmap",
           "--index-btc-domain",
           "--index-brc20",
+          "--brc20-prog-url=brc20url",
+          "--brc20-prog-username=brc20username",
+          "--brc20-prog-password=brc20password",
+          "--opi-validation",
+          "--opi-validation-strict",
         ])
         .unwrap()
       ),
@@ -1256,6 +1348,12 @@ mod tests {
         index_bitmap: true,
         index_btc_domain: true,
         index_brc20: true,
+        brc20_prog_url: Some("brc20url".into()),
+        brc20_prog_username: Some("brc20username".into()),
+        brc20_prog_password: Some("brc20password".into()),
+
+        opi_validation: true,
+        opi_validation_strict: true,
       }
     );
   }

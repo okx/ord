@@ -16,6 +16,51 @@ impl HardForks {
     }
   }
 
+  /// Proposed block activation height for BRC-20 Prog phase one.
+  ///
+  /// This height enables the programmable module feature for 6-byte tickers. 4 and 5-byte tickers
+  /// will not have access to the programmable module until the second phase activation height.
+  ///
+  /// Proposal content: https://github.com/bestinslot-xyz/brc20-proposals/blob/main/000-programmable-module/index.md
+  pub fn brc20_prog_activation_height(chain: &Chain) -> u32 {
+    match chain {
+      Chain::Mainnet => 912690, // decided by community
+      Chain::Testnet => 0,      // decided by okx team
+      Chain::Regtest => 0,
+      Chain::Signet => 230000,
+      Chain::Testnet4 => 0,
+    }
+  }
+
+  /// Proposed block activation height for EVM version Prague.
+  ///
+  /// This height enables the use of the transaction ID in the OP_RETURN field for BRC-20 Prog operations.
+  /// Proposal content: https://github.com/bestinslot-xyz/brc20-proposals/blob/main/003-prog-evm-upgrade/index.md
+  pub fn brc20_prog_prague_activation_height(chain: &Chain) -> u32 {
+    match chain {
+      Chain::Mainnet => 923369, // decided by community
+      Chain::Testnet => 0,       // decided by okx team
+      Chain::Regtest => 0,
+      Chain::Signet => 275000,
+      Chain::Testnet4 => 0,
+    }
+  }
+
+  /// Proposed block activation height for BRC-20 Prog phase two.
+  ///
+  /// This height enables the programmable module feature for all tickers, including 4 and 5-byte tickers.
+  ///
+  /// Proposal content: https://github.com/bestinslot-xyz/brc20-proposals/blob/main/000-programmable-module/index.md
+  pub fn brc20_prog_all_tickers_activation_height(chain: &Chain) -> u32 {
+    match chain {
+      Chain::Mainnet => u32::MAX, // decided by community
+      Chain::Testnet => 0,        // decided by okx team
+      Chain::Regtest => 0,
+      Chain::Signet => 230000,
+      Chain::Testnet4 => 0,
+    }
+  }
+
   /// Proposed block activation height for pre-deploy feature.
   /// It is 10 blocks earlier than the 6-byte deployment activation height to allow users
   /// to pre-deploy their desired tickers before the actual deployment.
@@ -27,13 +72,7 @@ impl HardForks {
   /// Proposed block activation height for 6-byte deployment feature.
   /// Proposal content: https://github.com/bestinslot-xyz/brc20-proposals/tree/main/001-6-byte-namespace/index.md
   pub fn six_byte_deploy_activation_height(chain: &Chain) -> u32 {
-    match chain {
-      Chain::Mainnet => 912690, // decided by community
-      Chain::Testnet => 0,
-      Chain::Regtest => 0,
-      Chain::Signet => 230000,
-      Chain::Testnet4 => 0,
-    }
+    Self::brc20_prog_activation_height(chain)
   }
 
   pub fn draft_reinscription_activation_height(chain: &Chain) -> u32 {

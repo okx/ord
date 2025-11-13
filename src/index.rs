@@ -15,8 +15,9 @@ use {
     metrics::Metrics,
     okx::{
       brc20::entry::{
-        BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20PredeployValue, BRC20ReceiptsValue,
-        BRC20TickerInfoValue, BRC20TransferAssetValue,
+        BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20PredeployValue, BRC20ProgCallValue,
+        BRC20ProgDeployValue, BRC20ProgTransactValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
+        BRC20TransferAssetValue, BRC20WithdrawValue,
       },
       entry::{AddressTickerKeyValue, InscriptionReceiptsValue},
     },
@@ -100,6 +101,10 @@ define_table! { BRC20_PREDEPLOYS, &str, &BRC20PredeployValue }
 define_table! { BRC20_TICKER_ENTRY, &BRC20LowerCaseTickerValue, &BRC20TickerInfoValue }
 define_table! { BRC20_TRANSACTION_ID_TO_RECEIPTS, &TxidValue, &BRC20ReceiptsValue }
 define_table! { BRC20_SATPOINT_TO_TRANSFER_ASSETS, &SatPointValue, &BRC20TransferAssetValue }
+define_table! { BRC20_SATPOINT_TO_PROG_DEPLOY_ASSETS, &SatPointValue, &BRC20ProgDeployValue }
+define_table! { BRC20_SATPOINT_TO_PROG_CALL_ASSETS, &SatPointValue, &BRC20ProgCallValue }
+define_table! { BRC20_SATPOINT_TO_PROG_TRANSACT_ASSETS, &SatPointValue, &BRC20ProgTransactValue }
+define_table! { BRC20_SATPOINT_TO_WITHDRAW_ASSETS, &SatPointValue, &BRC20WithdrawValue }
 define_multimap_table! { BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS, &AddressTickerKeyValue, &SatPointValue }
 
 #[derive(Copy, Clone)]
@@ -249,6 +254,12 @@ pub struct Index {
   index_bitmap: bool,
   index_btc_domain: bool,
   save_inscription_receipts: bool,
+}
+
+pub enum OpiValidationMode {
+  Strict,
+  Relaxed,
+  None,
 }
 
 impl Index {
@@ -2565,6 +2576,20 @@ impl Index {
       ),
       txout,
     )))
+  }
+
+  pub(crate) fn chain(&self) -> Chain {
+    self.settings.chain()
+  }
+
+  pub(crate) fn opi_validation_mode(&self) -> OpiValidationMode {
+    if self.settings.opi_validation_strict() {
+      OpiValidationMode::Strict
+    } else if self.settings.opi_validation() {
+      OpiValidationMode::Relaxed
+    } else {
+      OpiValidationMode::None
+    }
   }
 }
 

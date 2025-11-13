@@ -8,7 +8,7 @@ autotests = false
 homepage = "https://github.com/ordinals/ord"
 repository = "https://github.com/ordinals/ord"
 autobins = false
-rust-version = "1.79.0"
+rust-version = "1.87.0"
 
 [package.metadata.deb]
 copyright = "The Ord Maintainers"
@@ -81,6 +81,10 @@ once_cell = "1.20.2"
 num_enum = "0.7.3"
 prometheus = "0.13.4"
 openssl = { version = "0.10.70", optional = true }
+jsonrpsee = { version = "0.25.1", features = ["http-client"] }
+brc20-prog = { version = "0.15.3", default-features = false }
+sha256 = "1.6.0"
+serde_json_canonicalizer = "0.3.1"
 
 [dev-dependencies]
 criterion = "0.5.1"

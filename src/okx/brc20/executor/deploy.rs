@@ -136,6 +136,7 @@ impl BRC20ExecutionMessage {
         self_minted,
         max_mint_limit,
       })),
+      prog_tx_count: 0,
     })
   }
 }

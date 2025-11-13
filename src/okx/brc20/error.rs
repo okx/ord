@@ -51,6 +51,9 @@ pub enum BRC20Error {
   #[error("Predeploy hash invalid for ticker: {0}")]
   PredeployHashInvalid(String),
 
+  #[error("Invalid BRC2.0 inscription receiver")]
+  InvalidBRC20ProgReceiverAddress,
+
   #[error("Numeric error occurred: {0}")]
   NumericError(#[from] fixed_point::NumParseError),
 }

@@ -1,15 +1,28 @@
 use super::{
-  entry::{BRC20Balance, BRC20Receipt, BRC20TickerInfo},
+  entry::{BRC20Balance, BRC20Predeploy, BRC20Receipt, BRC20TickerInfo},
   error::BRC20Error,
-  event::{BRC20Event, BRC20OpType, DeployEvent, InscribeTransferEvent, MintEvent, TransferEvent},
+  event::{
+    BRC20Event, BRC20OpType, DeployEvent, InscribeProgCallEvent, InscribeProgDeployEvent,
+    InscribeProgTransactEvent, InscribeTransferEvent, InscribeWithdrawEvent, MintEvent,
+    PredeployEvent, ProgCallEvent, ProgDeployEvent, ProgTransactEvent, TransferEvent,
+    WithdrawEvent,
+  },
   *,
 };
 
 mod deploy;
+mod inscribe_prog_call;
+mod inscribe_prog_deploy;
+mod inscribe_prog_transact;
 mod inscribe_transfer;
+mod inscribe_withdraw;
 mod mint;
 mod predeploy;
+mod prog_call;
+mod prog_deploy;
+mod prog_transact;
 mod transfer;
+mod withdraw;
 
 /// Represents a message used for executing BRC20 operations.
 pub(crate) struct BRC20ExecutionMessage {
@@ -66,18 +79,87 @@ impl BRC20ExecutionMessage {
 }
 
 impl BRC20ExecutionMessage {
-  pub fn execute(
+  pub async fn execute(
     self,
-    context: &mut TableContext,
+    context: &mut TableContext<'_, '_>,
+    brc20_prog_client: &HttpClient,
+    chain: &Chain,
     height: u32,
     blocktime: u32,
+    block_hash: &[u8; 32],
+    prog_tx_idx: u64,
   ) -> Result<BRC20Receipt> {
     let result = match &self.operation {
+      // Core BRC20 operations
       BRC20Operation::Predeploy(_) => self.execute_predeploy(context, height),
       BRC20Operation::Deploy { .. } => self.execute_deploy(context, height, blocktime),
       BRC20Operation::Mint { .. } => self.execute_mint(context, height),
       BRC20Operation::InscribeTransfer(_) => self.execute_inscribe_transfer(context),
-      BRC20Operation::Transfer { .. } => self.execute_transfer(context),
+      BRC20Operation::Transfer { .. } => {
+        self
+          .execute_transfer(
+            context,
+            brc20_prog_client,
+            chain,
+            height,
+            blocktime,
+            *block_hash,
+            prog_tx_idx,
+          )
+          .await
+      }
+
+      // BRC2.0 programmable module operations
+      BRC20Operation::InscribeProgDeploy { .. } => self.execute_inscribe_prog_deploy(context),
+      BRC20Operation::ProgDeploy { .. } => {
+        self
+          .execute_prog_deploy(
+            brc20_prog_client,
+            blocktime as u64,
+            *block_hash,
+            prog_tx_idx,
+            height >= HardForks::brc20_prog_prague_activation_height(chain),
+          )
+          .await
+      }
+      BRC20Operation::InscribeProgCall { .. } => self.execute_inscribe_prog_call(context),
+      BRC20Operation::ProgCall { .. } => {
+        self
+          .execute_prog_call(
+            brc20_prog_client,
+            blocktime as u64,
+            *block_hash,
+            prog_tx_idx,
+            height >= HardForks::brc20_prog_prague_activation_height(chain),
+          )
+          .await
+      }
+      BRC20Operation::InscribeProgTransact { .. } => self.execute_inscribe_prog_transact(context),
+      BRC20Operation::ProgTransact { .. } => {
+        self
+          .execute_prog_transact(
+            brc20_prog_client,
+            blocktime as u64,
+            *block_hash,
+            prog_tx_idx,
+            height >= HardForks::brc20_prog_prague_activation_height(chain),
+          )
+          .await
+      }
+
+      // Module withdrawal operations
+      BRC20Operation::InscribeWithdraw(_) => self.execute_inscribe_withdraw(context),
+      BRC20Operation::Withdraw { .. } => {
+        self
+          .execute_withdraw(
+            context,
+            brc20_prog_client,
+            blocktime as u64,
+            *block_hash,
+            prog_tx_idx,
+          )
+          .await
+      }
     };
 
     match result {
@@ -93,6 +175,7 @@ impl BRC20ExecutionMessage {
         sender: self.sender.clone(),
         receiver: self.receiver.unwrap_or(self.sender),
         result: Err(e),
+        prog_tx_count: 0,
       }),
       Err(e) => {
         log::error!(
