@@ -247,8 +247,13 @@ impl OkxUpdater {
         }
 
         // Verify cumulative event hash and trace hash
+        let network_type = match index.chain() {
+          Chain::Mainnet => "mainnet",
+          Chain::Signet => "signet",
+          _ => "testnet",
+        };
         let prev_opi_cumulative_event_hashes =
-          match get_opi_cumulative_hashes_with_retries(self.height - 1).await {
+          match get_opi_cumulative_hashes_with_retries(self.height - 1, network_type).await {
             Ok(hash) => hash,
             Err(e) => {
               log::error!(
@@ -289,7 +294,7 @@ impl OkxUpdater {
           sha256::digest(prev_opi_cumulative_event_hashes.trace_hash + &trace_hash)
         };
         let current_opi_cumulative_event_hashes =
-          match get_opi_cumulative_hashes_with_retries(self.height).await {
+          match get_opi_cumulative_hashes_with_retries(self.height, network_type).await {
             Ok(hash) => hash,
             Err(e) => {
               log::error!(

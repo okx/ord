@@ -280,11 +280,12 @@ pub async fn calculate_brc20_prog_traces_hash(
 
 pub async fn get_opi_cumulative_hashes_with_retries(
   block_height: u32,
+  network_type: &str,
 ) -> Result<OpiCumulativeHashes, Box<dyn Error>> {
   static RETRIES: u8 = 10;
   static DELAY_MS: u64 = 1000;
   for attempt in 0..RETRIES {
-    let event_hash = get_opi_cumulative_hashes(block_height).await;
+    let event_hash = get_opi_cumulative_hashes(block_height, network_type).await;
     match event_hash {
       Ok(hash) => return Ok(hash),
       Err(_) => {
@@ -304,10 +305,12 @@ pub async fn get_opi_cumulative_hashes_with_retries(
 
 async fn get_opi_cumulative_hashes(
   block_height: u32,
+  network_type: &str,
 ) -> Result<OpiCumulativeHashes, Box<dyn Error>> {
   let result = CLIENT.get(format!(
-    "http://localhost:8000/lc/get_best_hashes_for_block/{}?event_hash_version=2&network_type=signet",
-    block_height
+    "http://api.opi.network/lc/get_best_hashes_for_block/{}?event_hash_version=2&network_type={}",
+    block_height,
+    network_type,
   )).send()
   .await;
   match result {
