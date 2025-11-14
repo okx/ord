@@ -86,20 +86,32 @@ pub struct InscriptionReceipt {
   pub action: Action,
 }
 
-impl From<BundleMessage> for InscriptionReceipt {
-  fn from(value: BundleMessage) -> Self {
+impl InscriptionReceipt {
+  fn from_bundle_message(value: &BundleMessage) -> Self {
     Self {
       sequence_number: value.sequence_number,
       inscription_id: value.inscription_id,
       inscription_number: value.inscription_number,
       old_satpoint: value.old_satpoint,
       new_satpoint: value.new_satpoint,
-      sender: value.sender,
-      receiver: value.receiver,
+      sender: value.sender.clone(),
+      receiver: value.receiver.clone(),
       action: match value.inscription_action {
         InscriptionAction::Created { charms, .. } => Action::Created { charms },
         InscriptionAction::Transferred => Action::Transferred,
       },
     }
+  }
+}
+
+impl From<BundleMessage> for InscriptionReceipt {
+  fn from(value: BundleMessage) -> Self {
+    Self::from_bundle_message(&value)
+  }
+}
+
+impl From<&BundleMessage> for InscriptionReceipt {
+  fn from(value: &BundleMessage) -> Self {
+    Self::from_bundle_message(value)
   }
 }

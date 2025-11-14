@@ -80,10 +80,7 @@ impl Subcommand {
             e
           );
         }
-        let mut index = Index::open(&settings)?;
-        if server.enable_metrics {
-          index = index.with_metrics();
-        }
+        let index = Index::open(&settings)?;
         let index = Arc::new(index);
         let handle = axum_server::Handle::new();
         LISTENERS.lock().unwrap().push(handle.clone());

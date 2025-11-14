@@ -145,6 +145,8 @@ const TARGET_POSTAGE: Amount = Amount::from_sat(10_000);
 static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
 static LISTENERS: Mutex<Vec<axum_server::Handle>> = Mutex::new(Vec::new());
 static INDEXER: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
+static PROMETHEUS_RECORDER: Mutex<Option<metrics_exporter_prometheus::PrometheusHandle>> =
+  Mutex::new(None);
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn fund_raw_transaction(

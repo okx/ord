@@ -1,132 +1,224 @@
-use prometheus::{Gauge, Histogram, HistogramOpts, Registry};
+use {std::time::Duration, strum_macros::AsRefStr};
 
-pub struct Metrics {
-  registry: Registry,
-  current_block_height: Gauge,
-  total_transactions: Gauge,
-  total_inscription_events: Gauge,
-  total_brc20_events: Gauge,
-  block_parse_duration: Histogram,
+/// Metric name prefix
+const METRIC_PREFIX: &str = "ord";
+
+/// Metric names
+mod metric_names {
+  pub const BLOCK_HEIGHT: &str = "block_height";
+  pub const BLOCK_DOWNLOAD_DURATION: &str = "block_download_duration_seconds";
+  pub const BLOCK_PHASE_DURATION: &str = "block_phase_duration_seconds";
+  pub const BLOCK_STATS: &str = "block_stats";
+  pub const DB_COMMIT_DURATION: &str = "db_commit_duration_seconds";
+  pub const API_REQUEST_COUNT: &str = "api_request_total";
+  pub const API_REQUEST_DURATION: &str = "api_request_duration_seconds";
 }
 
-impl Metrics {
-  pub fn registry(&self) -> &Registry {
-    &self.registry
-  }
+/// Label names
+mod label_names {
+  // Block-related labels
+  pub const HEIGHT_STATE: &str = "height_state";
+  pub const INDEXING_PHASE: &str = "indexing_phase";
+  pub const STAT_TYPE: &str = "stat_type";
 
-  pub fn set_current_block_height(&self, height: u32) {
-    self.current_block_height.set(height as f64);
-  }
-
-  pub fn increment_transaction_count(&self, count: u32) {
-    self.total_transactions.add(count as f64);
-  }
-
-  pub fn increment_inscription_event_count(&self, count: u32) {
-    self.total_inscription_events.add(count as f64);
-  }
-
-  pub fn increment_brc20_event_count(&self, count: u32) {
-    self.total_brc20_events.add(count as f64);
-  }
-
-  pub fn observe_block_parse_duration(&self, duration: f64) {
-    self.block_parse_duration.observe(duration);
-  }
+  // HTTP/API-related labels
+  pub const HTTP_METHOD: &str = "http_method";
+  pub const HTTP_PATH: &str = "http_path";
+  pub const HTTP_STATUS_CODE: &str = "http_status_code";
 }
 
-pub trait MetricsExt {
-  fn set_current_block_height(&self, height: u32);
-  fn increment_transaction_count(&self, count: u32);
-  fn increment_inscription_event_count(&self, count: u32);
-  fn increment_brc20_event_count(&self, count: u32);
-  fn observe_block_parse_duration(&self, duration: f64);
+/// Block height state at different stages of processing
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
+pub enum BlockHeightState {
+  /// Latest block height from connected Bitcoin node
+  Network,
+  /// Current block height being processed by ord indexer
+  Processed,
+  /// Latest block height committed to database
+  DbCommitted,
 }
 
-impl MetricsExt for Option<Metrics> {
-  fn set_current_block_height(&self, height: u32) {
-    if let Some(metrics) = self {
-      metrics.set_current_block_height(height);
-    }
-  }
-
-  fn increment_transaction_count(&self, count: u32) {
-    if let Some(metrics) = self {
-      metrics.increment_transaction_count(count);
-    }
-  }
-
-  fn increment_inscription_event_count(&self, count: u32) {
-    if let Some(metrics) = self {
-      metrics.increment_inscription_event_count(count);
-    }
-  }
-
-  fn increment_brc20_event_count(&self, count: u32) {
-    if let Some(metrics) = self {
-      metrics.increment_brc20_event_count(count);
-    }
-  }
-
-  fn observe_block_parse_duration(&self, duration: f64) {
-    if let Some(metrics) = self {
-      metrics.observe_block_parse_duration(duration);
-    }
-  }
+/// Block indexing phase types
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
+pub enum IndexingPhase {
+  /// Time waiting for async block download to complete
+  BlockWait,
+  /// Time spent indexing ord inscriptions
+  InscriptionIndexing,
+  /// Time spent indexing inscription receipts
+  InscriptionReceiptsIndexing,
+  /// Time spent indexing BRC20 tokens
+  Brc20Indexing,
+  /// Time spent indexing bitmap collection
+  BitmapIndexing,
+  /// Time spent indexing BTC domain collection
+  BtcDomainIndexing,
+  /// Total time spent on all OKX extended content indexing
+  OkxTotalIndexing,
 }
 
-pub(crate) fn setup_metrics() -> Metrics {
-  let registry = Registry::new();
-
-  let current_block_height = register_gauge(
-    &registry,
-    "current_block_height",
-    "The latest block height that has been parsed.",
-  );
-
-  let total_transactions = register_gauge(
-    &registry,
-    "total_transactions",
-    "The total number of transactions from blocks.",
-  );
-
-  let total_inscription_events = register_gauge(
-    &registry,
-    "total_inscription_events",
-    "The total number of inscription events from blocks.",
-  );
-
-  let total_brc20_events = register_gauge(
-    &registry,
-    "total_brc20_events",
-    "The total number of BRC20 events from blocks.",
-  );
-
-  let block_parse_duration = register_histogram(
-    &registry,
-    "block_parse_duration",
-    "Histogram of block parsing duration in seconds.",
-    vec![0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0],
-  );
-
-  Metrics {
-    registry,
-    current_block_height,
-    total_transactions,
-    total_inscription_events,
-    total_brc20_events,
-    block_parse_duration,
-  }
+/// Block statistics categories
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
+pub enum BlockStatistic {
+  /// Number of transactions in block
+  Transactions,
+  /// Number of inscriptions in block
+  Inscriptions,
+  /// Number of BRC20 events in block
+  Brc20Events,
+  /// Number of bitmaps in block
+  Bitmaps,
+  /// Number of BTC domains in block
+  BtcDomains,
 }
 
-fn register_gauge(registry: &Registry, name: &str, help: &str) -> Gauge {
-  let gauge = Gauge::new(name, help).unwrap();
-  registry.register(Box::new(gauge.clone())).unwrap();
-  gauge
+/// Build full metric name with prefix
+#[inline]
+fn metric_name(name: &str) -> String {
+  format!("{}_{}", METRIC_PREFIX, name)
 }
 
-fn register_histogram(registry: &Registry, name: &str, help: &str, buckets: Vec<f64>) -> Histogram {
-  let histogram = Histogram::with_opts(HistogramOpts::new(name, help).buckets(buckets)).unwrap();
-  registry.register(Box::new(histogram.clone())).unwrap();
-  histogram
+/// Record block height at specific stage
+///
+/// # Arguments
+/// * `state` - State of height being recorded (network/processed/db_committed)
+/// * `height` - Block height value
+///
+/// # Metric
+/// - Name: `ord_block_height`
+/// - Type: Gauge
+/// - Labels: `height_state`
+#[inline]
+pub fn record_height(state: BlockHeightState, height: u64) {
+  let state_str = state.as_ref().to_string();
+  metrics::gauge!(
+    metric_name(metric_names::BLOCK_HEIGHT),
+    label_names::HEIGHT_STATE => state_str
+  )
+  .set(height as f64);
+}
+
+/// Record block download duration from Bitcoin node
+///
+/// # Arguments
+/// * `duration` - Time spent downloading the block
+///
+/// # Metric
+/// - Name: `ord_block_download_duration_seconds`
+/// - Type: Histogram
+/// - Unit: seconds
+#[inline]
+pub fn record_download(duration: Duration) {
+  metrics::histogram!(metric_name(metric_names::BLOCK_DOWNLOAD_DURATION))
+    .record(duration.as_secs_f64());
+}
+
+/// Record block indexing phase duration
+///
+/// # Arguments
+/// * `phase` - Indexing phase (inscription_indexing, brc20_indexing, etc.)
+/// * `duration` - Time spent in this phase
+///
+/// # Metric
+/// - Name: `ord_block_phase_duration_seconds`
+/// - Type: Histogram
+/// - Unit: seconds
+/// - Labels: `indexing_phase`
+#[inline]
+pub fn record_phase(phase: IndexingPhase, duration: Duration) {
+  let phase_str = phase.as_ref().to_string();
+  metrics::histogram!(
+    metric_name(metric_names::BLOCK_PHASE_DURATION),
+    label_names::INDEXING_PHASE => phase_str
+  )
+  .record(duration.as_secs_f64());
+}
+
+/// Record database commit duration
+///
+/// # Arguments
+/// * `duration` - Time spent committing to database
+///
+/// # Metric
+/// - Name: `ord_db_commit_duration_seconds`
+/// - Type: Histogram
+/// - Unit: seconds
+#[inline]
+pub fn record_commit(duration: Duration) {
+  metrics::histogram!(metric_name(metric_names::DB_COMMIT_DURATION)).record(duration.as_secs_f64());
+}
+
+/// Record block statistics
+///
+/// # Arguments
+/// * `statistic` - Category of statistic (transactions, inscriptions, etc.)
+/// * `count` - Number of items
+///
+/// # Metric
+/// - Name: `ord_block_stats`
+/// - Type: Gauge
+/// - Labels: `stat_type`
+#[inline]
+pub fn record_stats(statistic: BlockStatistic, count: u64) {
+  let stats_str = statistic.as_ref().to_string();
+  metrics::gauge!(
+    metric_name(metric_names::BLOCK_STATS),
+    label_names::STAT_TYPE => stats_str
+  )
+  .set(count as f64);
+}
+
+/// Record API request metrics
+///
+/// # Arguments
+/// * `method` - HTTP method (GET, POST, etc.)
+/// * `path` - Route template (e.g., "/api/v1/ord/id/:id")
+/// * `status_code` - HTTP status code (200, 404, etc.)
+/// * `duration_secs` - Request duration in seconds
+///
+/// # Metrics
+/// - Name: `ord_api_request_total` (Counter)
+/// - Name: `ord_api_request_duration_seconds` (Histogram)
+/// - Labels: `method`, `path`, `status_code`
+/// - Unit: seconds (for duration)
+///
+/// # Note
+/// Uses route templates (not actual paths) to avoid high cardinality issues.
+#[inline]
+pub fn record_api_request(method: &str, path: &str, status_code: u16, duration_secs: f64) {
+  let method_str = method.to_string();
+  let path_str = path.to_string();
+  let status_code_str = status_code.to_string();
+
+  // Record request count
+  metrics::counter!(
+    metric_name(metric_names::API_REQUEST_COUNT),
+    label_names::HTTP_METHOD => method_str.clone(),
+    label_names::HTTP_PATH => path_str.clone(),
+    label_names::HTTP_STATUS_CODE => status_code_str.clone()
+  )
+  .increment(1);
+
+  // Record request duration
+  metrics::histogram!(
+    metric_name(metric_names::API_REQUEST_DURATION),
+    label_names::HTTP_METHOD => method_str,
+    label_names::HTTP_PATH => path_str,
+    label_names::HTTP_STATUS_CODE => status_code_str
+  )
+  .record(duration_secs);
+}
+
+/// Helper macro to create metric labels from tuples
+///
+/// This ensures type safety and consistency in label handling.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! __metrics_labels {
+  ($($key:expr => $value:expr),* $(,)?) => {
+    &[$(($key, $value.to_string())),*]
+  };
 }
