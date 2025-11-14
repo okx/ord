@@ -148,10 +148,7 @@ pub struct Server {
   // Tracing options
   #[arg(
     long = "tracing-otlp",
-    global = true,
     value_name = "URL",
-    num_args = 0..=1,
-    default_missing_value = "http://localhost:4318/v1/traces",
     require_equals = true,
     value_parser = parse_otlp_endpoint,
     help = "Enable OpenTelemetry tracing to <URL>.",
@@ -160,13 +157,37 @@ pub struct Server {
   pub(crate) otlp: Option<Url>,
   #[arg(
     long = "tracing-otlp.filter",
-    global = true,
     value_name = "FILTER",
-    default_value = "debug",
+    default_value = "info",
     help = "Set the filter for OpenTelemetry tracing.",
     help_heading = "Tracing"
   )]
   pub(crate) otlp_filter: EnvFilter,
+  #[arg(
+    long = "tracing-otlp.sample-rate",
+    value_name = "RATE",
+    default_value = "1.0",
+    value_parser = parse_sample_rate,
+    help = "Set the sampling rate for tracing (0.0-1.0). 1.0 means sample all traces.",
+    help_heading = "Tracing"
+  )]
+  pub(crate) otlp_sample_rate: f64,
+  #[arg(
+    long = "tracing-otlp.environment",
+    value_name = "ENV",
+    default_value = "dev",
+    help = "Set the deployment environment name (e.g., pro, pre, dev).",
+    help_heading = "Tracing"
+  )]
+  pub(crate) otlp_environment: String,
+  #[arg(
+    long = "tracing-otlp.service-name",
+    value_name = "NAME",
+    default_value = "ord",
+    help = "Set the service name for OpenTelemetry tracing.",
+    help_heading = "Tracing"
+  )]
+  pub(crate) otlp_service_name: String,
 
   // Metrics options
   #[arg(
@@ -182,6 +203,14 @@ pub struct Server {
 
 fn parse_otlp_endpoint(arg: &str) -> Result<Url> {
   Url::parse(arg).context("Invalid URL for OTLP trace output")
+}
+
+fn parse_sample_rate(arg: &str) -> Result<f64> {
+  let rate: f64 = arg.parse().context("Invalid sample rate")?;
+  if !(0.0..=1.0).contains(&rate) {
+    bail!("Sample rate must be between 0.0 and 1.0, got {}", rate);
+  }
+  Ok(rate)
 }
 
 /// Helper to parse a [Duration] from seconds
@@ -241,6 +270,17 @@ pub fn parse_socket_address(value: &str) -> Result<SocketAddr, SocketAddressPars
 impl Server {
   pub fn run(self, settings: Settings, index: Arc<Index>, handle: Handle) -> SubcommandResult {
     Runtime::new()?.block_on(async {
+      // Initialize OpenTelemetry tracing if configured
+      if let Some(otlp_endpoint) = &self.otlp {
+        crate::telemetry::init_tracing(
+          otlp_endpoint,
+          self.otlp_filter.clone(),
+          self.otlp_sample_rate,
+          &self.otlp_environment,
+          &self.otlp_service_name,
+        )?;
+      }
+
       // Initialize Prometheus exporter
       Self::init_prometheus_exporter()?;
 

@@ -34,15 +34,17 @@ pub(crate) async fn ord_outpoint(
   Extension(index): Extension<Arc<Index>>,
   Path(outpoint): Path<OutPoint>,
 ) -> ApiResult<ApiOutPointResult> {
-  log::debug!("rpc: get ord_outpoint: {outpoint}");
+  tracing::debug!("rpc: get ord_outpoint: {outpoint}");
   task::block_in_place(|| {
     let rtx = index.begin_read()?;
-    let Some((height, blockhash)) = Index::latest_block(&rtx)? else {
-      return Err(OrdApiError::DataBaseNotReady.into());
-    };
+    let (height, blockhash) = trace_db_call!("get_latest_block", {
+      Index::latest_block(&rtx)?.ok_or(OrdApiError::DataBaseNotReady)
+    })?;
 
     let (inscriptions_with_satpoints, value, script_pubkey) =
-      Index::get_inscriptions_on_output_with_satpoints_and_script_pubkey(outpoint, &rtx, &index)?;
+      trace_db_call!("get_inscriptions_on_output", {
+        Index::get_inscriptions_on_output_with_satpoints_and_script_pubkey(outpoint, &rtx, &index)
+      })?;
 
     // If there are no inscriptions on the output, return None and parsed block states.
     if inscriptions_with_satpoints.is_empty() {
@@ -65,13 +67,15 @@ pub(crate) async fn ord_outpoint(
     let script_pubkey = if let Some(script_pubkey) = script_pubkey {
       script_pubkey
     } else {
-      Index::get_tx(outpoint.txid, &rtx, &index)?
-        .ok_or(OrdApiError::TransactionNotFound(outpoint.txid))?
-        .output
-        .into_iter()
-        .nth(outpoint.vout.try_into().unwrap())
-        .unwrap()
-        .script_pubkey
+      trace_db_call!("get_output_script", {
+        Index::get_tx(outpoint.txid, &rtx, &index)?
+          .ok_or(OrdApiError::TransactionNotFound(outpoint.txid))?
+          .output
+          .into_iter()
+          .nth(outpoint.vout.try_into().unwrap())
+          .unwrap()
+          .script_pubkey
+      })
     };
 
     Ok(Json(ApiResponse::ok(ApiOutPointResult {

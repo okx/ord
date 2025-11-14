@@ -44,14 +44,16 @@ pub(crate) async fn ord_inscription_id(
   Extension(index): Extension<Arc<Index>>,
   Path(id): Path<String>,
 ) -> ApiResult<ApiInscription> {
-  log::debug!("rpc: get ord_inscription_id: {id}");
+  tracing::debug!("rpc: get ord_inscription_id: {id}");
 
   task::block_in_place(|| {
-    let rtx = index.begin_read()?;
     let inscription_id = InscriptionId::from_str(&id).map_err(ApiError::bad_request)?;
 
-    let sequence_number = Index::sequence_number_by_inscription_id(inscription_id, &rtx)?
-      .ok_or(OrdApiError::InscriptionNotFoundById(inscription_id))?;
+    let rtx = index.begin_read()?;
+    let sequence_number = trace_db_call!("get_inscription_by_id", {
+      Index::sequence_number_by_inscription_id(inscription_id, &rtx)?
+        .ok_or(OrdApiError::InscriptionNotFoundById(inscription_id))
+    })?;
 
     ord_inscription_by_sequence_number(sequence_number, &rtx, &index, &settings)
   })
@@ -64,13 +66,16 @@ pub(crate) async fn ord_inscription_number(
   Extension(index): Extension<Arc<Index>>,
   Path(number): Path<i32>,
 ) -> ApiResult<ApiInscription> {
-  log::debug!("rpc: get ord_inscription_number: {number}");
+  tracing::debug!("rpc: get ord_inscription_number: {number}");
 
   task::block_in_place(|| {
-    let rtx = index.begin_read()?;
-    let sequence_number = Index::sequence_number_by_inscription_number(number, &rtx)?
-      .ok_or(OrdApiError::InscriptionNotFoundByNum(number))?;
+    let sequence_number = trace_db_call!("get_inscription_by_number", {
+      let rtx = index.begin_read()?;
+      Index::sequence_number_by_inscription_number(number, &rtx)?
+        .ok_or(OrdApiError::InscriptionNotFoundByNum(number))
+    })?;
 
+    let rtx = index.begin_read()?;
     ord_inscription_by_sequence_number(sequence_number, &rtx, &index, &settings)
   })
 }
@@ -81,30 +86,49 @@ fn ord_inscription_by_sequence_number(
   index: &Index,
   settings: &Settings,
 ) -> ApiResult<ApiInscription> {
-  log::debug!("rpc: get ord_inscription_by_sequence_number: {sequence_number}");
+  tracing::debug!("rpc: get ord_inscription_by_sequence_number: {sequence_number}");
 
-  let inscription_entry = Index::inscription_entry_by_sequence_number(sequence_number, rtx)?
-    .ok_or(OrdApiError::InscriptionEntryNotFound(sequence_number))?;
+  let inscription_entry = trace_db_call!("get_inscription_entry", {
+    Index::inscription_entry_by_sequence_number(sequence_number, rtx)?
+      .ok_or(OrdApiError::InscriptionEntryNotFound(sequence_number))
+  })?;
 
-  let transaction = Index::get_tx(inscription_entry.id.txid, rtx, index)?
-    .ok_or(OrdApiError::TransactionNotFound(inscription_entry.id.txid))?;
+  let transaction = trace_db_call!("get_transaction", {
+    Index::get_tx(inscription_entry.id.txid, rtx, index)?
+      .ok_or(OrdApiError::TransactionNotFound(inscription_entry.id.txid))
+  })?;
 
-  let inscription = ParsedEnvelope::from_transaction(&transaction)
-    .into_iter()
-    .nth(inscription_entry.id.index.try_into().unwrap())
-    .map(|envelope| envelope.payload)
-    .ok_or(OrdApiError::ParsedEnvelopeError(
-      inscription_entry.id.index.try_into().unwrap(),
-      inscription_entry.id.txid,
-    ))?;
+  // Parse inscription from transaction
+  let inscription = {
+    let _span = tracing::debug_span!(
+      "parse_inscription",
+      otel.kind = "internal",
+      txid = %inscription_entry.id.txid,
+      index = inscription_entry.id.index
+    )
+    .entered();
 
-  let location = Index::location_by_sequence_number(sequence_number, rtx)?
-    .ok_or(OrdApiError::LocationNotFound(sequence_number))?;
+    ParsedEnvelope::from_transaction(&transaction)
+      .into_iter()
+      .nth(inscription_entry.id.index.try_into().unwrap())
+      .map(|envelope| envelope.payload)
+      .ok_or(OrdApiError::ParsedEnvelopeError(
+        inscription_entry.id.index.try_into().unwrap(),
+        inscription_entry.id.txid,
+      ))?
+  };
+
+  let location = trace_db_call!("get_inscription_location", {
+    Index::location_by_sequence_number(sequence_number, rtx)?
+      .ok_or(OrdApiError::LocationNotFound(sequence_number))
+  })?;
 
   let owner = if location.outpoint.txid != Hash::all_zeros() {
     let transaction = if location.outpoint.txid != inscription_entry.id.txid {
-      Index::get_tx(location.outpoint.txid, &rtx, &index)?
-        .ok_or(OrdApiError::TransactionNotFound(location.outpoint.txid))?
+      trace_db_call!("get_owner_transaction", {
+        Index::get_tx(location.outpoint.txid, &rtx, &index)?
+          .ok_or(OrdApiError::TransactionNotFound(location.outpoint.txid))
+      })?
     } else {
       transaction
     };
@@ -136,9 +160,10 @@ fn ord_inscription_by_sequence_number(
     parents.push(parent_inscription_id);
   }
 
-  let collection =
+  let collection = trace_db_call!("get_inscription_collection", {
     Index::get_inscription_collection_by_sequence_number(inscription_entry.sequence_number, rtx)?
-      .map(|c| c.to_string());
+      .map(|c| c.to_string())
+  });
 
   Ok(Json(ApiResponse::ok(ApiInscription {
     id: inscription_entry.id,

@@ -52,6 +52,8 @@ impl Updater<'_> {
     let starting_height = u32::try_from(self.index.client.get_block_count()?).unwrap() + 1;
     let starting_index_height = self.height;
 
+    metrics::record_height(BlockHeightState::Processed, self.height as u64);
+    metrics::record_height(BlockHeightState::DbCommitted, self.height as u64);
     metrics::record_height(BlockHeightState::Network, starting_height as u64);
 
     wtx

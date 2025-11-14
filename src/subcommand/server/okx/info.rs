@@ -28,25 +28,29 @@ pub async fn node_info(
   Extension(index): Extension<Arc<Index>>,
   Query(query): Query<NodeInfoQuery>,
 ) -> ApiResult<NodeInfo> {
-  log::debug!("rpc: get node_info");
-
   task::block_in_place(|| {
-    let rtx = index.begin_read()?;
-    let (latest_height, latest_blockhash) = Index::latest_block(&rtx)?.ok_or_api_err(|| {
-      ApiError::Internal("Failed to retrieve the latest block from the database.".to_string())
+    // Database operation: get latest block
+    let (latest_height, latest_blockhash) = trace_db_call!("get_latest_block", {
+      let rtx = index.begin_read()?;
+      Index::latest_block(&rtx)?.ok_or_api_err(|| {
+        ApiError::Internal("Failed to retrieve the latest block from the database.".to_string())
+      })
     })?;
 
+    // Bitcoin RPC call: get blockchain info (if requested)
     let (chain_block_height, chain_blockhash) = if query.btc.unwrap_or_default() {
-      index
-        .client
-        .get_blockchain_info()
-        .map_err(ApiError::internal)
-        .map(|info| {
-          (
-            Some(u32::try_from(info.blocks).unwrap_or_default()),
-            Some(info.best_block_hash),
-          )
-        })?
+      trace_rpc_call!("get_blockchain_info", {
+        index
+          .client
+          .get_blockchain_info()
+          .map_err(ApiError::internal)
+          .map(|info| {
+            (
+              Some(u32::try_from(info.blocks).unwrap_or_default()),
+              Some(info.best_block_hash),
+            )
+          })
+      })?
     } else {
       (None, None)
     };

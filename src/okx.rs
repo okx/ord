@@ -109,7 +109,7 @@ impl OkxUpdater {
     );
 
     log::info!(
-      "[OKX] Block {} indexed in {} | Stats: inscriptions={}, brc20={}, bitmaps={}, domains={} | Durations: inscriptions={}, brc20={}, bitmap={}, domain={}",
+      "[OKX] Block {} indexed in {} | Stats: inscriptions={}, brc20={}, bitmaps={}, domains={} | Durations: inscription_receipts={}, brc20={}, bitmap={}, btc_domain={}",
       self.height,
       humantime::format_duration(block_result.total_duration),
       block_result.inscription_count,

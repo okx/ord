@@ -133,6 +133,7 @@ pub mod settings;
 mod signer;
 pub mod subcommand;
 mod tally;
+mod telemetry;
 pub mod templates;
 pub mod wallet;
 
@@ -146,6 +147,8 @@ static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
 static LISTENERS: Mutex<Vec<axum_server::Handle>> = Mutex::new(Vec::new());
 static INDEXER: Mutex<Option<thread::JoinHandle<()>>> = Mutex::new(None);
 static PROMETHEUS_RECORDER: Mutex<Option<metrics_exporter_prometheus::PrometheusHandle>> =
+  Mutex::new(None);
+static TRACER_PROVIDER: Mutex<Option<opentelemetry_sdk::trace::SdkTracerProvider>> =
   Mutex::new(None);
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -257,6 +260,17 @@ fn gracefully_shut_down_indexer() {
   }
 }
 
+fn gracefully_shut_down_telemetry() {
+  if let Some(provider) = TRACER_PROVIDER.lock().unwrap().take() {
+    log::info!("Shutting down OpenTelemetry tracing...");
+    if let Err(err) = provider.shutdown() {
+      log::warn!("Error during tracer provider shutdown: {:?}", err);
+    } else {
+      log::info!("OpenTelemetry tracing shutdown complete");
+    }
+  }
+}
+
 pub fn main() {
   ctrlc::set_handler(move || {
     if SHUTTING_DOWN.fetch_or(true, atomic::Ordering::Relaxed) {
@@ -272,6 +286,7 @@ pub fn main() {
       .for_each(|handle| handle.graceful_shutdown(Some(Duration::from_millis(100))));
 
     gracefully_shut_down_indexer();
+    gracefully_shut_down_telemetry();
   })
   .expect("Error setting <CTRL-C> handler");
 
@@ -318,6 +333,7 @@ pub fn main() {
       }
 
       gracefully_shut_down_indexer();
+      gracefully_shut_down_telemetry();
 
       process::exit(1);
     }
@@ -326,6 +342,7 @@ pub fn main() {
         output.print(format.unwrap_or_default());
       }
       gracefully_shut_down_indexer();
+      gracefully_shut_down_telemetry();
     }
   }
 }

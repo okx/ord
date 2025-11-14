@@ -4,6 +4,8 @@ use {
     extract::MatchedPath,
     http::{Request, Response},
   },
+  opentelemetry::trace::SpanKind,
+  opentelemetry_semantic_conventions::trace as semconv,
   pin_project::pin_project,
   std::{
     fmt::Display,
@@ -58,28 +60,33 @@ where
 
   fn call(&mut self, request: Request<ReqBody>) -> Self::Future {
     let method = request.method().clone();
+    let uri = request.uri().clone();
+    let path = uri.path().to_string();
 
     // Get matched path (route template) to avoid high cardinality
     // e.g., "/api/v1/ord/id/:id/inscription" instead of "/api/v1/ord/id/abc123.../inscription"
-    let path = request
+    let route = request
       .extensions()
       .get::<MatchedPath>()
       .map(|matched| matched.as_str().to_string())
-      .unwrap_or_else(|| request.uri().path().to_string());
+      .unwrap_or_else(|| uri.path().to_string());
 
     let start = Instant::now();
 
-    // Create tracing span
     let span = tracing::info_span!(
-      "api_request",
-      method = %method,
-      path = %path,
-      status_code = tracing::field::Empty,
+      "HTTP request",
+      otel.kind = ?SpanKind::Server,
+      otel.name = %format!("{} {}", method, route),
+      { semconv::HTTP_REQUEST_METHOD } = %method,
+      { semconv::HTTP_ROUTE } = %route,
+      { semconv::URL_PATH } = %path,
+      { semconv::HTTP_RESPONSE_STATUS_CODE } = tracing::field::Empty,
     );
 
     MetricsFuture {
       inner: self.inner.call(request),
       method,
+      route,
       path,
       start,
       span,
@@ -93,6 +100,7 @@ pub struct MetricsFuture<F> {
   #[pin]
   inner: F,
   method: axum::http::Method,
+  route: String,
   path: String,
   start: Instant,
   span: tracing::Span,
@@ -116,34 +124,41 @@ where
         match &result {
           Ok(response) => {
             let status = response.status();
+            let status_code = status.as_u16();
 
-            // Record status in span
-            this.span.record("status_code", status.as_u16());
+            this
+              .span
+              .record(semconv::HTTP_RESPONSE_STATUS_CODE, status_code);
 
-            // Log request
             tracing::info!(
+              target: "api_request",
               method = %this.method,
+              route = %this.route,
               path = %this.path,
-              status = status.as_u16(),
+              status = status_code,
               duration_ms = duration.as_millis(),
-              "API request completed"
+              duration_sec = duration.as_secs_f64(),
+              "HTTP request completed"
             );
 
             // Record Prometheus metrics
             metrics::record_api_request(
               this.method.as_str(),
-              &this.path,
-              status.as_u16(),
+              &this.route,
+              status_code,
               duration.as_secs_f64(),
             );
           }
           Err(err) => {
             tracing::error!(
+              target: "api_request",
               method = %this.method,
+              route = %this.route,
               path = %this.path,
               error = %err,
               duration_ms = duration.as_millis(),
-              "API request failed"
+              duration_sec = duration.as_secs_f64(),
+              "HTTP request failed"
             );
           }
         }

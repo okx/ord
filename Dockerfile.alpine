@@ -1,4 +1,4 @@
-FROM rust:1.84.0-alpine AS builder
+FROM rust:1.87.0-alpine AS builder
 
 RUN apk add --no-cache \
     perl \
@@ -12,11 +12,11 @@ WORKDIR /usr/src/ord
 
 COPY . .
 
-RUN cargo build --bin ord --release --features openssl
+RUN cargo build --bin ord --release
 
 FROM alpine:latest
 
-RUN apk add --no-cache openssl ca-certificates
+RUN apk add --no-cache ca-certificates
 
 COPY --from=builder \
     /usr/src/ord/target/release/ord \
