@@ -146,10 +146,7 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
               );
               return None;
             }
-          } else {
-            deploy.self_mint = None;
-          }
-          if deploy.tick.len() == PREDEPLOYED_TICKER_LENGTH {
+          } else if deploy.tick.len() == PREDEPLOYED_TICKER_LENGTH {
             if height < HardForks::six_byte_deploy_activation_height(&chain) {
               log::debug!(
                 "Pre-deployed 6-byte tickers are not activated at height: {} for inscription: {} with ticker length: {}",
@@ -159,6 +156,8 @@ impl BRC20CreationOperationExtractor for CreatedInscription<'_> {
               );
               return None;
             }
+          } else {
+            deploy.self_mint = None;
           }
           Some(BRC20Operation::Deploy {
             deploy,
