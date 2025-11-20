@@ -72,6 +72,8 @@ impl BRC20OperationExtractor for Inscription {
       && content_type != "text/plain;charset=utf-8"
       && content_type != "text/plain;charset=UTF-8"
       && content_type != "application/json"
+      && content_type != "application/json;charset=utf-8"
+      && content_type != "application/json;charset=UTF-8"
       && !content_type.starts_with("text/plain;")
     {
       return Err(Error::UnSupportContentType);
