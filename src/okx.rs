@@ -273,7 +273,8 @@ impl OkxUpdater {
         } else {
           sha256::digest(prev_opi_cumulative_event_hashes.event_hash + &event_hash)
         };
-        let trace_hash =
+        // Only start calculating trace hash from first BRC20 prog height
+        let trace_hash = if self.height >= self.first_brc20_prog_height {
           match calculate_brc20_prog_traces_hash(brc20_prog_client, self.height as i32).await {
             Ok(hash) => hash,
             Err(e) => {
@@ -287,7 +288,10 @@ impl OkxUpdater {
               }
               return;
             }
-          };
+          }
+        } else {
+          String::new()
+        };
         let cumulative_trace_hash = if prev_opi_cumulative_event_hashes.trace_hash.len() == 0 {
           sha256::digest(trace_hash)
         } else {
@@ -309,9 +313,7 @@ impl OkxUpdater {
             }
           };
 
-        if current_opi_cumulative_event_hashes.event_hash.len() > 0
-          && cumulative_event_hash != current_opi_cumulative_event_hashes.event_hash
-        {
+        if cumulative_event_hash != current_opi_cumulative_event_hashes.event_hash {
           log::error!(
             "[OKX] BRC20 Block Event Hash mismatch at block {}: computed {}, stored {}",
             self.height,
@@ -329,7 +331,7 @@ impl OkxUpdater {
           event_hash
         );
 
-        if current_opi_cumulative_event_hashes.trace_hash.len() > 0
+        if self.height >= self.first_brc20_prog_height
           && cumulative_trace_hash != current_opi_cumulative_event_hashes.trace_hash
         {
           log::error!(

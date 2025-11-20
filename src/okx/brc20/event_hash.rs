@@ -308,7 +308,8 @@ async fn get_opi_cumulative_hashes(
   network_type: &str,
 ) -> Result<OpiCumulativeHashes, Box<dyn Error>> {
   let result = CLIENT.get(format!(
-    "http://api.opi.network/lc/get_best_hashes_for_block/{}?event_hash_version=2&network_type={}",
+    "http://{}/lc/get_best_hashes_for_block/{}?event_hash_version=2&network_type={}",
+    option_env!("OPI_API_URL").unwrap_or("api.opi.network"),
     block_height,
     network_type,
   )).send()
