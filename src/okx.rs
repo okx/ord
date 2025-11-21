@@ -125,11 +125,6 @@ impl OkxUpdater {
           );
           panic!("BRC20 Prog block height is behind OKX-ORD block height");
         }
-        log::info!(
-          "[OKX] BRC20 Prog block height {} is synced with OKX-ORD block height {}",
-          prog_block_height,
-          current_height
-        );
       });
     }
 
@@ -222,13 +217,6 @@ impl OkxUpdater {
         .metrics
         .increment_inscription_event_count(u32::try_from(total_inscription_receipts).unwrap());
     }
-
-    log::info!("[OKX] Current block height: {}", self.height);
-    log::info!(
-      "[OKX] First brc20 prog height: {}",
-      self.first_brc20_prog_height
-    );
-    log::info!("[OKX] Prog tx idx: {}", prog_tx_idx);
 
     if index.has_brc20_index() && self.height >= self.first_inscription_height {
       RT.block_on(async {
