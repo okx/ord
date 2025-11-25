@@ -1,14 +1,14 @@
 use super::*;
 
 impl BRC20ExecutionMessage {
-  pub(super) async fn execute_transfer(
+  pub(super) fn execute_transfer(
     &self,
     context: &mut TableContext<'_, '_>,
-    brc20_prog_client: &HttpClient,
+    brc20_prog_client: &Brc20ProgClient,
     chain: &Chain,
     height: u32,
     blocktime: u32,
-    mut block_hash: [u8; 32],
+    block_hash: &BlockHash,
     prog_tx_idx: u64,
   ) -> Result<BRC20Receipt, ExecutionError> {
     let BRC20Operation::Transfer { ticker, amount } = &self.operation else {
@@ -76,19 +76,16 @@ impl BRC20ExecutionMessage {
     }
 
     if deposited_to_brc20_prog {
-      block_hash.reverse();
-
       brc20_prog_client
         .brc20_deposit(
           hex::encode(self.sender.to_script_bytes()),
           ticker.to_lowercase().to_string(),
-          (*amount).into(),
+          *amount,
           blocktime as u64,
-          block_hash.into(),
+          block_hash.to_evm_hash(),
           prog_tx_idx,
           self.inscription_id.to_string(),
         )
-        .await
         .expect("Check your BRC2.0 server");
     }
 

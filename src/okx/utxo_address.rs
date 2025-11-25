@@ -1,7 +1,10 @@
-use super::*;
-use bitcoin::{
-  address::{Address, NetworkUnchecked},
-  Script, ScriptHash,
+use {
+  super::*,
+  bitcoin::{
+    address::{Address, NetworkUnchecked},
+    Script, ScriptHash,
+  },
+  once_cell::sync::Lazy,
 };
 
 pub(crate) type UtxoAddressRef = UtxoAddressInner;
@@ -90,9 +93,11 @@ impl UtxoAddress {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use bitcoin::{Address, Script};
-  use std::str::FromStr;
+  use {
+    super::*,
+    bitcoin::{Address, Script},
+    std::str::FromStr,
+  };
 
   #[test]
   fn test_from_script_with_valid_address() {

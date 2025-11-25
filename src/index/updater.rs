@@ -3,7 +3,7 @@ use {
   super::{fetcher::Fetcher, *},
   crate::{
     metrics::MetricsExt,
-    okx::{context::TableContext, OkxUpdater},
+    okx::{brc20::evm_prog_client::Brc20ProgClient, context::TableContext, OkxUpdater},
   },
   brc20_prog::Brc20ProgApiClient,
   futures::future::try_join_all,
@@ -13,10 +13,7 @@ use {
     mpsc::{self},
   },
 };
-
-pub(crate) use inscription_updater::Curse;
-
-mod inscription_updater;
+pub(crate) mod inscription_updater;
 mod rune_updater;
 
 pub(crate) struct BlockData {
@@ -805,28 +802,21 @@ impl Updater<'_> {
         &mut brc20_satpoint_to_withdraw_assets,
       );
 
-      let http_client = HttpClientBuilder::new()
-        .max_request_size(u32::MAX)
-        .max_response_size(u32::MAX)
-        .set_headers(self.index.settings.brc20_prog_auth_header())
-        .build(self.index.settings.brc20_prog_url())?;
+      let brc20_prog_http_client = Brc20ProgClient::new(
+        self.index.settings.brc20_prog_auth_header(),
+        self.index.settings.brc20_prog_url(),
+      )?;
 
       let mut okx_updater = OkxUpdater {
-        height: self.height,
+        height: self.height as u64,
         timestamp: block.header.time,
-        block_hash: block
-          .header
-          .block_hash()
-          .as_byte_array()
-          .as_slice()
-          .try_into()
-          .expect("32 bytes"),
-        first_inscription_height: self.index.settings.first_inscription_height(),
-        first_brc20_prog_height: self.index.settings.first_brc20_prog_height(),
+        block_hash: block.header.block_hash(),
+        first_inscription_height: self.index.settings.first_inscription_height() as u64,
+        first_brc20_prog_height: self.index.settings.first_brc20_prog_height() as u64,
       };
       okx_updater.index_block_bundle_messages(
         &mut context,
-        &http_client,
+        &brc20_prog_http_client,
         &self.index,
         block,
         block_bundle_messages,

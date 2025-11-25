@@ -1,22 +1,17 @@
-use crate::okx::utxo_address::BRC20_PROG_OP_RETURN_UTXO_ADDRESS;
-
-use super::*;
-use brc20_prog::Brc20ProgApiClient;
+use {super::*, crate::okx::utxo_address::BRC20_PROG_OP_RETURN_UTXO_ADDRESS};
 
 impl BRC20ExecutionMessage {
-  pub(super) async fn execute_withdraw(
+  pub(super) fn execute_withdraw(
     &self,
     context: &mut TableContext<'_, '_>,
-    brc20_prog_client: &HttpClient,
+    brc20_prog_client: &Brc20ProgClient,
     block_timestamp: u64,
-    mut block_hash: [u8; 32],
+    block_hash: &BlockHash,
     tx_idx: u64,
   ) -> Result<BRC20Receipt, ExecutionError> {
     let BRC20Operation::Withdraw { ticker, amount } = &self.operation else {
       unreachable!()
     };
-
-    block_hash.reverse();
 
     // load ticker info, ensure the ticker is deployed
     let ticker_info = context
@@ -31,11 +26,10 @@ impl BRC20ExecutionMessage {
         ticker.to_lowercase().to_string(),
         (*amount).into(),
         block_timestamp,
-        block_hash.into(),
+        block_hash.to_evm_hash(),
         tx_idx,
         self.inscription_id.to_string(),
       )
-      .await
       .expect("Check your BRC2.0 server");
 
     let success = !receipt.status.is_zero();

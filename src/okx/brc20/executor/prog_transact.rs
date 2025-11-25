@@ -1,16 +1,14 @@
-use brc20_prog::{
-  types::{Base64Bytes, RawBytes},
-  Brc20ProgApiClient,
+use {
+  super::*,
+  brc20_prog::types::{Base64Bytes, RawBytes},
 };
 
-use super::*;
-
 impl BRC20ExecutionMessage {
-  pub(super) async fn execute_prog_transact(
+  pub(super) fn execute_prog_transact(
     &self,
-    brc20_prog_client: &HttpClient,
+    brc20_prog_client: &Brc20ProgClient,
     block_timestamp: u64,
-    mut block_hash: [u8; 32],
+    block_hash: &BlockHash,
     tx_idx: u64,
     evm_version_prague: bool,
   ) -> Result<BRC20Receipt, ExecutionError> {
@@ -31,30 +29,24 @@ impl BRC20ExecutionMessage {
       }
     }
 
-    let op_return_tx_id: [u8; 32] = if evm_version_prague {
-      self
-        .txid
-        .as_byte_array()
-        .as_slice()
-        .try_into()
-        .expect("Tx id length mismatch")
+    // TODO: not sure if it should be reversed?
+    let op_return_tx_id = if evm_version_prague {
+      self.txid.to_evm_hash()
     } else {
-      [0u8; 32]
+      Txid::all_zeros().to_evm_hash()
     };
 
-    block_hash.reverse();
     let prog_tx_count = brc20_prog_client
       .brc20_transact(
         data.clone().map(RawBytes::new),
         base64_data.clone().map(Base64Bytes::new),
         block_timestamp,
-        block_hash.into(),
+        block_hash.to_evm_hash(),
         tx_idx,
         self.inscription_id.to_string(),
         *inscription_byte_length,
-        op_return_tx_id.into(),
+        op_return_tx_id,
       )
-      .await
       .expect("Check your BRC2.0 server")
       .len() as u64;
 

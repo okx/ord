@@ -1,24 +1,24 @@
-use super::*;
-use crate::{
-  index::{
-    bundle_message::{BundleMessage, InscriptionAction, SubType},
-    event::{Action, OkxInscriptionEvent},
-    BlockData, OpiValidationMode,
+use {
+  self::{
+    brc20::{
+      event_hash::BRC20BlockEventHash,
+      evm_prog_client::{Brc20ProgClient, ToEvmHash},
+      opi_validator::OpiValidator,
+      BRC20ExecutionMessage, BRC20Receipt,
+    },
+    context::TableContext,
+    entry::CollectionType,
   },
-  metrics::MetricsExt,
-  okx::brc20::event_hash::calculate_brc20_prog_traces_hash,
+  super::*,
+  crate::{
+    index::{
+      bundle_message::{BundleMessage, InscriptionAction, SubType},
+      BlockData,
+    },
+    metrics::MetricsExt,
+  },
+  std::collections::HashMap,
 };
-use brc20::{
-  event_hash::{get_opi_cumulative_hashes_with_retries, BRC20BlockEventHash},
-  BRC20ExecutionMessage, BRC20Receipt,
-};
-use brc20_prog::Brc20ProgApiClient;
-use context::TableContext;
-use core::panic;
-use entry::CollectionType;
-use jsonrpsee::http_client::HttpClient;
-use once_cell::sync::Lazy;
-use std::collections::HashMap;
 
 pub(crate) mod bitmap;
 pub(crate) mod brc20;
@@ -33,28 +33,21 @@ pub(crate) use self::{
   utxo_address::{UtxoAddress, UtxoAddressRef},
 };
 
-static RT: Lazy<Runtime> = Lazy::new(|| {
-  tokio::runtime::Builder::new_multi_thread()
-    .enable_all()
-    .build()
-    .expect("rt")
-});
-
-static BRC20_PROG_MINE_BATCH_SIZE: u32 = 5000;
+const BRC20_PROG_MINE_BATCH_SIZE: u64 = 5000;
 
 pub(crate) struct OkxUpdater {
-  pub(crate) height: u32,
+  pub(crate) height: u64,
   pub(crate) timestamp: u32,
-  pub(crate) block_hash: [u8; 32],
-  pub(crate) first_inscription_height: u32,
-  pub(crate) first_brc20_prog_height: u32,
+  pub(crate) block_hash: BlockHash,
+  pub(crate) first_inscription_height: u64,
+  pub(crate) first_brc20_prog_height: u64,
 }
 
 impl OkxUpdater {
   pub(crate) fn index_block_bundle_messages(
     &mut self,
     context: &mut TableContext<'_, '_>,
-    brc20_prog_client: &HttpClient,
+    brc20_prog_client: &Brc20ProgClient,
     index: &Index,
     block_data: &BlockData,
     mut bundle_messages_map: HashMap<Txid, Vec<BundleMessage>>,
@@ -74,62 +67,40 @@ impl OkxUpdater {
     );
 
     if index.has_brc20_index() && self.height >= self.first_brc20_prog_height {
-      let current_height = self.height as u32;
-      RT.block_on(async {
-        let prog_block_height = brc20_prog_client
-          .eth_block_number()
-          .await
-          .expect("Check BRC2.0 server");
-        let mut prog_block_height =
-          u32::from_str_radix(&prog_block_height.trim_start_matches("0x"), 16)
-            .expect("Invalid hex string");
-        // Initialise if not initialised
-        if prog_block_height == 0 {
-          brc20_prog_client
-            .brc20_initialise([0u8; 32].into(), 0, 0)
-            .await
-            .expect("BRC20 initialise failed");
-        }
-        // Mine empty blocks if not yet at first BRC20 prog height
-        while prog_block_height < self.first_brc20_prog_height - 1 {
-          let next_prog_height =
-            (prog_block_height + BRC20_PROG_MINE_BATCH_SIZE).min(self.first_brc20_prog_height - 1);
-          brc20_prog_client
-            .brc20_mine((next_prog_height - prog_block_height) as u64, 0)
-            .await
-            .expect("BRC20 mine failed");
-          brc20_prog_client
-            .brc20_commit_to_database()
-            .await
-            .expect("BRC20 commit failed");
-          prog_block_height = next_prog_height;
-        }
-        // Handle reorg if prog block height is ahead of current okx block height
-        if prog_block_height >= current_height && prog_block_height >= self.first_brc20_prog_height
-        {
-          log::warn!(
-            "[OKX] BRC20 Prog block height {} is ahead of OKX-ORD block height {}",
-            prog_block_height,
-            current_height
-          );
-          brc20_prog_client
-            .brc20_reorg(current_height as u64)
-            .await
-            .expect("BRC20 reorg unrecoverable error");
-        }
-        if prog_block_height < current_height - 1 {
-          log::error!(
-            "[OKX] BRC20 Prog block height {} is behind OKX-ORD block height {}",
-            prog_block_height,
-            current_height
-          );
-          panic!("BRC20 Prog block height is behind OKX-ORD block height");
-        }
-      });
+      let mut prog_block_height = brc20_prog_client.eth_block_number()?;
+      if prog_block_height == 0 {
+        brc20_prog_client.brc20_initialise([0u8; 32], 0, 0)?;
+      }
+      // Mine empty blocks if not yet at first BRC20 prog height
+      while prog_block_height < self.first_brc20_prog_height - 1 {
+        let next_prog_height =
+          (prog_block_height + BRC20_PROG_MINE_BATCH_SIZE).min(self.first_brc20_prog_height - 1);
+        brc20_prog_client.brc20_mine(next_prog_height - prog_block_height, 0)?;
+        brc20_prog_client.brc20_commit_to_database()?;
+        prog_block_height = next_prog_height;
+      }
+
+      // Handle reorg if prog block height is ahead of current okx block height
+      if prog_block_height >= self.height && prog_block_height >= self.first_brc20_prog_height {
+        log::warn!(
+          "[OKX] BRC20 Prog block height {} is ahead of OKX-ORD block height {}",
+          prog_block_height,
+          self.height
+        );
+        brc20_prog_client.brc20_reorg(self.height)?;
+      }
+
+      if prog_block_height < self.height - 1 {
+        log::error!(
+          "[OKX] BRC20 Prog block height {} is behind OKX-ORD block height {}",
+          prog_block_height,
+          self.height
+        );
+        panic!("BRC20 Prog block height is behind OKX-ORD block height");
+      }
     }
 
     let mut prog_tx_idx: u64 = 0;
-
     let mut brc20_event_hasher = BRC20BlockEventHash::new();
 
     for (_tx_index, (_transaction, txid)) in block_data
@@ -140,18 +111,14 @@ impl OkxUpdater {
       .chain(block_data.txdata.iter().enumerate().take(1))
     {
       if let Some(transaction_bundle_messages) = bundle_messages_map.remove(txid) {
-        let (brc20_receipts, bitmap_message_count, btc_domain_message_count) =
-          RT.block_on(async {
-            self
-              .process_bundle_messages(
-                context,
-                brc20_prog_client,
-                index,
-                &transaction_bundle_messages,
-                prog_tx_idx,
-              )
-              .await
-          })?;
+        let (brc20_receipts, bitmap_message_count, btc_domain_message_count) = self
+          .process_bundle_messages(
+            context,
+            brc20_prog_client,
+            index,
+            &transaction_bundle_messages,
+            prog_tx_idx,
+          )?;
 
         total_brc20_receipts += brc20_receipts.len();
         total_bitmap_messages += bitmap_message_count;
@@ -218,122 +185,25 @@ impl OkxUpdater {
         .increment_inscription_event_count(u32::try_from(total_inscription_receipts).unwrap());
     }
 
+    // Finalize block and validate with OPI
     if index.has_brc20_index() && self.height >= self.first_inscription_height {
-      RT.block_on(async {
-        if self.height >= self.first_brc20_prog_height {
-          let mut block_hash = self.block_hash;
-          block_hash.reverse();
-          brc20_prog_client
-            .brc20_finalise_block(self.timestamp as u64, block_hash.into(), prog_tx_idx)
-            .await
-            .expect("BRC20 finalise block failed");
-        }
+      if self.height >= self.first_brc20_prog_height {
+        brc20_prog_client.brc20_finalise_block(
+          self.timestamp as u64,
+          self.block_hash.to_evm_hash(),
+          prog_tx_idx,
+        )?;
+      }
 
-        let opi_validation_mode = &index.opi_validation_mode();
-        if matches!(*opi_validation_mode, OpiValidationMode::None) {
-          return;
-        }
+      // Validate BRC20 events with OPI
+      let validator = OpiValidator::new(
+        self.height,
+        self.first_brc20_prog_height,
+        index.opi_validation_mode(),
+        index.chain(),
+      );
 
-        // Verify cumulative event hash and trace hash
-        let network_type = match index.chain() {
-          Chain::Mainnet => "mainnet",
-          Chain::Signet => "signet",
-          _ => "testnet",
-        };
-        let prev_opi_cumulative_event_hashes =
-          match get_opi_cumulative_hashes_with_retries(self.height - 1, network_type).await {
-            Ok(hash) => hash,
-            Err(e) => {
-              log::error!(
-                "[OKX] Failed to get previous OPI cumulative event hash at block {}: {}",
-                self.height - 1,
-                e
-              );
-              if matches!(*opi_validation_mode, OpiValidationMode::Strict) {
-                panic!("Failed to get previous OPI cumulative event hash");
-              }
-              return;
-            }
-          };
-        let event_hash = brc20_event_hasher.get_block_event_hash();
-        let cumulative_event_hash = if prev_opi_cumulative_event_hashes.event_hash.len() == 0 {
-          event_hash.clone() // Initial hash is just the current hash
-        } else {
-          sha256::digest(prev_opi_cumulative_event_hashes.event_hash + &event_hash)
-        };
-        // Only start calculating trace hash from first BRC20 prog height
-        let trace_hash = if self.height >= self.first_brc20_prog_height {
-          match calculate_brc20_prog_traces_hash(brc20_prog_client, self.height as i32).await {
-            Ok(hash) => hash,
-            Err(e) => {
-              log::error!(
-                "[OKX] Failed to calculate BRC20 prog traces hash at block {}: {}",
-                self.height,
-                e
-              );
-              if matches!(*opi_validation_mode, OpiValidationMode::Strict) {
-                panic!("Failed to calculate BRC20 prog traces hash");
-              }
-              return;
-            }
-          }
-        } else {
-          String::new()
-        };
-        let cumulative_trace_hash = if prev_opi_cumulative_event_hashes.trace_hash.len() == 0 {
-          sha256::digest(trace_hash)
-        } else {
-          sha256::digest(prev_opi_cumulative_event_hashes.trace_hash + &trace_hash)
-        };
-        let current_opi_cumulative_event_hashes =
-          match get_opi_cumulative_hashes_with_retries(self.height, network_type).await {
-            Ok(hash) => hash,
-            Err(e) => {
-              log::error!(
-                "[OKX] Failed to get current OPI cumulative event hash at block {}: {}",
-                self.height,
-                e
-              );
-              if matches!(*opi_validation_mode, OpiValidationMode::Strict) {
-                panic!("Failed to get current OPI cumulative event hash");
-              }
-              return;
-            }
-          };
-
-        if cumulative_event_hash != current_opi_cumulative_event_hashes.event_hash {
-          log::error!(
-            "[OKX] BRC20 Block Event Hash mismatch at block {}: computed {}, stored {}",
-            self.height,
-            cumulative_event_hash,
-            current_opi_cumulative_event_hashes.event_hash
-          );
-          if matches!(*opi_validation_mode, OpiValidationMode::Strict) {
-            panic!("BRC20 Block Event Hash mismatch");
-          }
-          return;
-        }
-        log::warn!(
-          "[OKX] BRC20 Block Event Hash for block {}: {}",
-          self.height,
-          event_hash
-        );
-
-        if self.height >= self.first_brc20_prog_height
-          && cumulative_trace_hash != current_opi_cumulative_event_hashes.trace_hash
-        {
-          log::error!(
-            "[OKX] BRC20 Trace Hash mismatch at block {}: computed {}, stored {}",
-            self.height,
-            cumulative_trace_hash,
-            current_opi_cumulative_event_hashes.trace_hash
-          );
-          if matches!(*opi_validation_mode, OpiValidationMode::Strict) {
-            panic!("BRC20 Trace Hash mismatch");
-          }
-          return;
-        }
-      });
+      validator.validate(&brc20_event_hasher, brc20_prog_client)?;
     }
 
     log::info!(
@@ -349,10 +219,10 @@ impl OkxUpdater {
     Ok(())
   }
 
-  async fn process_bundle_messages(
+  fn process_bundle_messages(
     &self,
     context: &mut TableContext<'_, '_>,
-    brc20_prog_client: &HttpClient,
+    brc20_prog_client: &Brc20ProgClient,
     index: &Index,
     bundle_messages: &[BundleMessage],
     prog_tx_idx: u64,
@@ -367,18 +237,15 @@ impl OkxUpdater {
         if let Some(brc20_execution_message) =
           BRC20ExecutionMessage::new_from_bundle_message(bundle_message, context)?
         {
-          if let Ok(receipt) = brc20_execution_message
-            .execute(
-              context,
-              brc20_prog_client,
-              &index.chain(),
-              self.height,
-              self.timestamp,
-              &self.block_hash,
-              prog_tx_idx,
-            )
-            .await
-          {
+          if let Ok(receipt) = brc20_execution_message.execute(
+            context,
+            brc20_prog_client,
+            &index.chain(),
+            self.height as u32,
+            self.timestamp,
+            &self.block_hash,
+            prog_tx_idx,
+          ) {
             brc20_execution_receipts.push(receipt);
           }
           continue;
@@ -397,7 +264,7 @@ impl OkxUpdater {
             context,
             bundle_message.sequence_number,
             bundle_message.inscription_id,
-            self.height,
+            self.height as u32,
           )?;
         }
       }

@@ -1,5 +1,7 @@
-use super::*;
-use crate::okx::UtxoAddress;
+use {
+  super::{updater::inscription_updater::Curse, *},
+  crate::okx::UtxoAddress,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Event {

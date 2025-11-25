@@ -7,6 +7,7 @@ use super::{
     PredeployEvent, ProgCallEvent, ProgDeployEvent, ProgTransactEvent, TransferEvent,
     WithdrawEvent,
   },
+  evm_prog_client::Brc20ProgClient,
   *,
 };
 
@@ -79,14 +80,14 @@ impl BRC20ExecutionMessage {
 }
 
 impl BRC20ExecutionMessage {
-  pub async fn execute(
+  pub fn execute(
     self,
     context: &mut TableContext<'_, '_>,
-    brc20_prog_client: &HttpClient,
+    brc20_prog_client: &Brc20ProgClient,
     chain: &Chain,
     height: u32,
     blocktime: u32,
-    block_hash: &[u8; 32],
+    block_hash: &BlockHash,
     prog_tx_idx: u64,
   ) -> Result<BRC20Receipt> {
     let result = match &self.operation {
@@ -95,71 +96,51 @@ impl BRC20ExecutionMessage {
       BRC20Operation::Deploy { .. } => self.execute_deploy(context, height, blocktime),
       BRC20Operation::Mint { .. } => self.execute_mint(context, height),
       BRC20Operation::InscribeTransfer(_) => self.execute_inscribe_transfer(context),
-      BRC20Operation::Transfer { .. } => {
-        self
-          .execute_transfer(
-            context,
-            brc20_prog_client,
-            chain,
-            height,
-            blocktime,
-            *block_hash,
-            prog_tx_idx,
-          )
-          .await
-      }
+      BRC20Operation::Transfer { .. } => self.execute_transfer(
+        context,
+        brc20_prog_client,
+        chain,
+        height,
+        blocktime,
+        block_hash,
+        prog_tx_idx,
+      ),
 
       // BRC2.0 programmable module operations
       BRC20Operation::InscribeProgDeploy { .. } => self.execute_inscribe_prog_deploy(context),
-      BRC20Operation::ProgDeploy { .. } => {
-        self
-          .execute_prog_deploy(
-            brc20_prog_client,
-            blocktime as u64,
-            *block_hash,
-            prog_tx_idx,
-            height >= HardForks::brc20_prog_prague_activation_height(chain),
-          )
-          .await
-      }
+      BRC20Operation::ProgDeploy { .. } => self.execute_prog_deploy(
+        brc20_prog_client,
+        blocktime as u64,
+        block_hash,
+        prog_tx_idx,
+        height >= HardForks::brc20_prog_prague_activation_height(chain),
+      ),
       BRC20Operation::InscribeProgCall { .. } => self.execute_inscribe_prog_call(context),
-      BRC20Operation::ProgCall { .. } => {
-        self
-          .execute_prog_call(
-            brc20_prog_client,
-            blocktime as u64,
-            *block_hash,
-            prog_tx_idx,
-            height >= HardForks::brc20_prog_prague_activation_height(chain),
-          )
-          .await
-      }
+      BRC20Operation::ProgCall { .. } => self.execute_prog_call(
+        brc20_prog_client,
+        blocktime as u64,
+        block_hash,
+        prog_tx_idx,
+        height >= HardForks::brc20_prog_prague_activation_height(chain),
+      ),
       BRC20Operation::InscribeProgTransact { .. } => self.execute_inscribe_prog_transact(context),
-      BRC20Operation::ProgTransact { .. } => {
-        self
-          .execute_prog_transact(
-            brc20_prog_client,
-            blocktime as u64,
-            *block_hash,
-            prog_tx_idx,
-            height >= HardForks::brc20_prog_prague_activation_height(chain),
-          )
-          .await
-      }
+      BRC20Operation::ProgTransact { .. } => self.execute_prog_transact(
+        brc20_prog_client,
+        blocktime as u64,
+        block_hash,
+        prog_tx_idx,
+        height >= HardForks::brc20_prog_prague_activation_height(chain),
+      ),
 
       // Module withdrawal operations
       BRC20Operation::InscribeWithdraw(_) => self.execute_inscribe_withdraw(context),
-      BRC20Operation::Withdraw { .. } => {
-        self
-          .execute_withdraw(
-            context,
-            brc20_prog_client,
-            blocktime as u64,
-            *block_hash,
-            prog_tx_idx,
-          )
-          .await
-      }
+      BRC20Operation::Withdraw { .. } => self.execute_withdraw(
+        context,
+        brc20_prog_client,
+        blocktime as u64,
+        block_hash,
+        prog_tx_idx,
+      ),
     };
 
     match result {

@@ -85,6 +85,7 @@ jsonrpsee = { version = "0.25.1", features = ["http-client"] }
 brc20-prog = { version = "0.15.3", default-features = false }
 sha256 = "1.6.0"
 serde_json_canonicalizer = "0.3.1"
+alloy = "1.0.42"
 
 [dev-dependencies]
 criterion = "0.5.1"

@@ -14,10 +14,13 @@ use {
   crate::{
     metrics::Metrics,
     okx::{
-      brc20::entry::{
-        BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20PredeployValue, BRC20ProgCallValue,
-        BRC20ProgDeployValue, BRC20ProgTransactValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
-        BRC20TransferAssetValue, BRC20WithdrawValue,
+      brc20::{
+        entry::{
+          BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20PredeployValue, BRC20ProgCallValue,
+          BRC20ProgDeployValue, BRC20ProgTransactValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
+          BRC20TransferAssetValue, BRC20WithdrawValue,
+        },
+        opi_validator::OpiValidationMode,
       },
       entry::{AddressTickerKeyValue, InscriptionReceiptsValue},
     },
@@ -49,7 +52,7 @@ use {
 pub use self::entry::RuneEntry;
 pub(crate) use self::{
   rtx::Rtx,
-  updater::{BlockData, Curse},
+  updater::{inscription_updater::Curse, BlockData},
 };
 
 pub(crate) mod entry;
@@ -254,12 +257,6 @@ pub struct Index {
   index_bitmap: bool,
   index_btc_domain: bool,
   save_inscription_receipts: bool,
-}
-
-pub enum OpiValidationMode {
-  Strict,
-  Relaxed,
-  None,
 }
 
 impl Index {
