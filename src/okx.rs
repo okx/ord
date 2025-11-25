@@ -4,10 +4,10 @@ use {
       event_hash::BRC20BlockEventHash,
       evm_prog_client::{Brc20ProgClient, ToEvmHash},
       opi_validator::OpiValidator,
-      BRC20ExecutionMessage, BRC20Receipt,
+      BRC20ExecutionMessage,
     },
     context::TableContext,
-    entry::CollectionType,
+    entry::{CollectionType, InscriptionReceipt},
   },
   super::*,
   crate::{
@@ -15,7 +15,7 @@ use {
       bundle_message::{BundleMessage, InscriptionAction, SubType},
       BlockData,
     },
-    metrics::MetricsExt,
+    metrics::{BlockStatistic, IndexingPhase},
   },
   std::collections::HashMap,
 };
@@ -50,20 +50,18 @@ impl OkxUpdater {
     brc20_prog_client: &Brc20ProgClient,
     index: &Index,
     block_data: &BlockData,
-    mut bundle_messages_map: HashMap<Txid, Vec<BundleMessage>>,
+    mut bundle_messages: HashMap<Txid, Vec<BundleMessage>>,
   ) -> Result<()> {
-    let start_time = Instant::now();
-    let mut total_inscription_receipts = 0;
-    let mut total_brc20_receipts = 0;
-    let mut total_bitmap_messages = 0;
-    let mut total_btc_domain_messages = 0;
+    let block_start = Instant::now();
+
+    // Accumulated result for all transactions in block
+    let mut block_result = ProcessingResult::default();
 
     log::info!(
-      "[OKX] Starting to index block {} at {}, transaction_count: {}, bundle_message_count: {})",
+      "[OKX] Block {} indexing started | Transactions: {}, Bundle messages: {}",
       self.height,
-      timestamp(self.timestamp.into()),
       block_data.txdata.len(),
-      bundle_messages_map.len()
+      bundle_messages.len()
     );
 
     if index.has_brc20_index() && self.height >= self.first_brc20_prog_height {
@@ -101,7 +99,7 @@ impl OkxUpdater {
     }
 
     let mut prog_tx_idx: u64 = 0;
-    let mut brc20_event_hasher = BRC20BlockEventHash::new();
+    let mut brc20_block_event_hasher = BRC20BlockEventHash::new();
 
     for (_tx_index, (_transaction, txid)) in block_data
       .txdata
@@ -110,80 +108,55 @@ impl OkxUpdater {
       .skip(1)
       .chain(block_data.txdata.iter().enumerate().take(1))
     {
-      if let Some(transaction_bundle_messages) = bundle_messages_map.remove(txid) {
-        let (brc20_receipts, bitmap_message_count, btc_domain_message_count) = self
-          .process_bundle_messages(
-            context,
-            brc20_prog_client,
-            index,
-            &transaction_bundle_messages,
-            prog_tx_idx,
-          )?;
+      let Some(transaction_bundle_messages) = bundle_messages.remove(txid) else {
+        continue;
+      };
 
-        total_brc20_receipts += brc20_receipts.len();
-        total_bitmap_messages += bitmap_message_count;
-        total_btc_domain_messages += btc_domain_message_count;
+      let tx_result = self.process_bundle_messages(
+        context,
+        brc20_prog_client,
+        index,
+        *txid,
+        &transaction_bundle_messages,
+        &mut prog_tx_idx,
+        &mut brc20_block_event_hasher,
+      )?;
 
-        if !brc20_receipts.is_empty() {
-          let brc20_receipts_count = brc20_receipts.len();
-          let start_insert_time = Instant::now();
-
-          let sequence_number_list = brc20_receipts
-            .iter()
-            .map(|receipt| receipt.sequence_number)
-            .collect::<HashSet<_>>();
-
-          prog_tx_idx += brc20_receipts
-            .iter()
-            .map(|receipt| receipt.prog_tx_count)
-            .sum::<u64>();
-
-          for brc20_receipt in &brc20_receipts {
-            brc20_event_hasher.add_receipt(brc20_receipt.clone());
-          }
-
-          for sequence_number in sequence_number_list {
-            context
-              .insert_sequence_number_to_collection_type(sequence_number, CollectionType::BRC20)?;
-          }
-
-          context.insert_brc20_tx_receipts(txid, brc20_receipts)?;
-          log::debug!(
-            "[OKX] Saved {} BRC20 receipts for transaction {} in {} ms",
-            brc20_receipts_count,
-            txid,
-            (Instant::now() - start_insert_time).as_millis()
-          );
-        }
-        if index.has_inscription_receipts() {
-          let transaction_bundle_messages_count = transaction_bundle_messages.len();
-          total_inscription_receipts += transaction_bundle_messages_count;
-          let inscription_receipts = transaction_bundle_messages
-            .into_iter()
-            .map(Into::into)
-            .collect();
-          let start_insert_time = Instant::now();
-          context.insert_inscription_tx_receipts(txid, inscription_receipts)?;
-          log::debug!(
-            "[OKX] Saved {} inscription receipts for transaction {} in {} ms",
-            transaction_bundle_messages_count,
-            txid,
-            (Instant::now() - start_insert_time).as_millis()
-          );
-        }
-      }
+      // Accumulate results from this transaction
+      block_result.add(&tx_result);
     }
+    block_result.total_duration = block_start.elapsed();
 
-    if index.has_brc20_index() {
-      index
-        .metrics
-        .increment_brc20_event_count(u32::try_from(total_brc20_receipts).unwrap());
-    }
-    if index.has_inscription_receipts() {
-      index
-        .metrics
-        .increment_inscription_event_count(u32::try_from(total_inscription_receipts).unwrap());
-    }
+    // Record OKX indexing sub-phase durations
+    metrics::record_phase(
+      IndexingPhase::InscriptionReceiptsIndexing,
+      block_result.phase_durations.inscription_receipts,
+    );
+    metrics::record_phase(
+      IndexingPhase::Brc20Indexing,
+      block_result.phase_durations.brc20,
+    );
+    metrics::record_phase(
+      IndexingPhase::BitmapIndexing,
+      block_result.phase_durations.bitmap,
+    );
+    metrics::record_phase(
+      IndexingPhase::BtcDomainIndexing,
+      block_result.phase_durations.btc_domain,
+    );
+    metrics::record_phase(IndexingPhase::OkxTotalIndexing, block_result.total_duration);
+
+    // Record block statistics
+    metrics::record_stats(
+      BlockStatistic::Inscriptions,
+      block_result.inscription_count as u64,
+    );
+    metrics::record_stats(BlockStatistic::Brc20Events, block_result.brc20_count as u64);
+    metrics::record_stats(BlockStatistic::Bitmaps, block_result.bitmap_count as u64);
+    metrics::record_stats(
+      BlockStatistic::BtcDomains,
+      block_result.btc_domain_count as u64,
+    );
 
     // Finalize block and validate with OPI
     if index.has_brc20_index() && self.height >= self.first_inscription_height {
@@ -203,18 +176,22 @@ impl OkxUpdater {
         index.chain(),
       );
 
-      validator.validate(&brc20_event_hasher, brc20_prog_client)?;
+      validator.validate(&brc20_block_event_hasher, brc20_prog_client)?;
     }
 
     log::info!(
-            "[OKX] Finished indexing block {} {{ total_inscriptions: {}, total_brc20: {}, total_bitmaps: {}, total_btc_domains: {} }} in {} ms",
-            self.height,
-            total_inscription_receipts,
-            total_brc20_receipts,
-            total_bitmap_messages,
-            total_btc_domain_messages,
-            (Instant::now() - start_time).as_millis(),
-        );
+      "[OKX] Block {} indexed in {} | Stats: inscriptions={}, brc20={}, bitmaps={}, domains={} | Durations: inscription_receipts={}, brc20={}, bitmap={}, btc_domain={}",
+      self.height,
+      humantime::format_duration(block_result.total_duration),
+      block_result.inscription_count,
+      block_result.brc20_count,
+      block_result.bitmap_count,
+      block_result.btc_domain_count,
+      humantime::format_duration(block_result.phase_durations.inscription_receipts),
+      humantime::format_duration(block_result.phase_durations.brc20),
+      humantime::format_duration(block_result.phase_durations.bitmap),
+      humantime::format_duration(block_result.phase_durations.btc_domain),
+    );
 
     Ok(())
   }
@@ -224,19 +201,24 @@ impl OkxUpdater {
     context: &mut TableContext<'_, '_>,
     brc20_prog_client: &Brc20ProgClient,
     index: &Index,
+    txid: Txid,
     bundle_messages: &[BundleMessage],
-    prog_tx_idx: u64,
-  ) -> Result<(Vec<BRC20Receipt>, usize, usize)> {
-    let mut brc20_execution_receipts = Vec::new();
-    let mut bitmap_message_count = 0;
-    let mut btc_domain_message_count = 0;
+    prog_tx_idx: &mut u64,
+    brc20_block_event_hasher: &mut BRC20BlockEventHash,
+  ) -> Result<ProcessingResult> {
+    let mut brc20_receipts = Vec::new();
+    // Initialize result accumulator
+    let mut result = ProcessingResult::default();
+    let total_start = Instant::now();
 
-    for bundle_message in bundle_messages.iter() {
-      // process brc20 operation
+    // Process each bundle message
+    for bundle_message in bundle_messages {
+      // Process BRC20 operation
       if index.has_brc20_index() {
         if let Some(brc20_execution_message) =
           BRC20ExecutionMessage::new_from_bundle_message(bundle_message, context)?
         {
+          let brc20_start = Instant::now();
           if let Ok(receipt) = brc20_execution_message.execute(
             context,
             brc20_prog_client,
@@ -244,52 +226,160 @@ impl OkxUpdater {
             self.height as u32,
             self.timestamp,
             &self.block_hash,
-            prog_tx_idx,
+            *prog_tx_idx,
           ) {
-            brc20_execution_receipts.push(receipt);
+            brc20_receipts.push(receipt);
           }
+          result.phase_durations.brc20 += brc20_start.elapsed();
           continue;
         }
       }
 
-      // process bitmap operation
+      // Process bitmap operation
       if index.has_bitmap_index() {
         if let InscriptionAction::Created {
           sub_type: Some(SubType::Bitmap(bitmap_operation)),
           ..
         } = &bundle_message.inscription_action
         {
-          bitmap_message_count += 1;
+          let bitmap_start = Instant::now();
+          result.bitmap_count += 1;
           bitmap_operation.execute(
             context,
             bundle_message.sequence_number,
             bundle_message.inscription_id,
             self.height as u32,
           )?;
+          result.phase_durations.bitmap += bitmap_start.elapsed();
         }
       }
 
-      // process btc domain operation
+      // Process BTC domain operation
       if index.has_btc_domain_index() {
         if let InscriptionAction::Created {
           sub_type: Some(SubType::BtcDomain(btc_domain)),
           ..
         } = &bundle_message.inscription_action
         {
-          btc_domain_message_count += 1;
+          let domain_start = Instant::now();
+          result.btc_domain_count += 1;
           btc_domain.execute(
             context,
             bundle_message.sequence_number,
             bundle_message.inscription_id,
           )?;
+          result.phase_durations.btc_domain += domain_start.elapsed();
         }
       }
     }
 
-    Ok((
-      brc20_execution_receipts,
-      bitmap_message_count,
-      btc_domain_message_count,
-    ))
+    for receipt in &brc20_receipts {
+      *prog_tx_idx += receipt.prog_tx_count;
+      brc20_block_event_hasher.add_receipt(receipt.clone());
+    }
+
+    let brc20_receipts_count = brc20_receipts.len();
+
+    // Save BRC20 receipts to database
+    if brc20_receipts_count > 0 {
+      let save_start = Instant::now();
+
+      for receipt in &brc20_receipts {
+        context.insert_sequence_number_to_collection_type(
+          receipt.sequence_number,
+          CollectionType::BRC20,
+        )?;
+      }
+
+      context.insert_brc20_tx_receipts(&txid, brc20_receipts)?;
+      result.phase_durations.brc20 += save_start.elapsed();
+
+      log::debug!(
+        "[OKX] Saved {} BRC20 receipts for transaction {} in {}",
+        brc20_receipts_count,
+        txid,
+        humantime::format_duration(save_start.elapsed())
+      );
+    }
+
+    // Save inscription receipts to database
+    result.inscription_count = bundle_messages.len();
+    if index.has_inscription_receipts() && !bundle_messages.is_empty() {
+      let save_start = Instant::now();
+
+      let inscription_receipts = bundle_messages
+        .iter()
+        .map(InscriptionReceipt::from)
+        .collect();
+
+      context.insert_inscription_tx_receipts(&txid, inscription_receipts)?;
+      result.phase_durations.inscription_receipts += save_start.elapsed();
+
+      log::debug!(
+        "[OKX] Saved {} inscription receipts for transaction {} in {}",
+        result.inscription_count,
+        txid,
+        humantime::format_duration(save_start.elapsed())
+      );
+    }
+
+    // Set final BRC20 count
+    result.brc20_count = brc20_receipts_count;
+    result.total_duration = total_start.elapsed();
+
+    Ok(result)
+  }
+}
+
+/// Result of processing and saving bundle messages
+#[derive(Default)]
+struct ProcessingResult {
+  /// Number of inscription receipts processed and saved
+  inscription_count: usize,
+  /// Number of BRC20 events processed and saved
+  brc20_count: usize,
+  /// Number of bitmap inscriptions processed
+  bitmap_count: usize,
+  /// Number of BTC domain inscriptions processed
+  btc_domain_count: usize,
+  /// Time spent on each indexing sub-phase
+  phase_durations: IndexingDurations,
+  /// Total time spent processing and saving bundle messages
+  total_duration: Duration,
+}
+
+impl ProcessingResult {
+  /// Add another processing result to this one (accumulate)
+  fn add(&mut self, other: &ProcessingResult) {
+    // Note: brc20_receipts are not accumulated (already saved per transaction)
+    self.inscription_count += other.inscription_count;
+    self.brc20_count += other.brc20_count;
+    self.bitmap_count += other.bitmap_count;
+    self.btc_domain_count += other.btc_domain_count;
+    self.phase_durations.add(&other.phase_durations);
+    self.total_duration += other.total_duration;
+  }
+}
+
+/// Time spent on each OKX indexing sub-phase
+#[derive(Default)]
+struct IndexingDurations {
+  /// Time spent saving inscription receipts to database
+  inscription_receipts: Duration,
+  /// Time spent indexing BRC20 tokens (including database save)
+  brc20: Duration,
+  /// Time spent indexing bitmap collection
+  bitmap: Duration,
+  /// Time spent indexing BTC domain collection
+  btc_domain: Duration,
+}
+
+impl IndexingDurations {
+  /// Add another duration set to this one (accumulate)
+  fn add(&mut self, other: &IndexingDurations) {
+    self.brc20 += other.brc20;
+    self.inscription_receipts += other.inscription_receipts;
+    self.bitmap += other.bitmap;
+    self.btc_domain += other.btc_domain;
   }
 }

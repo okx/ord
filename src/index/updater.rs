@@ -2,7 +2,7 @@ use {
   self::{inscription_updater::InscriptionUpdater, rune_updater::RuneUpdater},
   super::{fetcher::Fetcher, *},
   crate::{
-    metrics::MetricsExt,
+    metrics::{BlockHeightState, BlockStatistic, IndexingPhase},
     okx::{brc20::evm_prog_client::Brc20ProgClient, context::TableContext, OkxUpdater},
   },
   brc20_prog::Brc20ProgApiClient,
@@ -51,6 +51,10 @@ impl Updater<'_> {
     let starting_height = u32::try_from(self.index.client.get_block_count()?).unwrap() + 1;
     let starting_index_height = self.height;
 
+    metrics::record_height(BlockHeightState::Processed, self.height as u64);
+    metrics::record_height(BlockHeightState::DbCommitted, self.height as u64);
+    metrics::record_height(BlockHeightState::Network, starting_height as u64);
+
     wtx
       .open_table(WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP)?
       .insert(
@@ -98,7 +102,9 @@ impl Updater<'_> {
 
     let mut uncommitted = 0;
     let mut utxo_cache = HashMap::new();
+    let block_start = Instant::now();
     while let Ok(block) = rx.recv() {
+      metrics::record_phase(IndexingPhase::BlockWait, block_start.elapsed());
       self.index_block(
         &mut output_sender,
         &mut txout_receiver,
@@ -226,6 +232,7 @@ impl Updater<'_> {
     first_index_height: u32,
   ) -> Result<Option<Block>> {
     let mut errors = 0;
+    let start = Instant::now();
     loop {
       match client
         .get_block_hash(height.into())
@@ -260,7 +267,10 @@ impl Updater<'_> {
 
           thread::sleep(Duration::from_secs(seconds));
         }
-        Ok(result) => return Ok(result),
+        Ok(result) => {
+          metrics::record_download(start.elapsed());
+          return Ok(result);
+        }
       }
     }
   }
@@ -419,16 +429,6 @@ impl Updater<'_> {
 
     height_to_block_header.insert(&self.height, &block.header.store())?;
 
-    self.index.metrics.set_current_block_height(self.height);
-    self
-      .index
-      .metrics
-      .increment_transaction_count(u32::try_from(block.txdata.len()).unwrap());
-    self
-      .index
-      .metrics
-      .observe_block_parse_duration((Instant::now() - start).as_secs_f64());
-
     self.height += 1;
     self.outputs_traversed += outputs_in_block;
 
@@ -436,6 +436,10 @@ impl Updater<'_> {
       "Wrote {sat_ranges_written} sat ranges from {outputs_in_block} outputs in {} ms",
       (Instant::now() - start).as_millis(),
     );
+
+    // Record block processing metrics
+    metrics::record_height(BlockHeightState::Processed, self.height as u64);
+    metrics::record_stats(BlockStatistic::Transactions, block.txdata.len() as u64);
 
     Ok(())
   }
@@ -705,6 +709,7 @@ impl Updater<'_> {
       }
 
       if index_inscriptions {
+        let start = Instant::now();
         inscription_updater.index_inscriptions(
           tx,
           *txid,
@@ -714,6 +719,7 @@ impl Updater<'_> {
           self.index,
           input_sat_ranges.as_ref(),
         )?;
+        metrics::record_phase(IndexingPhase::InscriptionIndexing, start.elapsed());
       }
 
       for (vout, output_utxo_entry) in output_utxo_entries.into_iter().enumerate() {
@@ -928,6 +934,7 @@ impl Updater<'_> {
     wtx: WriteTransaction,
     utxo_cache: HashMap<OutPoint, UtxoEntryBuf>,
   ) -> Result {
+    let commit_start = Instant::now();
     log::info!(
       "Committing at block height {}, {} outputs traversed, {} in map, {} cached",
       self.height,
@@ -977,6 +984,10 @@ impl Updater<'_> {
     self.index.begin_write()?.commit()?;
 
     Reorg::update_savepoints(self.index, self.height)?;
+
+    // Record commit metrics
+    metrics::record_height(BlockHeightState::DbCommitted, self.height as u64);
+    metrics::record_commit(commit_start.elapsed());
 
     Ok(())
   }

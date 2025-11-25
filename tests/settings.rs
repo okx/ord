@@ -30,7 +30,13 @@ fn default() {
   "no_index_inscriptions": false,
   "server_password": null,
   "server_url": null,
-  "server_username": null
+  "server_username": null,
+  "log_dir": ".*\/logs",
+  "log_level": "ERROR",
+  "save_inscription_receipts": false,
+  "index_bitmap": false,
+  "index_btc_domain": false,
+  "index_brc20": false
 \}
 "#,
     )

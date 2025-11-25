@@ -71,29 +71,38 @@ pub(crate) async fn ord_txid_inscriptions(
   Extension(index): Extension<Arc<Index>>,
   Path(txid): Path<String>,
 ) -> ApiResult<ApiTxInscriptions> {
-  log::debug!("rpc: get ord_txid_inscriptions: {}", txid);
+  tracing::debug!("rpc: get ord_txid_inscriptions: {}", txid);
   task::block_in_place(|| {
     let txid = Txid::from_str(&txid).map_err(ApiError::bad_request)?;
+
     let rtx = index.begin_read()?;
-    let inscription_receipts = match Index::ord_get_raw_receipts(&txid, &rtx)? {
+    let inscription_receipts = trace_db_call!("get_inscription_receipts", {
+      Index::ord_get_raw_receipts(&txid, &rtx)
+    })?;
+
+    let inscription_receipts = match inscription_receipts {
       Some(receipts) => receipts,
       None => {
-        let tx_info = index
-          .client
-          .get_raw_transaction_info(&txid, None)
-          .map_err(ApiError::internal)?;
+        let tx_info = trace_rpc_call!("get_raw_transaction_info", {
+          index
+            .client
+            .get_raw_transaction_info(&txid, None)
+            .map_err(ApiError::internal)
+        })?;
 
         if let Some(blockhash) = tx_info.blockhash {
-          let block_info = index
-            .client
-            .get_block_info(&blockhash)
-            .map_err(ApiError::internal)?;
+          let block_info = trace_rpc_call!("get_block_info", {
+            index
+              .client
+              .get_block_info(&blockhash)
+              .map_err(ApiError::internal)
+          })?;
 
-          let db_blockhash =
-            match rtx.block_hash(Some(u32::try_from(block_info.height).unwrap()))? {
-              Some(hash) => hash,
-              None => return Err(OrdApiError::TransactionReceiptNotFound(txid).into()),
-            };
+          let db_blockhash = trace_db_call!("get_block_hash", {
+            rtx
+              .block_hash(Some(u32::try_from(block_info.height).unwrap()))?
+              .ok_or(OrdApiError::TransactionReceiptNotFound(txid))
+          })?;
 
           if db_blockhash == blockhash {
             Vec::new()
@@ -105,7 +114,7 @@ pub(crate) async fn ord_txid_inscriptions(
         }
       }
     };
-    log::debug!(
+    tracing::debug!(
       "rpc: get ord_txid_inscriptions: {} {:?}",
       txid,
       inscription_receipts
@@ -125,21 +134,23 @@ pub(crate) async fn ord_block_inscriptions(
   Extension(index): Extension<Arc<Index>>,
   Path(blockhash): Path<String>,
 ) -> ApiResult<ApiBlockInscriptions> {
-  log::debug!("rpc: get ord_block_inscriptions: {}", blockhash);
+  tracing::debug!("rpc: get ord_block_inscriptions: {}", blockhash);
   task::block_in_place(|| {
     let blockhash = BlockHash::from_str(&blockhash).map_err(ApiError::bad_request)?;
 
     let rtx = index.begin_read()?;
+    let block_info = trace_rpc_call!("get_block_info", {
+      index
+        .client
+        .get_block_info(&blockhash)
+        .map_err(ApiError::internal)
+    })?;
 
-    let block_info = index
-      .client
-      .get_block_info(&blockhash)
-      .map_err(ApiError::internal)?;
-
-    let Some(db_blockhash) = rtx.block_hash(Some(u32::try_from(block_info.height).unwrap()))?
-    else {
-      return Err(OrdApiError::BlockReceiptNotFound(block_info.hash).into());
-    };
+    let db_blockhash = trace_db_call!("get_block_hash", {
+      rtx
+        .block_hash(Some(u32::try_from(block_info.height).unwrap()))?
+        .ok_or(OrdApiError::BlockReceiptNotFound(block_info.hash))
+    })?;
 
     // check of conflicting block.
     if block_info.hash != db_blockhash || blockhash != block_info.hash {
@@ -150,14 +161,16 @@ pub(crate) async fn ord_block_inscriptions(
     }
 
     let mut block_receipts = Vec::new();
-    for (id, txid) in block_info.tx.into_iter().enumerate() {
-      let Some(tx_receipts) = Index::ord_get_raw_receipts(&txid, &rtx)? else {
-        continue;
-      };
-      block_receipts.push((id, txid, tx_receipts));
-    }
+    trace_db_call!("get_ord_block_receipts", {
+      for (id, txid) in block_info.tx.into_iter().enumerate() {
+        let Some(tx_receipts) = Index::ord_get_raw_receipts(&txid, &rtx)? else {
+          continue;
+        };
+        block_receipts.push((id, txid, tx_receipts));
+      }
+    });
 
-    log::debug!(
+    tracing::debug!(
       "rpc: get ord_block_inscriptions: {} {:?}",
       blockhash,
       block_receipts
