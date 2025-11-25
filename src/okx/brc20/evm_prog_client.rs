@@ -32,98 +32,87 @@ impl Brc20ProgClient {
       .max_response_size(u32::MAX)
       .set_headers(auth_header)
       .build(url)?;
-    BRC20_PROG_RUNTIME.block_on(async {
-      client
-        .brc20_clear_caches()
-        .await
-        .expect("Clearing BRC20 caches")
-    });
+
+    BRC20_PROG_RUNTIME
+      .block_on(async { client.brc20_clear_caches().await })
+      .map_err(anyhow::Error::from)?;
     Ok(Self { client })
   }
 
   pub fn eth_block_number(&self) -> Result<u64> {
     let hex_str = BRC20_PROG_RUNTIME
       .block_on(async { self.client.eth_block_number().await })
-      .map_err(|e| anyhow!("Failed to get block number: {}", e))?;
+      .map_err(anyhow::Error::from)?;
 
     let number_str = hex_str.trim_start_matches("0x");
     u64::from_str_radix(number_str, 16)
       .map_err(|e| anyhow!("Failed to parse block number '{}': {}", number_str, e))
   }
 
-  pub fn brc20_initialise<T>(
+  pub fn brc20_initialise(
     &self,
-    genesis_block_hash: T,
+    genesis_block_hash: B256ED,
     genesis_block_timestamp: u64,
     genesis_block_number: u64,
-  ) -> Result<()>
-  where
-    T: Into<B256ED>,
-  {
+  ) -> Result<()> {
     BRC20_PROG_RUNTIME
       .block_on(async {
         self
           .client
           .brc20_initialise(
-            genesis_block_hash.into(),
+            genesis_block_hash,
             genesis_block_timestamp,
             genesis_block_number,
           )
           .await
       })
-      .map_err(|e| anyhow!("Failed to initialize BRC20: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
   pub fn brc20_mine(&self, num_blocks: u64, timestamp: u64) -> Result<()> {
     BRC20_PROG_RUNTIME
       .block_on(async { self.client.brc20_mine(num_blocks, timestamp).await })
-      .map_err(|e| anyhow!("Failed to mine blocks: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
   pub fn brc20_commit_to_database(&self) -> Result<()> {
     BRC20_PROG_RUNTIME
       .block_on(async { self.client.brc20_commit_to_database().await })
-      .map_err(|e| anyhow!("Failed to commit to database: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
   pub fn brc20_reorg(&self, target_height: u64) -> Result<()> {
     BRC20_PROG_RUNTIME
       .block_on(async { self.client.brc20_reorg(target_height).await })
-      .map_err(|e| anyhow!("Failed to reorg: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
-  pub fn brc20_finalise_block<T>(
+  pub fn brc20_finalise_block(
     &self,
     timestamp: u64,
-    block_hash: T,
+    block_hash: B256ED,
     prog_tx_idx: u64,
-  ) -> Result<()>
-  where
-    T: Into<B256ED>,
-  {
+  ) -> Result<()> {
     BRC20_PROG_RUNTIME
       .block_on(async {
         self
           .client
-          .brc20_finalise_block(timestamp, block_hash.into(), prog_tx_idx)
+          .brc20_finalise_block(timestamp, block_hash, prog_tx_idx)
           .await
       })
-      .map_err(|e| anyhow!("Failed to finalize block: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
-  pub fn brc20_deposit<T>(
+  pub fn brc20_deposit(
     &self,
     sender_address: String,
     ticker: String,
     amount: u128,
     block_timestamp: u64,
-    block_hash: T,
+    block_hash: B256ED,
     tx_idx: u64,
     inscription_id: String,
-  ) -> Result<()>
-  where
-    T: Into<B256ED>,
-  {
+  ) -> Result<()> {
     BRC20_PROG_RUNTIME
       .block_on(async {
         self
@@ -133,29 +122,26 @@ impl Brc20ProgClient {
             ticker,
             amount.into(),
             block_timestamp,
-            block_hash.into(),
+            block_hash,
             tx_idx,
             inscription_id,
           )
           .await
           .map(|_| ()) // Ignore receipt, just check success
       })
-      .map_err(|e| anyhow!("Failed to deposit: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
-  pub fn brc20_withdraw<T>(
+  pub fn brc20_withdraw(
     &self,
     sender_address: String,
     ticker: String,
     amount: u128,
     block_timestamp: u64,
-    block_hash: T,
+    block_hash: B256ED,
     tx_idx: u64,
     inscription_id: String,
-  ) -> Result<TxReceiptED>
-  where
-    T: Into<B256ED>,
-  {
+  ) -> Result<TxReceiptED> {
     BRC20_PROG_RUNTIME
       .block_on(async {
         self
@@ -165,30 +151,27 @@ impl Brc20ProgClient {
             ticker,
             amount.into(),
             block_timestamp,
-            block_hash.into(),
+            block_hash,
             tx_idx,
             inscription_id,
           )
           .await
       })
-      .map_err(|e| anyhow!("Failed to withdraw: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
-  pub fn brc20_deploy<T>(
+  pub fn brc20_deploy(
     &self,
     sender_address: String,
     bytecode: Option<RawBytes>,
     base64_bytecode: Option<Base64Bytes>,
     block_timestamp: u64,
-    block_hash: T,
+    block_hash: B256ED,
     tx_idx: u64,
     inscription_id: String,
     inscription_byte_length: u64,
-    op_return_tx_id: T,
-  ) -> Result<()>
-  where
-    T: Into<B256ED>,
-  {
+    op_return_tx_id: B256ED,
+  ) -> Result<()> {
     BRC20_PROG_RUNTIME
       .block_on(async {
         self
@@ -198,73 +181,66 @@ impl Brc20ProgClient {
             bytecode,
             base64_bytecode,
             block_timestamp,
-            block_hash.into(),
+            block_hash,
             tx_idx,
             inscription_id,
             inscription_byte_length,
-            op_return_tx_id.into(),
+            op_return_tx_id,
           )
           .await
           .map(|_| ()) // Convert to unit type
       })
-      .map_err(|e| anyhow!("Failed to deploy module: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
-  pub fn brc20_call<T, U>(
+  pub fn brc20_call(
     &self,
     sender_address: String,
-    contract_address: Option<T>,
+    contract_address: Option<AddressED>,
     contract_inscription_id: Option<String>,
     data: Option<RawBytes>,
     base64_data: Option<Base64Bytes>,
     block_timestamp: u64,
-    block_hash: U,
+    block_hash: B256ED,
     tx_idx: u64,
     inscription_id: String,
     inscription_byte_length: u64,
-    op_return_tx_id: U,
-  ) -> Result<()>
-  where
-    T: Into<AddressED>,
-    U: Into<B256ED>,
-  {
+    op_return_tx_id: B256ED,
+  ) -> Result<()> {
     BRC20_PROG_RUNTIME
       .block_on(async {
         self
           .client
           .brc20_call(
             sender_address,
-            contract_address.map(|address| address.into()),
+            contract_address,
             contract_inscription_id,
             data,
             base64_data,
             block_timestamp,
-            block_hash.into(),
+            block_hash,
             tx_idx,
             inscription_id,
             inscription_byte_length,
-            op_return_tx_id.into(),
+            op_return_tx_id,
           )
           .await
           .map(|_| ()) // Ignore receipt
       })
-      .map_err(|e| anyhow!("Failed to call module: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
-  pub fn brc20_transact<T>(
+  pub fn brc20_transact(
     &self,
     data: Option<RawBytes>,
     base64_data: Option<Base64Bytes>,
     block_timestamp: u64,
-    block_hash: T,
+    block_hash: B256ED,
     tx_idx: u64,
     inscription_id: String,
     inscription_byte_length: u64,
-    op_return_tx_id: T,
-  ) -> Result<Vec<TxReceiptED>>
-  where
-    T: Into<B256ED>,
-  {
+    op_return_tx_id: B256ED,
+  ) -> Result<Vec<TxReceiptED>> {
     BRC20_PROG_RUNTIME
       .block_on(async {
         self
@@ -273,24 +249,21 @@ impl Brc20ProgClient {
             data,
             base64_data,
             block_timestamp,
-            block_hash.into(),
+            block_hash,
             tx_idx,
             inscription_id,
             inscription_byte_length,
-            op_return_tx_id.into(),
+            op_return_tx_id,
           )
           .await
       })
-      .map_err(|e| anyhow!("Failed to transact: {}", e))
+      .map_err(anyhow::Error::from)
   }
 
-  pub fn debug_trace_transaction<T>(&self, tx_idx: T) -> Result<Option<TraceED>>
-  where
-    T: Into<B256ED>,
-  {
+  pub fn debug_trace_transaction(&self, tx_hash: B256ED) -> Result<Option<TraceED>> {
     BRC20_PROG_RUNTIME
-      .block_on(async { self.client.debug_trace_transaction(tx_idx.into()).await })
-      .map_err(|e| anyhow!("Failed to get trace: {}", e))
+      .block_on(async { self.client.debug_trace_transaction(tx_hash).await })
+      .map_err(anyhow::Error::from)
   }
 
   pub fn eth_get_block_by_number(
@@ -305,38 +278,34 @@ impl Brc20ProgClient {
           .eth_get_block_by_number(block_number, is_full)
           .await
       })
-      .map_err(|e| anyhow!("Failed to get block: {}", e))
+      .map_err(anyhow::Error::from)
   }
 }
 
-pub trait ToEvmHash {
-  fn to_evm_hash(&self) -> FixedBytes<32>;
+pub trait ToB256ED {
+  fn to_b256_ed(&self) -> B256ED;
+}
 
+impl ToB256ED for BlockHash {
   fn to_b256_ed(&self) -> B256ED {
-    self.to_evm_hash().into()
-  }
-}
-
-impl ToEvmHash for BlockHash {
-  fn to_evm_hash(&self) -> FixedBytes<32> {
     let reversed_bytes = self
       .as_byte_array()
       .iter()
       .rev()
       .copied()
       .collect::<Vec<u8>>();
-    FixedBytes::<32>::from_slice(&reversed_bytes)
+    FixedBytes::<32>::from_slice(&reversed_bytes).into()
   }
 }
 
-impl ToEvmHash for Txid {
-  fn to_evm_hash(&self) -> FixedBytes<32> {
+impl ToB256ED for Txid {
+  fn to_b256_ed(&self) -> B256ED {
     let reversed_bytes = self
       .as_byte_array()
       .iter()
       .rev()
       .copied()
       .collect::<Vec<u8>>();
-    FixedBytes::<32>::from_slice(&reversed_bytes)
+    FixedBytes::<32>::from_slice(&reversed_bytes).into()
   }
 }

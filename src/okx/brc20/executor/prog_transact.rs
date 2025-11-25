@@ -30,24 +30,21 @@ impl BRC20ExecutionMessage {
     }
 
     // TODO: not sure if it should be reversed?
-    let op_return_tx_id = if evm_version_prague {
-      self.txid.to_evm_hash()
-    } else {
-      Txid::all_zeros().to_evm_hash()
-    };
+    let op_return_tx_id = evm_version_prague
+      .then_some(self.txid)
+      .unwrap_or(Txid::all_zeros());
 
     let prog_tx_count = brc20_prog_client
       .brc20_transact(
         data.clone().map(RawBytes::new),
         base64_data.clone().map(Base64Bytes::new),
         block_timestamp,
-        block_hash.to_evm_hash(),
+        block_hash.to_b256_ed(),
         tx_idx,
         self.inscription_id.to_string(),
         *inscription_byte_length,
-        op_return_tx_id,
-      )
-      .expect("Check your BRC2.0 server")
+        op_return_tx_id.to_b256_ed(),
+      )?
       .len() as u64;
 
     Ok(BRC20Receipt {

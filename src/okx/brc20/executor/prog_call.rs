@@ -37,27 +37,23 @@ impl BRC20ExecutionMessage {
       .flatten();
 
     // TODO: not sure if it should be reversed?
-    let op_return_tx_id = if evm_version_prague {
-      self.txid.to_evm_hash()
-    } else {
-      Txid::all_zeros().to_evm_hash()
-    };
+    let op_return_tx_id = evm_version_prague
+      .then_some(self.txid)
+      .unwrap_or(Txid::all_zeros());
 
-    brc20_prog_client
-      .brc20_call(
-        hex::encode(self.sender.to_script_bytes()),
-        contract_address_ed,
-        contract_inscription_id.clone(),
-        data.clone().map(RawBytes::new),
-        base64_data.clone().map(Base64Bytes::new),
-        block_timestamp,
-        block_hash.to_evm_hash(),
-        tx_idx,
-        self.inscription_id.to_string(),
-        *inscription_byte_length,
-        op_return_tx_id,
-      )
-      .expect("Check your BRC2.0 server");
+    brc20_prog_client.brc20_call(
+      hex::encode(self.sender.to_script_bytes()),
+      contract_address_ed,
+      contract_inscription_id.clone(),
+      data.clone().map(RawBytes::new),
+      base64_data.clone().map(Base64Bytes::new),
+      block_timestamp,
+      block_hash.to_b256_ed(),
+      tx_idx,
+      self.inscription_id.to_string(),
+      *inscription_byte_length,
+      op_return_tx_id.to_b256_ed(),
+    )?;
 
     Ok(BRC20Receipt {
       inscription_id: self.inscription_id.clone(),

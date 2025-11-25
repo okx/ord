@@ -2,8 +2,8 @@ use {
   self::{
     brc20::{
       event_hash::BRC20BlockEventHash,
-      evm_prog_client::{Brc20ProgClient, ToEvmHash},
-      opi_validator::OpiValidator,
+      evm_prog_client::{Brc20ProgClient, ToB256ED},
+      opi_validator::{OpiValidationMode, OpiValidator},
       BRC20ExecutionMessage,
     },
     context::TableContext,
@@ -17,6 +17,7 @@ use {
     },
     metrics::{BlockStatistic, IndexingPhase},
   },
+  anyhow::bail,
   std::collections::HashMap,
 };
 
@@ -35,20 +36,26 @@ pub(crate) use self::{
 
 const BRC20_PROG_MINE_BATCH_SIZE: u64 = 5000;
 
-pub(crate) struct OkxUpdater {
-  pub(crate) height: u64,
-  pub(crate) timestamp: u32,
-  pub(crate) block_hash: BlockHash,
-  pub(crate) first_inscription_height: u64,
-  pub(crate) first_brc20_prog_height: u64,
+pub struct Brc20IndexingConfig<'a> {
+  pub(crate) brc20_prog_client: &'a Brc20ProgClient,
+  pub(crate) opi_validation_mode: OpiValidationMode,
 }
 
-impl OkxUpdater {
+pub(crate) struct OkxUpdater<'a> {
+  pub(crate) height: u64,
+  pub(crate) chain: Chain,
+  pub(crate) timestamp: u32,
+  pub(crate) block_hash: BlockHash,
+  pub(crate) save_inscription_receipts: bool,
+  pub(crate) index_bitmap: bool,
+  pub(crate) index_btc_domain: bool,
+  pub(crate) index_brc20: Option<Brc20IndexingConfig<'a>>,
+}
+
+impl<'a> OkxUpdater<'a> {
   pub(crate) fn index_block_bundle_messages(
     &mut self,
     context: &mut TableContext<'_, '_>,
-    brc20_prog_client: &Brc20ProgClient,
-    index: &Index,
     block_data: &BlockData,
     mut bundle_messages: HashMap<Txid, Vec<BundleMessage>>,
   ) -> Result<()> {
@@ -64,37 +71,31 @@ impl OkxUpdater {
       bundle_messages.len()
     );
 
-    if index.has_brc20_index() && self.height >= self.first_brc20_prog_height {
-      let mut prog_block_height = brc20_prog_client.eth_block_number()?;
-      if prog_block_height == 0 {
-        brc20_prog_client.brc20_initialise([0u8; 32], 0, 0)?;
-      }
-      // Mine empty blocks if not yet at first BRC20 prog height
-      while prog_block_height < self.first_brc20_prog_height - 1 {
-        let next_prog_height =
-          (prog_block_height + BRC20_PROG_MINE_BATCH_SIZE).min(self.first_brc20_prog_height - 1);
-        brc20_prog_client.brc20_mine(next_prog_height - prog_block_height, 0)?;
-        brc20_prog_client.brc20_commit_to_database()?;
-        prog_block_height = next_prog_height;
-      }
+    if let Some(brc20_indexing_config) = &self.index_brc20 {
+      let first_brc20_prog_height = self.chain.first_brc20_prog_height() as u64;
+      if self.height >= first_brc20_prog_height {
+        let brc20_prog_client = brc20_indexing_config.brc20_prog_client;
+        let mut prog_block_height = brc20_prog_client.eth_block_number()?;
+        if prog_block_height == 0 {
+          brc20_prog_client.brc20_initialise([0u8; 32].into(), 0, 0)?;
+        }
+        // Mine empty blocks if not yet at first BRC20 prog height
+        while prog_block_height < first_brc20_prog_height - 1 {
+          let next_prog_height =
+            (prog_block_height + BRC20_PROG_MINE_BATCH_SIZE).min(first_brc20_prog_height - 1);
+          brc20_prog_client.brc20_mine(next_prog_height - prog_block_height, 0)?;
+          brc20_prog_client.brc20_commit_to_database()?;
+          prog_block_height = next_prog_height;
+        }
 
-      // Handle reorg if prog block height is ahead of current okx block height
-      if prog_block_height >= self.height && prog_block_height >= self.first_brc20_prog_height {
-        log::warn!(
-          "[OKX] BRC20 Prog block height {} is ahead of OKX-ORD block height {}",
-          prog_block_height,
-          self.height
-        );
-        brc20_prog_client.brc20_reorg(self.height)?;
-      }
-
-      if prog_block_height < self.height - 1 {
-        log::error!(
-          "[OKX] BRC20 Prog block height {} is behind OKX-ORD block height {}",
-          prog_block_height,
-          self.height
-        );
-        panic!("BRC20 Prog block height is behind OKX-ORD block height");
+        let prog_block_height = brc20_prog_client.eth_block_number()?;
+        if prog_block_height != self.height - 1 {
+          bail!(
+            "BRC20 Prog block height {} is behind OKX-ORD block height {}",
+            prog_block_height,
+            self.height - 1
+          );
+        }
       }
     }
 
@@ -114,8 +115,6 @@ impl OkxUpdater {
 
       let tx_result = self.process_bundle_messages(
         context,
-        brc20_prog_client,
-        index,
         *txid,
         &transaction_bundle_messages,
         &mut prog_tx_idx,
@@ -125,6 +124,34 @@ impl OkxUpdater {
       // Accumulate results from this transaction
       block_result.add(&tx_result);
     }
+
+    // Finalize block and validate with OPI
+    if let Some(brc20_indexing_config) = &self.index_brc20 {
+      let first_brc20_prog_height = self.chain.first_brc20_prog_height() as u64;
+      if self.height >= self.chain.first_inscription_height() as u64 {
+        let brc20_prog_client = brc20_indexing_config.brc20_prog_client;
+        if self.height >= first_brc20_prog_height {
+          brc20_prog_client.brc20_finalise_block(
+            self.timestamp as u64,
+            self.block_hash.to_b256_ed(),
+            prog_tx_idx,
+          )?;
+        }
+
+        // Validate BRC20 events with OPI
+        let opi_validation_start = Instant::now();
+        let validator = OpiValidator::new(
+          self.height,
+          first_brc20_prog_height,
+          &brc20_indexing_config.opi_validation_mode,
+          self.chain,
+        );
+
+        validator.validate(&brc20_block_event_hasher, brc20_prog_client)?;
+        metrics::record_phase(IndexingPhase::OpiValidation, opi_validation_start.elapsed());
+      }
+    }
+
     block_result.total_duration = block_start.elapsed();
 
     // Record OKX indexing sub-phase durations
@@ -158,27 +185,6 @@ impl OkxUpdater {
       block_result.btc_domain_count as u64,
     );
 
-    // Finalize block and validate with OPI
-    if index.has_brc20_index() && self.height >= self.first_inscription_height {
-      if self.height >= self.first_brc20_prog_height {
-        brc20_prog_client.brc20_finalise_block(
-          self.timestamp as u64,
-          self.block_hash.to_evm_hash(),
-          prog_tx_idx,
-        )?;
-      }
-
-      // Validate BRC20 events with OPI
-      let validator = OpiValidator::new(
-        self.height,
-        self.first_brc20_prog_height,
-        index.opi_validation_mode(),
-        index.chain(),
-      );
-
-      validator.validate(&brc20_block_event_hasher, brc20_prog_client)?;
-    }
-
     log::info!(
       "[OKX] Block {} indexed in {} | Stats: inscriptions={}, brc20={}, bitmaps={}, domains={} | Durations: inscription_receipts={}, brc20={}, bitmap={}, btc_domain={}",
       self.height,
@@ -199,8 +205,6 @@ impl OkxUpdater {
   fn process_bundle_messages(
     &self,
     context: &mut TableContext<'_, '_>,
-    brc20_prog_client: &Brc20ProgClient,
-    index: &Index,
     txid: Txid,
     bundle_messages: &[BundleMessage],
     prog_tx_idx: &mut u64,
@@ -214,15 +218,15 @@ impl OkxUpdater {
     // Process each bundle message
     for bundle_message in bundle_messages {
       // Process BRC20 operation
-      if index.has_brc20_index() {
+      if let Some(brc20_indexing_config) = &self.index_brc20 {
         if let Some(brc20_execution_message) =
           BRC20ExecutionMessage::new_from_bundle_message(bundle_message, context)?
         {
           let brc20_start = Instant::now();
           if let Ok(receipt) = brc20_execution_message.execute(
             context,
-            brc20_prog_client,
-            &index.chain(),
+            brc20_indexing_config.brc20_prog_client,
+            &self.chain,
             self.height as u32,
             self.timestamp,
             &self.block_hash,
@@ -236,7 +240,7 @@ impl OkxUpdater {
       }
 
       // Process bitmap operation
-      if index.has_bitmap_index() {
+      if self.index_bitmap {
         if let InscriptionAction::Created {
           sub_type: Some(SubType::Bitmap(bitmap_operation)),
           ..
@@ -255,7 +259,7 @@ impl OkxUpdater {
       }
 
       // Process BTC domain operation
-      if index.has_btc_domain_index() {
+      if self.index_btc_domain {
         if let InscriptionAction::Created {
           sub_type: Some(SubType::BtcDomain(btc_domain)),
           ..
@@ -273,11 +277,6 @@ impl OkxUpdater {
       }
     }
 
-    for receipt in &brc20_receipts {
-      *prog_tx_idx += receipt.prog_tx_count;
-      brc20_block_event_hasher.add_receipt(receipt.clone());
-    }
-
     let brc20_receipts_count = brc20_receipts.len();
 
     // Save BRC20 receipts to database
@@ -285,6 +284,8 @@ impl OkxUpdater {
       let save_start = Instant::now();
 
       for receipt in &brc20_receipts {
+        *prog_tx_idx += receipt.prog_tx_count;
+        brc20_block_event_hasher.add_receipt(receipt.clone());
         context.insert_sequence_number_to_collection_type(
           receipt.sequence_number,
           CollectionType::BRC20,
@@ -304,7 +305,7 @@ impl OkxUpdater {
 
     // Save inscription receipts to database
     result.inscription_count = bundle_messages.len();
-    if index.has_inscription_receipts() && !bundle_messages.is_empty() {
+    if self.save_inscription_receipts && !bundle_messages.is_empty() {
       let save_start = Instant::now();
 
       let inscription_receipts = bundle_messages

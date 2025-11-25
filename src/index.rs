@@ -19,6 +19,7 @@ use {
           BRC20ProgDeployValue, BRC20ProgTransactValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
           BRC20TransferAssetValue, BRC20WithdrawValue,
         },
+        evm_prog_client::Brc20ProgClient,
         opi_validator::OpiValidationMode,
       },
       entry::{AddressTickerKeyValue, InscriptionReceiptsValue},
@@ -254,6 +255,7 @@ pub struct Index {
   index_bitmap: bool,
   index_btc_domain: bool,
   save_inscription_receipts: bool,
+  pub(crate) brc20_prog_client: Option<Brc20ProgClient>,
 }
 
 impl Index {
@@ -538,6 +540,17 @@ impl Index {
       u32::MAX
     };
 
+    let brc20_prog_client = if index_brc20 {
+      match Brc20ProgClient::new(settings.brc20_prog_auth_header(), settings.brc20_prog_url()) {
+        Ok(client) => Some(client),
+        Err(e) => {
+          bail!("Failed to connect to BRC20 Prog client: {}", e);
+        }
+      }
+    } else {
+      None
+    };
+
     Ok(Self {
       genesis_block_coinbase_txid: genesis_block_coinbase_transaction.compute_txid(),
       client,
@@ -561,6 +574,7 @@ impl Index {
       index_bitmap,
       index_btc_domain,
       save_inscription_receipts,
+      brc20_prog_client,
     })
   }
 

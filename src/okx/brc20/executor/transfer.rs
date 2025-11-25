@@ -76,17 +76,15 @@ impl BRC20ExecutionMessage {
     }
 
     if deposited_to_brc20_prog {
-      brc20_prog_client
-        .brc20_deposit(
-          hex::encode(self.sender.to_script_bytes()),
-          ticker.to_lowercase().to_string(),
-          *amount,
-          blocktime as u64,
-          block_hash.to_evm_hash(),
-          prog_tx_idx,
-          self.inscription_id.to_string(),
-        )
-        .expect("Check your BRC2.0 server");
+      brc20_prog_client.brc20_deposit(
+        hex::encode(self.sender.to_script_bytes()),
+        ticker.to_lowercase().to_string(),
+        *amount,
+        blocktime as u64,
+        block_hash.to_b256_ed(),
+        prog_tx_idx,
+        self.inscription_id.to_string(),
+      )?;
     }
 
     Ok(BRC20Receipt {

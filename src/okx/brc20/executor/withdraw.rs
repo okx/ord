@@ -20,17 +20,15 @@ impl BRC20ExecutionMessage {
 
     let decimals = ticker_info.decimals;
 
-    let receipt = brc20_prog_client
-      .brc20_withdraw(
-        hex::encode(self.sender.to_script_bytes()),
-        ticker.to_lowercase().to_string(),
-        (*amount).into(),
-        block_timestamp,
-        block_hash.to_evm_hash(),
-        tx_idx,
-        self.inscription_id.to_string(),
-      )
-      .expect("Check your BRC2.0 server");
+    let receipt = brc20_prog_client.brc20_withdraw(
+      hex::encode(self.sender.to_script_bytes()),
+      ticker.to_lowercase().to_string(),
+      (*amount).into(),
+      block_timestamp,
+      block_hash.to_b256_ed(),
+      tx_idx,
+      self.inscription_id.to_string(),
+    )?;
 
     let success = !receipt.status.is_zero();
 

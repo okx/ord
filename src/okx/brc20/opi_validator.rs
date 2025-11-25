@@ -6,12 +6,7 @@ use {
   },
   anyhow::{anyhow, Result},
   once_cell::sync::Lazy,
-  std::{
-    error::Error,
-    fmt::{self, Display, Formatter},
-    thread,
-    time::Duration,
-  },
+  std::{error::Error, thread, time::Duration},
 };
 
 static OPI_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| {
@@ -27,20 +22,11 @@ pub struct OpiCumulativeHashes {
   pub trace_hash: String,
 }
 
+#[derive(Debug, Clone, strum_macros::Display)]
 pub enum OpiValidationMode {
   Strict,
   Relaxed,
   None,
-}
-
-impl Display for OpiValidationMode {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    match self {
-      OpiValidationMode::Strict => write!(f, "Strict"),
-      OpiValidationMode::Relaxed => write!(f, "Relaxed"),
-      OpiValidationMode::None => write!(f, "None"),
-    }
-  }
 }
 
 pub struct OpiValidator {
@@ -54,13 +40,13 @@ impl OpiValidator {
   pub fn new(
     height: u64,
     first_brc20_prog_height: u64,
-    validation_mode: OpiValidationMode,
+    validation_mode: &OpiValidationMode,
     chain: Chain,
   ) -> Self {
     Self {
       height,
       first_brc20_prog_height,
-      validation_mode,
+      validation_mode: validation_mode.clone(),
       chain,
     }
   }

@@ -179,39 +179,68 @@ mod tests {
         max_supply: "100".to_string(),
         mint_limit: Some("10".to_string()),
         decimals: Some("10".to_string()),
-        self_mint: Some(false),
+        self_mint: None,
         salt: None,
       }
     );
   }
 
   #[test]
-  fn test_self_mint_deserialize_with_error_value() {
+  fn test_invalid_self_mint() {
+    let target = Deploy {
+      tick: "abcde".to_string(),
+      max_supply: "100".to_string(),
+      mint_limit: Some("10".to_string()),
+      decimals: Some("10".to_string()),
+      self_mint: None,
+      salt: None,
+    };
     assert_eq!(
       serde_json::from_str::<Deploy>(
-        r#"{"tick":"abcde","max":"12000","lim":"12","dec":"11","self_mint":"True"}"#
+        r#"{"tick":"abcde","max":"100","lim":"10","dec":"10","self_mint":"True"}"#
       )
-      .unwrap_err()
-      .to_string(),
-      "unknown variant `True`, expected `true` or `false` at line 1 column 71"
+      .unwrap(),
+      target
     );
 
     assert_eq!(
       serde_json::from_str::<Deploy>(
-        r#"{"tick":"abcde","max":"12000","lim":"12","dec":"11","self_mint":"t"}"#
+        r#"{"tick":"abcde","max":"100","lim":"10","dec":"10","self_mint":"t"}"#
       )
-      .unwrap_err()
-      .to_string(),
-      "unknown variant `t`, expected `true` or `false` at line 1 column 68"
+      .unwrap(),
+      target
     );
 
     assert_eq!(
       serde_json::from_str::<Deploy>(
-        r#"{"tick":"abcde","max":"12000","lim":"12","dec":"11","self_mint":true}"#
+        r#"{"tick":"abcde","max":"100","lim":"10","dec":"10","self_mint":true}"#
       )
-      .unwrap_err()
-      .to_string(),
-      "invalid type: boolean `true`, expected a string at line 1 column 68"
+      .unwrap(),
+      target
+    );
+
+    assert_eq!(
+      serde_json::from_str::<Deploy>(
+        r#"{"tick":"abcde","max":"100","lim":"10","dec":"10","self_mint":false}"#
+      )
+      .unwrap(),
+      target
+    );
+
+    assert_eq!(
+      serde_json::from_str::<Deploy>(
+        r#"{"tick":"abcde","max":"100","lim":"10","dec":"10","self_mint":"False"}"#
+      )
+      .unwrap(),
+      target
+    );
+
+    assert_eq!(
+      serde_json::from_str::<Deploy>(
+        r#"{"tick":"abcde","max":"100","lim":"10","dec":"10","self_mint":"f"}"#
+      )
+      .unwrap(),
+      target
     );
   }
 

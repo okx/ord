@@ -70,10 +70,58 @@ impl Reorg {
     Index::increment_statistic(&wtx, Statistic::Commits, 1)?;
     wtx.commit()?;
 
+    let rolled_back_height = index.begin_read()?.block_count()?;
+
     log::info!(
       "successfully rolled back database to height {}",
-      index.begin_read()?.block_count()?
+      rolled_back_height
     );
+
+    if index.has_brc20_index() {
+      if let Some(brc20_prog_client) = &index.brc20_prog_client {
+        let first_brc20_prog_height = index.settings.chain().first_brc20_prog_height();
+        let brc20_prog_height = brc20_prog_client.eth_block_number()?;
+        let target_height = rolled_back_height as u64;
+
+        let needs_reorg = if rolled_back_height >= first_brc20_prog_height {
+          if brc20_prog_height > target_height {
+            true
+          } else if brc20_prog_height < target_height {
+            bail!(
+              "BRC20 prog height {} is behind rolled back height {}, this may indicate a sync issue",
+              brc20_prog_height,
+              rolled_back_height
+            );
+          } else {
+            false
+          }
+        } else if brc20_prog_height > 0 {
+          brc20_prog_height > target_height
+        } else {
+          false
+        };
+
+        if needs_reorg {
+          brc20_prog_client.brc20_reorg(target_height)?;
+
+          // Verify the reorg was successful
+          let new_prog_height = brc20_prog_client.eth_block_number()?;
+          if new_prog_height != target_height {
+            bail!(
+              "BRC20 prog reorg failed: expected height {}, got {}",
+              target_height,
+              new_prog_height
+            );
+          }
+
+          log::info!(
+            "successfully rolled back BRC20 prog height from {} to {}",
+            brc20_prog_height,
+            target_height
+          );
+        }
+      }
+    }
 
     Ok(())
   }

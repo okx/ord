@@ -3,7 +3,7 @@ use {
   super::{fetcher::Fetcher, *},
   crate::{
     metrics::{BlockHeightState, BlockStatistic, IndexingPhase},
-    okx::{brc20::evm_prog_client::Brc20ProgClient, context::TableContext, OkxUpdater},
+    okx::{context::TableContext, Brc20IndexingConfig, OkxUpdater},
   },
   brc20_prog::Brc20ProgApiClient,
   futures::future::try_join_all,
@@ -152,17 +152,6 @@ impl Updater<'_> {
               .duration_since(SystemTime::UNIX_EPOCH)?
               .as_millis(),
           )?;
-
-        if self.index.settings.index_brc20()
-          && self.height >= self.index.settings.first_brc20_prog_height()
-        {
-          runtime.block_on(async {
-            brc20_prog_http_client
-              .brc20_commit_to_database()
-              .await
-              .expect("BRC20 commit to database failed");
-          });
-        }
       }
 
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
@@ -808,25 +797,29 @@ impl Updater<'_> {
         &mut brc20_satpoint_to_withdraw_assets,
       );
 
-      let brc20_prog_http_client = Brc20ProgClient::new(
-        self.index.settings.brc20_prog_auth_header(),
-        self.index.settings.brc20_prog_url(),
-      )?;
-
       let mut okx_updater = OkxUpdater {
         height: self.height as u64,
+        chain: self.index.chain(),
         timestamp: block.header.time,
         block_hash: block.header.block_hash(),
-        first_inscription_height: self.index.settings.first_inscription_height() as u64,
-        first_brc20_prog_height: self.index.settings.first_brc20_prog_height() as u64,
+        save_inscription_receipts: self.index.save_inscription_receipts,
+        index_bitmap: self.index.index_bitmap,
+        index_btc_domain: self.index.index_btc_domain,
+        index_brc20: if self.index.index_brc20 {
+          self
+            .index
+            .brc20_prog_client
+            .as_ref()
+            .map(|client| Brc20IndexingConfig {
+              brc20_prog_client: client,
+              opi_validation_mode: self.index.opi_validation_mode(),
+            })
+        } else {
+          None
+        },
       };
-      okx_updater.index_block_bundle_messages(
-        &mut context,
-        &brc20_prog_http_client,
-        &self.index,
-        block,
-        block_bundle_messages,
-      )?;
+
+      okx_updater.index_block_bundle_messages(&mut context, &block, block_bundle_messages)?;
     }
 
     Ok(())
@@ -989,6 +982,17 @@ impl Updater<'_> {
     metrics::record_height(BlockHeightState::DbCommitted, self.height as u64);
     metrics::record_commit(commit_start.elapsed());
 
+    if self.index.has_brc20_index() && self.height >= self.index.settings.first_inscription_height()
+    {
+      if let Some(brc20_prog_client) = &self.index.brc20_prog_client {
+        {
+          let prog_commit_start = Instant::now();
+          brc20_prog_client.brc20_commit_to_database()?;
+          metrics::record_height(BlockHeightState::Brc20ProgCommitted, self.height as u64);
+          metrics::record_phase(IndexingPhase::Brc20ProgCommit, prog_commit_start.elapsed());
+        }
+      }
+    }
     Ok(())
   }
 }
