@@ -54,6 +54,12 @@ pub enum BRC20Error {
   #[error("Invalid BRC2.0 inscription receiver")]
   InvalidBRC20ProgReceiverAddress,
 
+  #[error("Invalid BRC2.0 data: both 'data' and 'base64_data' are set")]
+  BRC20ProgDataConflict,
+
+  #[error("Invalid BRC2.0 data: 'data' and 'base64_data' are unset")]
+  BRC20ProgDataMissing,
+
   #[error("Numeric error occurred: {0}")]
   NumericError(#[from] fixed_point::NumParseError),
 }

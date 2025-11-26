@@ -31,6 +31,18 @@ impl BRC20ExecutionMessage {
       }
     }
 
+    if data.is_some() && base64_data.is_some() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::BRC20ProgDataConflict,
+      ));
+    };
+
+    if data.is_none() && base64_data.is_none() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::BRC20ProgDataMissing,
+      ));
+    };
+
     let contract_address_ed = contract_address
       .clone()
       .map(|address| AddressED::try_from(address.as_str()).ok())
