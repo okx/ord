@@ -13,6 +13,18 @@ impl BRC20ExecutionMessage {
       unreachable!()
     };
 
+    if transact.data.is_some() && transact.base64_data.is_some() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::BRC20ProgDataConflict,
+      ));
+    };
+
+    if transact.data.is_none() && transact.base64_data.is_none() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::BRC20ProgDataMissing,
+      ));
+    };
+
     context.insert_brc20_prog_transact_asset(
       self.new_satpoint,
       entry::BRC20ProgTransact {

@@ -13,6 +13,18 @@ impl BRC20ExecutionMessage {
       unreachable!()
     };
 
+    if deploy.data.is_some() && deploy.base64_data.is_some() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::BRC20ProgDataConflict,
+      ));
+    };
+
+    if deploy.data.is_none() && deploy.base64_data.is_none() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::BRC20ProgDataMissing,
+      ));
+    };
+
     context.insert_brc20_prog_deploy_asset(
       self.new_satpoint,
       entry::BRC20ProgDeploy {

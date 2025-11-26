@@ -29,18 +29,6 @@ impl BRC20ExecutionMessage {
       }
     }
 
-    if data.is_some() && base64_data.is_some() {
-      return Err(ExecutionError::ExecutionFailed(
-        BRC20Error::BRC20ProgDataConflict,
-      ));
-    };
-
-    if data.is_none() && base64_data.is_none() {
-      return Err(ExecutionError::ExecutionFailed(
-        BRC20Error::BRC20ProgDataMissing,
-      ));
-    };
-
     // TODO: not sure if it should be reversed?
     let op_return_tx_id = evm_version_prague
       .then_some(self.txid)

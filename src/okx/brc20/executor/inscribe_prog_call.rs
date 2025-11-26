@@ -13,6 +13,18 @@ impl BRC20ExecutionMessage {
       unreachable!()
     };
 
+    if call.data.is_some() && call.base64_data.is_some() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::BRC20ProgDataConflict,
+      ));
+    };
+
+    if call.data.is_none() && call.base64_data.is_none() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::BRC20ProgDataMissing,
+      ));
+    };
+
     context.insert_brc20_prog_call_asset(
       self.new_satpoint,
       entry::BRC20ProgCall {
