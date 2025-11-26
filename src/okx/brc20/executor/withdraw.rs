@@ -20,10 +20,40 @@ impl BRC20ExecutionMessage {
 
     let decimals = ticker_info.decimals;
 
+    if self
+      .receiver
+      .clone()
+      .is_some_and(|receiver| receiver.op_return())
+    {
+      return Ok(BRC20Receipt {
+        inscription_id: self.inscription_id.clone(),
+        sequence_number: self.sequence_number,
+        inscription_number: self.inscription_number,
+        old_satpoint: self.old_satpoint,
+        new_satpoint: self.new_satpoint,
+        op_type: BRC20OpType::Withdraw,
+        sender: self.sender.clone(),
+        receiver: self.receiver.clone().unwrap_or(self.sender.clone()),
+        result: Ok(BRC20Event::Withdraw(WithdrawEvent {
+          ticker: ticker.clone(),
+          amount: *amount,
+          decimals,
+          valid: false,
+        })),
+        prog_tx_count: 0,
+      });
+    }
+
     let receipt = brc20_prog_client.brc20_withdraw(
       hex::encode(self.sender.to_script_bytes()),
       ticker.to_lowercase().to_string(),
-      (*amount).into(),
+      if decimals < 18 {
+        amount
+          .checked_mul(10u128.pow((18 - decimals) as u32))
+          .expect("Multiplication overflow")
+      } else {
+        (*amount).into()
+      },
       block_timestamp,
       block_hash.to_b256_ed(),
       tx_idx,
