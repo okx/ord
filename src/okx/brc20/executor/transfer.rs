@@ -79,7 +79,13 @@ impl BRC20ExecutionMessage {
       brc20_prog_client.brc20_deposit(
         hex::encode(self.sender.to_script_bytes()),
         ticker.to_lowercase().to_string(),
-        *amount,
+        if decimals < 18 {
+          amount
+            .checked_mul(10u128.pow((18 - decimals) as u32))
+            .expect("Multiplication overflow")
+        } else {
+          *amount
+        },
         blocktime as u64,
         block_hash.to_b256_ed(),
         prog_tx_idx,

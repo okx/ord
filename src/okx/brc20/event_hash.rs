@@ -210,11 +210,13 @@ pub fn number_string_with_full_decimals(number: u128, decimals: u8) -> String {
     number_str = format!("{}{}", leading_zeros, number_str);
   }
 
-  let insert_index = number_str.len() - decimals as usize;
-  number_str.insert(insert_index, '.');
+  if decimals != 0 {
+    let insert_index = number_str.len() - decimals as usize;
+    number_str.insert(insert_index, '.');
 
-  if insert_index == 0 {
-    number_str = format!("0{}", number_str);
+    if insert_index == 0 {
+      number_str.insert(0, '0');
+    }
   }
 
   number_str
