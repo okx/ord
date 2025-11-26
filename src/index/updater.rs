@@ -102,7 +102,7 @@ impl Updater<'_> {
 
     let mut uncommitted = 0;
     let mut utxo_cache = HashMap::new();
-    let block_start = Instant::now();
+    let mut block_start = Instant::now();
     while let Ok(block) = rx.recv() {
       metrics::record_phase(IndexingPhase::BlockWait, block_start.elapsed());
       self.index_block(
@@ -157,6 +157,7 @@ impl Updater<'_> {
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
         break;
       }
+      block_start = Instant::now();
     }
 
     if starting_index_height == 0 && self.height > 0 {

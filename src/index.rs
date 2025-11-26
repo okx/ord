@@ -544,7 +544,7 @@ impl Index {
       match Brc20ProgClient::new(settings.brc20_prog_auth_header(), settings.brc20_prog_url()) {
         Ok(client) => Some(client),
         Err(e) => {
-          bail!("Failed to connect to BRC20 Prog client: {}", e);
+          bail!("Failed to connect to BRC20 Prog client: {:#}", e);
         }
       }
     } else {
