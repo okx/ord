@@ -485,6 +485,9 @@ impl Updater<'_> {
     let mut brc20_address_ticker_to_transfer_assets =
       wtx.open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS)?;
 
+    // OPI validation tables
+    let mut opi_block_validations = wtx.open_table(OPI_BLOCK_VALIDATIONS)?;
+
     let index_inscriptions = self.height >= self.index.settings.first_inscription_height()
       && self.index.index_inscriptions;
 
@@ -796,6 +799,7 @@ impl Updater<'_> {
         &mut brc20_satpoint_to_prog_call_assets,
         &mut brc20_satpoint_to_prog_transact_assets,
         &mut brc20_satpoint_to_withdraw_assets,
+        &mut opi_block_validations,
       );
 
       let mut okx_updater = OkxUpdater {

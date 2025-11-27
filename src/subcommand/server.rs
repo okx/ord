@@ -371,6 +371,10 @@ impl Server {
           "/brc20/block/:block_hash/events",
           get(okx::brc20::brc20_block_events),
         )
+        .route(
+          "/brc20/block/:height/validation",
+          get(okx::brc20::brc20_opi_block_validation),
+        )
         .layer(middleware::metrics_layer());
 
       let api_router = Router::new().nest("/v1", api_v1_router);

@@ -202,7 +202,7 @@ impl BRC20BlockEventHash {
   }
 }
 
-pub fn number_string_with_full_decimals(number: u128, decimals: u8) -> String {
+fn number_string_with_full_decimals(number: u128, decimals: u8) -> String {
   let mut number_str = number.to_string();
 
   if number_str.len() < decimals as usize {
