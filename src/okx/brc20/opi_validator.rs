@@ -2,9 +2,13 @@ use {
   super::event_hash::EVENT_SEPARATOR,
   crate::{
     chain::Chain,
-    okx::brc20::{event_hash::BRC20BlockEventHash, evm_prog_client::Brc20ProgClient},
+    okx::brc20::{
+      event_hash::{shorten_parts, BRC20BlockEventHash},
+      evm_prog_client::Brc20ProgClient,
+    },
   },
   anyhow::{anyhow, Result},
+  log::{log_enabled, Level},
   once_cell::sync::Lazy,
   std::{error::Error, thread, time::Duration},
 };
@@ -128,7 +132,7 @@ impl OpiValidator {
     };
 
     // Validate event hash
-    if !current_hashes.event_hash.is_empty() && cumulative_event_hash != current_hashes.event_hash {
+    if cumulative_event_hash != current_hashes.event_hash {
       return self.handle_error(
         format!(
           "BRC20 Block Event Hash mismatch at block {}: computed {}, stored {}",
@@ -146,7 +150,6 @@ impl OpiValidator {
 
     // Validate trace hash
     if self.height >= self.first_brc20_prog_height
-      && !current_hashes.trace_hash.is_empty()
       && cumulative_trace_hash != current_hashes.trace_hash
     {
       return self.handle_error(
@@ -198,8 +201,8 @@ impl OpiValidator {
       _ => "testnet",
     };
     let url = format!(
-      "http://{}/lc/get_best_hashes_for_block/{}?event_hash_version=2&network_type={}",
-      option_env!("OPI_API_URL").unwrap_or("api.opi.network"),
+      "{}/lc/get_best_hashes_for_block/{}?event_hash_version=2&network_type={}",
+      option_env!("OPI_API_URL").unwrap_or("https://api.opi.network"),
       block_height,
       network_type
     );
@@ -285,11 +288,16 @@ impl OpiValidator {
       }
     }
 
-    log::debug!(
-      "[OPI] Calculated traces for block {}: {}",
-      self.height,
-      traces_hash_str
-    );
+    // if too long, log shortened version
+    if log_enabled!(Level::Debug) {
+      static INLINE_SEPARATOR: &str = "\"";
+      let traces_hash_str_shortened = shorten_parts(&traces_hash_str, INLINE_SEPARATOR, 64);
+      log::debug!(
+        "[OPI] Calculated traces for block {}: {}",
+        self.height,
+        traces_hash_str_shortened
+      );
+    }
 
     Ok(sha256::digest(
       traces_hash_str

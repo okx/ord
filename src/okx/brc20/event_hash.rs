@@ -1,3 +1,5 @@
+use log::{Level, log_enabled};
+
 use crate::okx::brc20::{event::BRC20Event, BRC20Receipt};
 
 pub(crate) const EVENT_SEPARATOR: &str = "|";
@@ -197,7 +199,12 @@ impl BRC20BlockEventHash {
 
   pub fn get_block_event_hash(&self) -> String {
     let concatenated = self.events.join(EVENT_SEPARATOR);
-    log::info!("BRC20 Block Event Concatenated String: {}", concatenated);
+    // Debug is doing much more expensive operations, so guard it
+    if log_enabled!(Level::Debug) {
+      static INLINE_SEPARATOR: &str = ";";
+      let shortened_concatenated = shorten_parts(&concatenated, INLINE_SEPARATOR, 70);
+      log::debug!("BRC20 Block Event Concatenated String: {}", shortened_concatenated);
+    }
     sha256::digest(concatenated)
   }
 }
@@ -220,4 +227,34 @@ pub fn number_string_with_full_decimals(number: u128, decimals: u8) -> String {
   }
 
   number_str
+}
+
+pub fn shorten_parts(input: &str, inline_separator: &str, max_len: usize) -> String {
+    // Some hashes can be very long, so shorten them with .. in the middle for logging
+    // Hashes are between ; and ; so we can safely do this
+    // If it's longer than 70 characters, we shorten it to 32..32 characters
+    // 70 is chosen because inscription ids are 66 characters long and we add some buffer
+    let events: Vec<&str> = input.split(EVENT_SEPARATOR).collect();
+    let mut shortened_events: Vec<String> = Vec::new();
+    for event in events {
+      let inner_parts = event.split(inline_separator).collect::<Vec<&str>>();
+      let mut shortened_part = String::new();
+      for inner_part in inner_parts {
+        if inner_part.len() > max_len {
+          let shortened = format!(
+            "{}..{}",
+            &inner_part[..32],
+            &inner_part[inner_part.len() - 32..]
+          );
+          shortened_part.push_str(&shortened);
+        } else {
+          shortened_part.push_str(inner_part);
+        }
+        shortened_part.push_str(inline_separator);
+      }
+      // Remove last separator
+      shortened_part.pop();
+      shortened_events.push(shortened_part);
+    }
+    shortened_events.join(EVENT_SEPARATOR)
 }
