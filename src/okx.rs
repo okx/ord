@@ -232,6 +232,7 @@ impl<'a> OkxUpdater<'a> {
             &self.block_hash,
             *prog_tx_idx,
           ) {
+            *prog_tx_idx += receipt.prog_tx_count;
             brc20_receipts.push(receipt);
           }
           result.phase_durations.brc20 += brc20_start.elapsed();
@@ -284,7 +285,6 @@ impl<'a> OkxUpdater<'a> {
       let save_start = Instant::now();
 
       for receipt in &brc20_receipts {
-        *prog_tx_idx += receipt.prog_tx_count;
         brc20_block_event_hasher.add_receipt(receipt.clone());
         context.insert_sequence_number_to_collection_type(
           receipt.sequence_number,
