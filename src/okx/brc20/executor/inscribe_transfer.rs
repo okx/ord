@@ -73,7 +73,6 @@ impl BRC20ExecutionMessage {
         amount: amt.to_u128_and_scale().0,
         decimals: ticker_info.decimals,
       })),
-      prog_tx_count: 0,
     })
   }
 }

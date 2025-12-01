@@ -97,7 +97,6 @@ impl BRC20ExecutionMessage {
         clipped,
         parent_id: parent.map(|parent| parent.to_string()),
       })),
-      prog_tx_count: 0,
     })
   }
 }

@@ -1,7 +1,9 @@
-use super::*;
-use crate::okx::brc20::{
-  event::{BRC20Event, BRC20OpType},
-  BRC20Receipt,
+use {
+  super::*,
+  crate::okx::brc20::{
+    event::{BRC20Event, BRC20OpType},
+    BRC20Receipt,
+  },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,7 +120,6 @@ impl From<BRC20Receipt> for ApiTxEvent {
         new_satpoint: event.new_satpoint,
         from: event.sender.into(),
         to: event.receiver.into(),
-        valid: withdraw_event.valid,
         tick: withdraw_event.ticker,
         amount: withdraw_event.amount.to_string(),
         msg: "ok".to_string(),
@@ -341,7 +342,6 @@ pub struct ApiWithdrawEvent {
   pub amount: String,
   pub from: ApiUtxoAddress,
   pub to: ApiUtxoAddress,
-  pub valid: bool,
   pub msg: String,
 }
 

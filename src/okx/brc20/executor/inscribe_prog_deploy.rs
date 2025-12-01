@@ -50,7 +50,6 @@ impl BRC20ExecutionMessage {
       sender: self.sender.clone(),
       receiver: self.receiver.clone().unwrap_or(self.sender.clone()),
       result: Ok(event),
-      prog_tx_count: 0,
     })
   }
 }

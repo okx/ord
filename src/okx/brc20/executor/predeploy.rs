@@ -32,7 +32,6 @@ impl BRC20ExecutionMessage {
         predeployer: self.receiver.clone().unwrap(),
         block_height: height,
       })),
-      prog_tx_count: 0,
     })
   }
 }

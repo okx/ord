@@ -1,9 +1,4 @@
-use bitcoin::hashes::sha256;
-
-use crate::okx::brc20::entry::BRC20Predeploy;
-
-use super::*;
-use std::u128;
+use {super::*, crate::okx::brc20::entry::BRC20Predeploy, bitcoin::hashes::sha256, std::u128};
 
 const MINIMUM_PREDEPLOY_AGE: u32 = 3;
 
@@ -136,7 +131,6 @@ impl BRC20ExecutionMessage {
         self_minted,
         max_mint_limit,
       })),
-      prog_tx_count: 0,
     })
   }
 }

@@ -7,7 +7,7 @@ impl BRC20ExecutionMessage {
     brc20_prog_client: &Brc20ProgClient,
     block_timestamp: u64,
     block_hash: &BlockHash,
-    tx_idx: u64,
+    prog_tx_idx: &mut u64,
   ) -> Result<BRC20Receipt, ExecutionError> {
     let BRC20Operation::Withdraw { ticker, amount } = &self.operation else {
       unreachable!()
@@ -25,23 +25,13 @@ impl BRC20ExecutionMessage {
       .clone()
       .is_some_and(|receiver| receiver.op_return())
     {
-      return Ok(BRC20Receipt {
-        inscription_id: self.inscription_id.clone(),
-        sequence_number: self.sequence_number,
-        inscription_number: self.inscription_number,
-        old_satpoint: self.old_satpoint,
-        new_satpoint: self.new_satpoint,
-        op_type: BRC20OpType::Withdraw,
-        sender: self.sender.clone(),
-        receiver: self.receiver.clone().unwrap_or(self.sender.clone()),
-        result: Ok(BRC20Event::Withdraw(WithdrawEvent {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::InvalidBRC20WithdrawReceiverAddress(WithdrawEvent {
           ticker: ticker.clone(),
           amount: *amount,
           decimals,
-          valid: false,
-        })),
-        prog_tx_count: 0,
-      });
+        }),
+      ));
     }
 
     let receipt = brc20_prog_client.brc20_withdraw(
@@ -56,46 +46,54 @@ impl BRC20ExecutionMessage {
       },
       block_timestamp,
       block_hash.to_b256_ed(),
-      tx_idx,
+      *prog_tx_idx,
       self.inscription_id.to_string(),
     )?;
 
-    let success = !receipt.status.is_zero();
+    *prog_tx_idx += 1;
 
-    if success {
-      let mut prog_balance = context
-        .load_brc20_balance(&BRC20_PROG_OP_RETURN_UTXO_ADDRESS, &ticker)?
-        .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
-
-      prog_balance.total = prog_balance
-        .total
-        .checked_sub(*amount)
-        .expect("Subtraction overflow");
-
-      context.update_brc20_balance(&BRC20_PROG_OP_RETURN_UTXO_ADDRESS, &ticker, prog_balance)?;
-
-      let receiver = if self.new_satpoint.outpoint.txid == self.txid {
-        self.receiver.clone().unwrap()
-      } else {
-        self.sender.clone()
-      };
-
-      let mut receiver_balance = context
-        .load_brc20_balance(&receiver, &ticker)?
-        .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
-
-      receiver_balance.total = receiver_balance
-        .total
-        .checked_add(*amount)
-        .expect("Addition overflow");
-
-      receiver_balance.available = receiver_balance
-        .available
-        .checked_add(*amount)
-        .expect("Addition overflow");
-
-      context.update_brc20_balance(&receiver, &ticker, receiver_balance)?;
+    if receipt.status.is_zero() {
+      return Err(ExecutionError::ExecutionFailed(
+        BRC20Error::WithdrawExecutionFailed(WithdrawEvent {
+          ticker: ticker.clone(),
+          amount: *amount,
+          decimals,
+        }),
+      ));
     }
+
+    let mut prog_balance = context
+      .load_brc20_balance(&BRC20_PROG_OP_RETURN_UTXO_ADDRESS, &ticker)?
+      .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
+
+    prog_balance.total = prog_balance
+      .total
+      .checked_sub(*amount)
+      .expect("Subtraction overflow");
+
+    context.update_brc20_balance(&BRC20_PROG_OP_RETURN_UTXO_ADDRESS, &ticker, prog_balance)?;
+
+    let receiver = if self.new_satpoint.outpoint.txid == self.txid {
+      self.receiver.clone().unwrap()
+    } else {
+      self.sender.clone()
+    };
+
+    let mut receiver_balance = context
+      .load_brc20_balance(&receiver, &ticker)?
+      .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
+
+    receiver_balance.total = receiver_balance
+      .total
+      .checked_add(*amount)
+      .expect("Addition overflow");
+
+    receiver_balance.available = receiver_balance
+      .available
+      .checked_add(*amount)
+      .expect("Addition overflow");
+
+    context.update_brc20_balance(&receiver, &ticker, receiver_balance)?;
 
     Ok(BRC20Receipt {
       inscription_id: self.inscription_id.clone(),
@@ -110,9 +108,7 @@ impl BRC20ExecutionMessage {
         ticker: ticker.clone(),
         amount: *amount,
         decimals,
-        valid: success,
       })),
-      prog_tx_count: 1,
     })
   }
 }
