@@ -140,14 +140,23 @@ impl<'a> OkxUpdater<'a> {
 
         // Validate BRC20 events with OPI
         let opi_validation_start = Instant::now();
-        let validator = OpiValidator::new(
-          self.height,
-          first_brc20_prog_height,
-          &brc20_indexing_config.opi_validation_mode,
-          self.chain,
+
+        let mut validator = OpiValidator::new(
+          self.chain.clone(),
+          context,
+          brc20_indexing_config.opi_validation_mode,
+          brc20_prog_client,
         );
 
-        validator.validate(&brc20_block_event_hasher, brc20_prog_client)?;
+        if let Some(opi_block_validation) = validator.validate(
+          self.height as u32,
+          &self.block_hash,
+          self.timestamp,
+          brc20_block_event_hasher.get_block_event_hash(),
+        )? {
+          context.insert_opi_block_validation(self.height as u32, opi_block_validation)?;
+        }
+
         metrics::record_phase(IndexingPhase::OpiValidation, opi_validation_start.elapsed());
       }
     }

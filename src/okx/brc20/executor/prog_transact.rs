@@ -29,7 +29,6 @@ impl BRC20ExecutionMessage {
       }
     }
 
-    // TODO: not sure if it should be reversed?
     let op_return_tx_id = evm_version_prague
       .then_some(self.txid)
       .unwrap_or(Txid::all_zeros());

@@ -157,4 +157,16 @@ impl Index {
         .map(|x| DynamicEntry::load(x.value())),
     )
   }
+
+  pub(crate) fn brc20_get_opi_block_validation(
+    height: u32,
+    rtx: &Rtx,
+  ) -> Result<Option<OpiBlockValidation>> {
+    let table = rtx.0.open_table(OPI_BLOCK_VALIDATIONS)?;
+    Ok(
+      table
+        .get(&height)?
+        .map(|v| DynamicEntry::load(v.value())),
+    )
+  }
 }

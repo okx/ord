@@ -1,6 +1,6 @@
 use log::{Level, log_enabled};
 
-use crate::okx::brc20::{event::BRC20Event, BRC20Receipt};
+use crate::okx::brc20::{error::BRC20Error, event::BRC20Event, BRC20Receipt};
 
 pub(crate) const EVENT_SEPARATOR: &str = "|";
 
@@ -182,7 +182,9 @@ impl BRC20BlockEventHash {
           number_string_with_full_decimals(inscribe_withdraw.amount, inscribe_withdraw.decimals),
         ));
       }
-      Ok(BRC20Event::Withdraw(withdraw_event)) => {
+      Ok(BRC20Event::Withdraw(withdraw_event))
+      | Err(BRC20Error::WithdrawExecutionFailed(withdraw_event))
+      | Err(BRC20Error::InvalidBRC20WithdrawReceiverAddress(withdraw_event)) => {
         self.events.push(format!(
           "brc20prog-withdraw-transfer;{};{};{};{};{};{}",
           receipt.inscription_id,
@@ -200,7 +202,7 @@ impl BRC20BlockEventHash {
   pub fn get_block_event_hash(&self) -> String {
     let concatenated = self.events.join(EVENT_SEPARATOR);
     // Debug is doing much more expensive operations, so guard it
-    if log_enabled!(Level::Debug) {
+    if log_enabled!(Level::Debug) && !concatenated.is_empty() {
       static INLINE_SEPARATOR: &str = ";";
       let shortened_concatenated = shorten_parts(&concatenated, INLINE_SEPARATOR, 70);
       log::debug!("BRC20 Block Event Concatenated String: {}", shortened_concatenated);
@@ -209,7 +211,7 @@ impl BRC20BlockEventHash {
   }
 }
 
-pub fn number_string_with_full_decimals(number: u128, decimals: u8) -> String {
+fn number_string_with_full_decimals(number: u128, decimals: u8) -> String {
   let mut number_str = number.to_string();
 
   if number_str.len() < decimals as usize {

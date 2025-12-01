@@ -27,16 +27,22 @@ pub(crate) struct Brc20ProgClient {
 
 impl Brc20ProgClient {
   pub fn new(auth_header: HeaderMap, url: &str) -> Result<Self> {
-    let client = HttpClientBuilder::new()
-      .max_request_size(u32::MAX)
-      .max_response_size(u32::MAX)
-      .set_headers(auth_header)
-      .build(url)?;
+    let client: Brc20ProgClient = Self {
+      client: HttpClientBuilder::new()
+        .max_request_size(u32::MAX)
+        .max_response_size(u32::MAX)
+        .set_headers(auth_header)
+        .build(url)?,
+    };
 
+    client.brc20_clear_caches()?;
+    Ok(client)
+  }
+
+  pub fn brc20_clear_caches(&self) -> Result<()> {
     BRC20_PROG_RUNTIME
-      .block_on(async { client.brc20_clear_caches().await })
-      .map_err(anyhow::Error::from)?;
-    Ok(Self { client })
+      .block_on(async { self.client.brc20_clear_caches().await })
+      .map_err(anyhow::Error::from)
   }
 
   pub fn eth_block_number(&self) -> Result<u64> {

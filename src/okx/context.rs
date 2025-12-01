@@ -1,27 +1,30 @@
-use super::{
-  brc20::{
-    entry::{
-      BRC20Balance, BRC20BalanceValue, BRC20Predeploy, BRC20PredeployValue, BRC20ProgTransactValue,
-      BRC20Receipt, BRC20ReceiptsValue, BRC20TickerInfo, BRC20TickerInfoValue, BRC20TransferAsset,
-      BRC20TransferAssetValue, BRC20WithdrawValue,
+use {
+  super::{
+    brc20::{
+      entry::{
+        BRC20Balance, BRC20BalanceValue, BRC20Predeploy, BRC20PredeployValue, BRC20ProgCall,
+        BRC20ProgCallValue, BRC20ProgDeploy, BRC20ProgDeployValue, BRC20ProgTransact,
+        BRC20ProgTransactValue, BRC20Receipt, BRC20ReceiptsValue, BRC20TickerInfo,
+        BRC20TickerInfoValue, BRC20TransferAsset, BRC20TransferAssetValue, BRC20Withdraw,
+        BRC20WithdrawValue, OpiBlockValidation, OpiBlockValidationValue,
+      },
+      BRC20Ticker,
     },
-    BRC20Ticker,
+    composite_key::AddressTickerKey,
+    entry::{
+      AddressTickerKeyValue, CollectionType, DynamicEntry, InscriptionReceipt,
+      InscriptionReceiptsValue,
+    },
+    utxo_address::UtxoAddress,
   },
-  composite_key::AddressTickerKey,
-  entry::{
-    AddressTickerKeyValue, CollectionType, DynamicEntry, InscriptionReceipt,
-    InscriptionReceiptsValue,
+  crate::{
+    index::entry::{Entry, SatPointValue, TxidValue},
+    InscriptionId,
   },
-  *,
+  bitcoin::Txid,
+  ordinals::SatPoint,
+  redb::{MultimapTable, ReadableTable, Table},
 };
-use crate::{
-  index::entry::{Entry, SatPointValue, TxidValue},
-  okx::brc20::entry::{
-    BRC20ProgCall, BRC20ProgCallValue, BRC20ProgDeploy, BRC20ProgDeployValue, BRC20ProgTransact,
-    BRC20Withdraw,
-  },
-};
-use redb::{MultimapTable, ReadableTable, Table};
 
 pub(crate) struct TableContext<'a, 'txn> {
   inscription_receipts: &'a mut Table<'txn, &'static TxidValue, &'static InscriptionReceiptsValue>,
@@ -49,6 +52,7 @@ pub(crate) struct TableContext<'a, 'txn> {
 
   brc20_satpoint_to_withdraw_assets:
     &'a mut Table<'txn, &'static SatPointValue, &'static BRC20WithdrawValue>,
+  opi_block_validations: &'a mut Table<'txn, u32, &'static OpiBlockValidationValue>,
 }
 
 impl<'a, 'txn> TableContext<'a, 'txn> {
@@ -99,6 +103,7 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       &'static SatPointValue,
       &'static BRC20WithdrawValue,
     >,
+    opi_block_validations: &'a mut Table<'txn, u32, &'static OpiBlockValidationValue>,
   ) -> Self {
     Self {
       inscription_receipts,
@@ -115,6 +120,7 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       brc20_satpoint_to_prog_call_assets,
       brc20_satpoint_to_prog_transact_assets,
       brc20_satpoint_to_withdraw_assets,
+      opi_block_validations,
     }
   }
 
@@ -445,5 +451,28 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       .sequence_number_to_collection_type
       .insert(sequence_number, u16::from(collection_type))?;
     Ok(())
+  }
+
+  pub fn insert_opi_block_validation(
+    &mut self,
+    height: u32,
+    validation: OpiBlockValidation,
+  ) -> Result<(), redb::StorageError> {
+    self
+      .opi_block_validations
+      .insert(height, validation.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn get_opi_block_validations(
+    &mut self,
+    height: u32,
+  ) -> Result<Option<OpiBlockValidation>, redb::StorageError> {
+    Ok(
+      self
+        .opi_block_validations
+        .get(height)?
+        .map(|v| DynamicEntry::load(v.value())),
+    )
   }
 }

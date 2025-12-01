@@ -2,6 +2,7 @@ use super::*;
 use crate::okx::brc20::{BRC20Balance, BRC20Ticker, BRC20TickerInfo, BRC20TransferAsset};
 mod assets;
 mod balance;
+mod opi_validation;
 mod outpoint;
 mod receipt;
 mod ticker_info;
@@ -9,6 +10,7 @@ mod ticker_info;
 pub(crate) use self::{
   assets::{brc20_all_transferable, brc20_transferable},
   balance::{brc20_all_balance, brc20_balance},
+  opi_validation::brc20_opi_block_validation,
   outpoint::brc20_outpoint,
   receipt::{brc20_block_events, brc20_tx_events},
   ticker_info::{brc20_all_tick_info, brc20_tick_info},

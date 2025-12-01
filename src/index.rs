@@ -17,7 +17,7 @@ use {
         entry::{
           BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20PredeployValue, BRC20ProgCallValue,
           BRC20ProgDeployValue, BRC20ProgTransactValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
-          BRC20TransferAssetValue, BRC20WithdrawValue,
+          BRC20TransferAssetValue, BRC20WithdrawValue, OpiBlockValidationValue,
         },
         evm_prog_client::Brc20ProgClient,
         opi_validator::OpiValidationMode,
@@ -108,6 +108,9 @@ define_table! { BRC20_SATPOINT_TO_PROG_CALL_ASSETS, &SatPointValue, &BRC20ProgCa
 define_table! { BRC20_SATPOINT_TO_PROG_TRANSACT_ASSETS, &SatPointValue, &BRC20ProgTransactValue }
 define_table! { BRC20_SATPOINT_TO_WITHDRAW_ASSETS, &SatPointValue, &BRC20WithdrawValue }
 define_multimap_table! { BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS, &AddressTickerKeyValue, &SatPointValue }
+
+// OPI validation tables
+define_table! { OPI_BLOCK_VALIDATIONS, u32, &OpiBlockValidationValue }
 
 #[derive(Copy, Clone)]
 pub(crate) enum Statistic {
@@ -382,6 +385,9 @@ impl Index {
         tx.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
         tx.open_table(BRC20_SATPOINT_TO_TRANSFER_ASSETS)?;
         tx.open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS)?;
+
+        // OPI validation tables
+        tx.open_table(OPI_BLOCK_VALIDATIONS)?;
 
         {
           let mut statistics = tx.open_table(STATISTIC_TO_COUNT)?;
@@ -799,6 +805,11 @@ impl Index {
         Ok(ok) => return Ok(ok),
         Err(err) => {
           log::info!("{}", err.to_string());
+
+          // Only clear caches when we need to retry (after error/reorg)
+          if let Some(brc20_prog_client) = &self.brc20_prog_client {
+            brc20_prog_client.brc20_clear_caches()?;
+          }
 
           match err.downcast_ref() {
             Some(&reorg::Error::Recoverable { height, depth }) => {

@@ -155,5 +155,4 @@ pub struct WithdrawEvent {
   pub ticker: BRC20Ticker,
   pub amount: u128,
   pub decimals: u8,
-  pub valid: bool,
 }

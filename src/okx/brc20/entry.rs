@@ -1,5 +1,7 @@
-use super::*;
-use event::{BRC20Event, BRC20OpType};
+use {
+  super::*,
+  event::{BRC20Event, BRC20OpType},
+};
 
 pub type BRC20BalanceValue = [u8];
 impl_bincode_dynamic_entry!(BRC20Balance, BRC20BalanceValue);
@@ -127,12 +129,26 @@ pub struct BRC20Receipt {
   pub prog_tx_count: u64,
 }
 
+pub(crate) type OpiBlockValidationValue = [u8];
+impl_bincode_dynamic_entry!(OpiBlockValidation, OpiBlockValidationValue);
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct OpiBlockValidation {
+  pub block_hash: BlockHash,
+  pub block_timestamp: u32,
+  pub brc20_block_event_hash: String,
+  pub brc20_cumulative_event_hash: String,
+  pub brc20_prog_block_trace_hash: Option<String>,
+  pub brc20_cumulative_trace_hash: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::define_table;
-  use redb::{ReadableTable, TableDefinition};
-  use tempfile::NamedTempFile;
+  use {
+    super::*,
+    crate::define_table,
+    redb::{ReadableTable, TableDefinition},
+    tempfile::NamedTempFile,
+  };
 
   #[test]
   fn test_store() {

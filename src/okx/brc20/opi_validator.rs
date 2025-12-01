@@ -2,16 +2,20 @@ use {
   super::event_hash::EVENT_SEPARATOR,
   crate::{
     chain::Chain,
-    okx::brc20::{
-      event_hash::{shorten_parts, BRC20BlockEventHash},
-      evm_prog_client::Brc20ProgClient,
+    okx::{
+      brc20::{entry::OpiBlockValidation, evm_prog_client::Brc20ProgClient},
+      context::TableContext,
     },
   },
-  anyhow::{anyhow, Result},
-  log::{log_enabled, Level},
+  anyhow::{anyhow, bail, Result},
+  bitcoin::BlockHash,
+  chrono::Utc,
   once_cell::sync::Lazy,
-  std::{error::Error, thread, time::Duration},
+  std::{thread, time::Duration},
 };
+
+const RECENT_BLOCKS_TIME_WINDOW: i64 = 60 * 60 * 24; // 1 day
+const HISTORICAL_CHECKPOINT_INTERVAL: u32 = 1000;
 
 static OPI_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| {
   reqwest::blocking::Client::builder()
@@ -26,160 +30,158 @@ pub struct OpiCumulativeHashes {
   pub trace_hash: String,
 }
 
-#[derive(Debug, Clone, strum_macros::Display)]
+#[derive(Debug, Clone, Copy, strum_macros::Display)]
 pub enum OpiValidationMode {
+  /// Strict mode will return an error if the cumulative hashes do not match.
   Strict,
+  /// Relaxed mode will only log a warning if the cumulative hashes do not match.
   Relaxed,
+  /// None mode will not validate the cumulative hashes.
   None,
 }
 
-pub struct OpiValidator {
-  height: u64,
-  first_brc20_prog_height: u64,
-  validation_mode: OpiValidationMode,
+pub struct OpiValidator<'a, 't: 'a, 'txn: 'a> {
   chain: Chain,
+  validation_mode: OpiValidationMode,
+  context: &'a mut TableContext<'t, 'txn>,
+  brc20_prog_client: &'a Brc20ProgClient,
 }
 
-impl OpiValidator {
+impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
   pub fn new(
-    height: u64,
-    first_brc20_prog_height: u64,
-    validation_mode: &OpiValidationMode,
     chain: Chain,
+    context: &'a mut TableContext<'t, 'txn>,
+    validation_mode: OpiValidationMode,
+    brc20_prog_client: &'a Brc20ProgClient,
   ) -> Self {
     Self {
-      height,
-      first_brc20_prog_height,
-      validation_mode: validation_mode.clone(),
       chain,
+      context,
+      validation_mode,
+      brc20_prog_client,
     }
   }
 
   pub fn validate(
-    &self,
-    brc20_event_hasher: &BRC20BlockEventHash,
-    brc20_prog_client: &Brc20ProgClient,
-  ) -> Result<()> {
-    if matches!(self.validation_mode, OpiValidationMode::None) {
-      return Ok(());
+    &mut self,
+    height: u32,
+    block_hash: &BlockHash,
+    block_timestamp: u32,
+    brc20_block_event_hash: String,
+  ) -> Result<Option<OpiBlockValidation>> {
+    if height < self.chain.first_inscription_height()
+      || matches!(self.validation_mode, OpiValidationMode::None)
+    {
+      return Ok(None);
     }
-
-    log::info!(
-      "[OPI] Starting validation for block {} in {} mode",
-      self.height,
-      self.validation_mode,
-    );
-
-    // Get previous cumulative hashes
-    let prev_hashes = match self.get_opi_cumulative_hashes(self.height - 1) {
-      Ok(hash) => hash,
-      Err(e) => {
-        return self.handle_error(
-          format!(
-            "Failed to get previous OPI cumulative event hash at block {}: {}",
-            self.height - 1,
-            e
-          ),
-          "Failed to get previous OPI cumulative event hash",
-        );
-      }
-    };
+    let previous_block = self.context.get_opi_block_validations(height - 1)?;
 
     // Calculate current cumulative event hash
-    let event_hash = brc20_event_hasher.get_block_event_hash();
-    let cumulative_event_hash = if prev_hashes.event_hash.is_empty() {
-      event_hash.clone()
-    } else {
-      sha256::digest(prev_hashes.event_hash + &event_hash)
+    let current_cumulative_event_hash = match previous_block
+      .as_ref()
+      .map(|v| v.brc20_cumulative_event_hash.as_str())
+    {
+      Some(prev_hash) => sha256::digest(prev_hash.to_owned() + &brc20_block_event_hash),
+      None => brc20_block_event_hash.clone(),
     };
 
-    // Calculate trace hash (only from first BRC20 prog height)
-    let trace_hash = if self.height >= self.first_brc20_prog_height {
-      match self.calculate_trace_hash(brc20_prog_client) {
+    // Calculate current cumulative trace hash
+    let (current_trace_hash, current_cumulative_trace_hash) =
+      if height >= self.chain.first_brc20_prog_height() {
+        let Ok(trace_hash) = calculate_trace_hash(height, self.brc20_prog_client) else {
+          bail!("BRC20 block trace hash is required for block {}", height);
+        };
+
+        let cumulative_trace_hash = if !trace_hash.is_empty() {
+          let prev = previous_block
+            .and_then(|v| v.brc20_cumulative_trace_hash.map(|h| h))
+            .unwrap_or_default();
+          sha256::digest(prev + &trace_hash)
+        } else {
+          String::new()
+        };
+
+        (Some(trace_hash), Some(cumulative_trace_hash))
+      } else {
+        (None, None)
+      };
+
+    // Validation strategy:
+    // - For recent blocks (within the last 24 hours): validate every height against OPI.
+    // - For historical sync (older than 24 hours): validate every HISTORICAL_CHECKPOINT_INTERVAL blocks as checkpoints.
+    if (Utc::now().timestamp() - block_timestamp as i64) < RECENT_BLOCKS_TIME_WINDOW
+      || height % HISTORICAL_CHECKPOINT_INTERVAL == 0
+    {
+      // Get current cumulative hashes from OPI
+      let opi_cumulative_hashes = match self.get_opi_cumulative_hashes(height) {
         Ok(hash) => hash,
         Err(e) => {
-          return self.handle_error(
+          return self
+            .handle_error(
+              format!(
+                "Failed to get current OPI cumulative event hash at block {}: {}",
+                height, e
+              ),
+              "Failed to get current OPI cumulative event hash",
+            )
+            .map(|_| None);
+        }
+      };
+
+      // Validate event hash
+      if !opi_cumulative_hashes.event_hash.is_empty()
+        && current_cumulative_event_hash != opi_cumulative_hashes.event_hash
+      {
+        return self
+          .handle_error(
             format!(
-              "Failed to calculate BRC20 prog traces hash at block {}: {}",
-              self.height, e
+              "BRC20 Block Event Hash mismatch at block {}: computed {}, stored {}",
+              height, current_cumulative_event_hash, opi_cumulative_hashes.event_hash
             ),
-            "Failed to calculate BRC20 prog traces hash",
-          );
+            "BRC20 Block Event Hash mismatch",
+          )
+          .map(|_| None);
+      }
+
+      // Validate trace hash
+      if let Some(trace_hash) = &current_cumulative_trace_hash {
+        if !opi_cumulative_hashes.trace_hash.is_empty()
+          && trace_hash.to_owned() != opi_cumulative_hashes.trace_hash
+        {
+          return self
+            .handle_error(
+              format!(
+                "BRC20 Trace Hash mismatch at block {}: computed {}, stored {}",
+                height, trace_hash, opi_cumulative_hashes.trace_hash
+              ),
+              "BRC20 Trace Hash mismatch",
+            )
+            .map(|_| None);
         }
       }
-    } else {
-      String::new()
-    };
-
-    let cumulative_trace_hash = if prev_hashes.trace_hash.is_empty() {
-      sha256::digest(trace_hash)
-    } else {
-      sha256::digest(prev_hashes.trace_hash + &trace_hash)
-    };
-
-    // Get current cumulative hashes from OPI
-    let current_hashes = match self.get_opi_cumulative_hashes(self.height) {
-      Ok(hash) => hash,
-      Err(e) => {
-        return self.handle_error(
-          format!(
-            "Failed to get current OPI cumulative event hash at block {}: {}",
-            self.height, e
-          ),
-          "Failed to get current OPI cumulative event hash",
-        );
-      }
-    };
-
-    // Validate event hash
-    if cumulative_event_hash != current_hashes.event_hash {
-      return self.handle_error(
-        format!(
-          "BRC20 Block Event Hash mismatch at block {}: computed {}, stored {}",
-          self.height, cumulative_event_hash, current_hashes.event_hash
-        ),
-        "BRC20 Block Event Hash mismatch",
-      );
+      log::info!("[OPI] Block {} validation passed successfully. current_cumulative_event_hash: {}, current_cumulative_trace_hash: {}", height, current_cumulative_event_hash, current_cumulative_trace_hash.as_deref().unwrap_or("null"));
     }
-
-    log::info!(
-      "[OPI] BRC20 Block Event Hash for block {}: {}",
-      self.height,
-      event_hash
-    );
-
-    // Validate trace hash
-    if self.height >= self.first_brc20_prog_height
-      && cumulative_trace_hash != current_hashes.trace_hash
-    {
-      return self.handle_error(
-        format!(
-          "BRC20 Trace Hash mismatch at block {}: computed {}, stored {}",
-          self.height, cumulative_trace_hash, current_hashes.trace_hash
-        ),
-        "BRC20 Trace Hash mismatch",
-      );
-    }
-
-    log::info!("[OPI] Block {} validation passed successfully", self.height);
-    Ok(())
+    Ok(Some(OpiBlockValidation {
+      block_hash: block_hash.clone(),
+      block_timestamp,
+      brc20_block_event_hash,
+      brc20_cumulative_event_hash: current_cumulative_event_hash,
+      brc20_prog_block_trace_hash: current_trace_hash,
+      brc20_cumulative_trace_hash: current_cumulative_trace_hash,
+    }))
   }
 
   /// Get OPI cumulative hashes with retry logic (synchronous)
-  fn get_opi_cumulative_hashes(
-    &self,
-    block_height: u64,
-  ) -> Result<OpiCumulativeHashes, Box<dyn Error>> {
+  fn get_opi_cumulative_hashes(&self, block_height: u32) -> Result<OpiCumulativeHashes> {
     const RETRIES: u8 = 10;
     const DELAY_MS: u64 = 1000;
-
     for attempt in 0..RETRIES {
       match self.fetch_opi_hashes(block_height) {
         Ok(hash) => return Ok(hash),
         Err(e) => {
           if attempt < RETRIES - 1 {
             log::warn!(
-              "[OPI] Attempt {} to get cumulative hashes for block {} failed: {}. Retrying...",
+              "[OPI] Attempt {} to get cumulative hashes for block {} failed: {:#}. Retrying...",
               attempt + 1,
               block_height,
               e
@@ -190,11 +192,13 @@ impl OpiValidator {
       }
     }
 
-    Err("Failed to retrieve OPI cumulative hashes after retries".into())
+    Err(anyhow!(
+      "Failed to retrieve OPI cumulative hashes after retries"
+    ))
   }
 
   /// Fetch OPI hashes from API (synchronous blocking call)
-  fn fetch_opi_hashes(&self, block_height: u64) -> Result<OpiCumulativeHashes, Box<dyn Error>> {
+  fn fetch_opi_hashes(&self, block_height: u32) -> Result<OpiCumulativeHashes> {
     let network_type = match self.chain {
       Chain::Mainnet => "mainnet",
       Chain::Signet => "signet",
@@ -210,11 +214,11 @@ impl OpiValidator {
     let response = OPI_CLIENT
       .get(&url)
       .send()
-      .map_err(|e| format!("Failed to send request: {}", e))?;
+      .map_err(|e| anyhow!("Failed to send request: {:#}", e))?;
 
     let json_value: serde_json::Value = response
       .json()
-      .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+      .map_err(|e| anyhow!("Failed to parse JSON: {:#}", e))?;
 
     let mut event_hash = String::new();
     let mut trace_hash = String::new();
@@ -241,71 +245,6 @@ impl OpiValidator {
     })
   }
 
-  /// Calculate BRC20 prog traces hash (synchronous)
-  fn calculate_trace_hash(
-    &self,
-    brc20_prog_client: &Brc20ProgClient,
-  ) -> Result<String, Box<dyn Error>> {
-    let mut traces_hash_str = String::new();
-
-    let block =
-      brc20_prog_client.eth_get_block_by_number(format!("{}", self.height), Some(true))?;
-
-    if block.transactions.is_left() {
-      if block.transactions.left().unwrap_or_default().is_empty() {
-        log::debug!("[OPI] No traces in block {}", self.height);
-      } else {
-        return Err(format!("Unexpected transaction format in block {}", self.height).into());
-      }
-    } else if let Some(mut txes) = block.transactions.right() {
-      txes.sort_by_key(|tx| tx.transaction_index);
-
-      for tx in txes {
-        match brc20_prog_client.debug_trace_transaction(tx.hash) {
-          Ok(Some(trace)) => {
-            let trace_hash_str = serde_json_canonicalizer::to_string(&trace)?;
-            traces_hash_str.push_str(&trace_hash_str);
-            traces_hash_str.push_str(EVENT_SEPARATOR);
-          }
-          Ok(None) => {
-            log::warn!(
-              "[OPI] No trace found for transaction {:?} in block {}",
-              tx.hash,
-              self.height
-            );
-            continue;
-          }
-          Err(e) => {
-            log::warn!(
-              "[OPI] Error getting trace for transaction {:?} in block {}: {}",
-              tx.hash,
-              self.height,
-              e
-            );
-            continue;
-          }
-        }
-      }
-    }
-
-    // if too long, log shortened version
-    if log_enabled!(Level::Debug) {
-      static INLINE_SEPARATOR: &str = "\"";
-      let traces_hash_str_shortened = shorten_parts(&traces_hash_str, INLINE_SEPARATOR, 64);
-      log::debug!(
-        "[OPI] Calculated traces for block {}: {}",
-        self.height,
-        traces_hash_str_shortened
-      );
-    }
-
-    Ok(sha256::digest(
-      traces_hash_str
-        .trim_end_matches(EVENT_SEPARATOR)
-        .to_string(),
-    ))
-  }
-
   /// Handle validation error based on validation mode
   fn handle_error(&self, log_message: String, panic_message: &'static str) -> Result<()> {
     log::error!("[OPI] {}", log_message);
@@ -315,4 +254,57 @@ impl OpiValidator {
       OpiValidationMode::Relaxed | OpiValidationMode::None => Ok(()),
     }
   }
+}
+
+/// Calculate BRC20 prog traces hash (synchronous)
+fn calculate_trace_hash(height: u32, brc20_prog_client: &Brc20ProgClient) -> Result<String> {
+  let mut traces_hash_str = String::new();
+
+  let block = brc20_prog_client.eth_get_block_by_number(format!("{}", height), Some(true))?;
+
+  if block.transactions.is_left() {
+    if block.transactions.left().unwrap_or_default().is_empty() {
+      log::debug!("[OPI] No traces in block {}", height);
+    } else {
+      bail!("Unexpected transaction format in block {}", height);
+    }
+  } else if let Some(mut txes) = block.transactions.right() {
+    txes.sort_by_key(|tx| tx.transaction_index);
+    for tx in txes {
+      match brc20_prog_client.debug_trace_transaction(tx.hash) {
+        Ok(Some(trace)) => {
+          let trace_hash_str = serde_json_canonicalizer::to_string(&trace)?;
+          traces_hash_str.push_str(&trace_hash_str);
+          traces_hash_str.push_str(EVENT_SEPARATOR);
+        }
+        Ok(None) => {
+          log::warn!(
+            "[OPI] No trace found for transaction {:?} in block {}",
+            tx.hash,
+            height
+          );
+          continue;
+        }
+        Err(e) => {
+          log::warn!(
+            "[OPI] Error getting trace for transaction {:?} in block {}: {}",
+            tx.hash,
+            height,
+            e
+          );
+          continue;
+        }
+      }
+    }
+  }
+  log::debug!(
+    "[OPI] Calculated traces for block {}: {}",
+    height,
+    traces_hash_str
+  );
+  Ok(sha256::digest(
+    traces_hash_str
+      .trim_end_matches(EVENT_SEPARATOR)
+      .to_string(),
+  ))
 }
