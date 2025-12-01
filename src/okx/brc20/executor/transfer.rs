@@ -9,7 +9,7 @@ impl BRC20ExecutionMessage {
     height: u32,
     blocktime: u32,
     block_hash: &BlockHash,
-    prog_tx_idx: u64,
+    prog_tx_idx: &mut u64,
   ) -> Result<BRC20Receipt, ExecutionError> {
     let BRC20Operation::Transfer { ticker, amount } = &self.operation else {
       unreachable!()
@@ -88,9 +88,10 @@ impl BRC20ExecutionMessage {
         },
         blocktime as u64,
         block_hash.to_b256_ed(),
-        prog_tx_idx,
+        *prog_tx_idx,
         self.inscription_id.to_string(),
       )?;
+      *prog_tx_idx += 1;
     }
 
     Ok(BRC20Receipt {
@@ -110,7 +111,6 @@ impl BRC20ExecutionMessage {
         burned,
         deposited_to_brc20_prog,
       })),
-      prog_tx_count: if deposited_to_brc20_prog { 1 } else { 0 },
     })
   }
 }

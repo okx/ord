@@ -1,4 +1,4 @@
-use crate::okx::brc20::{event::BRC20Event, BRC20Receipt};
+use crate::okx::brc20::{error::BRC20Error, event::BRC20Event, BRC20Receipt};
 
 pub(crate) const EVENT_SEPARATOR: &str = "|";
 
@@ -180,7 +180,9 @@ impl BRC20BlockEventHash {
           number_string_with_full_decimals(inscribe_withdraw.amount, inscribe_withdraw.decimals),
         ));
       }
-      Ok(BRC20Event::Withdraw(withdraw_event)) => {
+      Ok(BRC20Event::Withdraw(withdraw_event))
+      | Err(BRC20Error::WithdrawExecutionFailed(withdraw_event))
+      | Err(BRC20Error::InvalidBRC20WithdrawReceiverAddress(withdraw_event)) => {
         self.events.push(format!(
           "brc20prog-withdraw-transfer;{};{};{};{};{};{}",
           receipt.inscription_id,

@@ -1,5 +1,7 @@
-use super::*;
-use serde::{Deserialize, Serialize};
+use {
+  super::{event::WithdrawEvent, *},
+  serde::{Deserialize, Serialize},
+};
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error, Deserialize, Serialize)]
 pub enum BRC20Error {
@@ -53,6 +55,12 @@ pub enum BRC20Error {
 
   #[error("Invalid BRC2.0 inscription receiver")]
   InvalidBRC20ProgReceiverAddress,
+
+  #[error("Invalid BRC2.0 withdraw receiver")]
+  InvalidBRC20WithdrawReceiverAddress(WithdrawEvent),
+
+  #[error("BRC2.0 withdraw execution failed")]
+  WithdrawExecutionFailed(WithdrawEvent),
 
   #[error("Invalid BRC2.0 data: both 'data' and 'base64_data' are set")]
   BRC20ProgDataConflict,
