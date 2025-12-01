@@ -197,7 +197,9 @@ impl BRC20BlockEventHash {
 
   pub fn get_block_event_hash(&self) -> String {
     let concatenated = self.events.join(EVENT_SEPARATOR);
-    log::info!("BRC20 Block Event Concatenated String: {}", concatenated);
+    if !concatenated.is_empty() {
+      log::debug!("BRC20 Block Event Concatenated String: {}", concatenated);
+    }
     sha256::digest(concatenated)
   }
 }

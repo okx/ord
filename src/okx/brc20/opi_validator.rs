@@ -77,12 +77,13 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     let previous_block = self.context.get_opi_block_validations(height - 1)?;
 
     // Calculate current cumulative event hash
-    let current_cumulative_event_hash = calculate_current_cumulative_hash(
-      previous_block
-        .as_ref()
-        .map(|v| v.brc20_cumulative_event_hash.as_str()),
-      &brc20_block_event_hash,
-    );
+    let current_cumulative_event_hash = match previous_block
+      .as_ref()
+      .map(|v| v.brc20_cumulative_event_hash.as_str())
+    {
+      Some(prev_hash) => sha256::digest(prev_hash.to_owned() + &brc20_block_event_hash),
+      None => brc20_block_event_hash.clone(),
+    };
 
     // Calculate current cumulative trace hash
     let (current_trace_hash, current_cumulative_trace_hash) =
@@ -90,15 +91,17 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
         let Ok(trace_hash) = calculate_trace_hash(height, self.brc20_prog_client) else {
           bail!("BRC20 block trace hash is required for block {}", height);
         };
-        (
-          Some(trace_hash.clone()),
-          Some(calculate_current_cumulative_hash(
-            previous_block
-              .as_ref()
-              .and_then(|v| v.brc20_cumulative_trace_hash.as_ref().map(|h| h.as_str())),
-            &trace_hash,
-          )),
-        )
+
+        let cumulative_trace_hash = if !trace_hash.is_empty() {
+          let prev = previous_block
+            .and_then(|v| v.brc20_cumulative_trace_hash.map(|h| h))
+            .unwrap_or_default();
+          sha256::digest(prev + &trace_hash)
+        } else {
+          String::new()
+        };
+
+        (Some(trace_hash), Some(cumulative_trace_hash))
       } else {
         (None, None)
       };
@@ -156,7 +159,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
             .map(|_| None);
         }
       }
-      log::info!("[OPI] Block {} validation passed successfully. current_cumulative_event_hash: {:?}, current_cumulative_trace_hash: {:?}", height, current_cumulative_event_hash, current_cumulative_trace_hash);
+      log::info!("[OPI] Block {} validation passed successfully. current_cumulative_event_hash: {}, current_cumulative_trace_hash: {}", height, current_cumulative_event_hash, current_cumulative_trace_hash.as_deref().unwrap_or("null"));
     }
     Ok(Some(OpiBlockValidation {
       block_hash: block_hash.clone(),
@@ -304,11 +307,4 @@ fn calculate_trace_hash(height: u32, brc20_prog_client: &Brc20ProgClient) -> Res
       .trim_end_matches(EVENT_SEPARATOR)
       .to_string(),
   ))
-}
-
-fn calculate_current_cumulative_hash(previous_hash: Option<&str>, new_hash: &str) -> String {
-  match previous_hash {
-    Some(hash) => sha256::digest(hash.to_owned() + &new_hash),
-    None => new_hash.to_owned(),
-  }
 }
