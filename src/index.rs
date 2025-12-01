@@ -810,7 +810,7 @@ impl Index {
           if let Some(brc20_prog_client) = &self.brc20_prog_client {
             brc20_prog_client.brc20_clear_caches()?;
           }
-          
+
           match err.downcast_ref() {
             Some(&reorg::Error::Recoverable { height, depth }) => {
               Reorg::handle_reorg(self, height, depth)?;
