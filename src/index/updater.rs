@@ -5,9 +5,7 @@ use {
     metrics::{BlockHeightState, BlockStatistic, IndexingPhase},
     okx::{context::TableContext, Brc20IndexingConfig, OkxUpdater},
   },
-  brc20_prog::Brc20ProgApiClient,
   futures::future::try_join_all,
-  jsonrpsee::http_client::HttpClientBuilder,
   tokio::sync::{
     broadcast::{self, error::TryRecvError},
     mpsc::{self},
@@ -83,22 +81,6 @@ impl Updater<'_> {
     let rx = Self::fetch_blocks_from(self.index, self.height)?;
 
     let (mut output_sender, mut txout_receiver) = Self::spawn_fetcher(self.index)?;
-
-    let runtime = tokio::runtime::Builder::new_current_thread()
-      .enable_all()
-      .build()
-      .expect("rt");
-    let brc20_prog_http_client = HttpClientBuilder::new()
-      .max_request_size(u32::MAX)
-      .max_response_size(u32::MAX)
-      .set_headers(self.index.settings.brc20_prog_auth_header())
-      .build(self.index.settings.brc20_prog_url())?;
-    runtime.block_on(async {
-      brc20_prog_http_client
-        .brc20_clear_caches()
-        .await
-        .expect("Clear BRC20 caches");
-    });
 
     let mut uncommitted = 0;
     let mut utxo_cache = HashMap::new();
