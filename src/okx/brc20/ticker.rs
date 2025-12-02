@@ -39,6 +39,10 @@ impl FromStr for BRC20Ticker {
       return Err(Error::Range);
     }
 
+    if bytes.iter().any(|b| *b == 0x00) {
+      return Err(Error::InvalidCharacters);
+    }
+
     if length == PREDEPLOYED_TICKER_LENGTH {
       if !is_valid_predeployed_ticker(s) {
         return Err(Error::InvalidCharacters);
