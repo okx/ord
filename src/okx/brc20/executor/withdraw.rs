@@ -7,7 +7,7 @@ impl BRC20ExecutionMessage {
     brc20_prog_client: &Brc20ProgClient,
     block_timestamp: u64,
     block_hash: &BlockHash,
-    tx_idx: u64,
+    prog_tx_idx: &mut u64,
   ) -> Result<BRC20Receipt, ExecutionError> {
     let BRC20Operation::Withdraw { ticker, amount } = &self.operation else {
       unreachable!()
@@ -46,7 +46,7 @@ impl BRC20ExecutionMessage {
       },
       block_timestamp,
       block_hash.to_b256_ed(),
-      tx_idx,
+      *prog_tx_idx,
       self.inscription_id.to_string(),
     )?;
 
@@ -107,7 +107,6 @@ impl BRC20ExecutionMessage {
         amount: *amount,
         decimals,
       })),
-      prog_tx_count: 1,
     })
   }
 }

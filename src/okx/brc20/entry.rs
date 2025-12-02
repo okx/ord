@@ -126,7 +126,6 @@ pub struct BRC20Receipt {
   pub sender: UtxoAddress,
   pub receiver: UtxoAddress,
   pub result: Result<BRC20Event, BRC20Error>,
-  pub prog_tx_count: u64,
 }
 
 pub(crate) type OpiBlockValidationValue = [u8];

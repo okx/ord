@@ -9,7 +9,7 @@ impl BRC20ExecutionMessage {
     brc20_prog_client: &Brc20ProgClient,
     block_timestamp: u64,
     block_hash: &BlockHash,
-    tx_idx: u64,
+    prog_tx_idx: &mut u64,
     evm_version_prague: bool,
   ) -> Result<BRC20Receipt, ExecutionError> {
     let BRC20Operation::ProgTransact {
@@ -39,12 +39,14 @@ impl BRC20ExecutionMessage {
         base64_data.clone().map(Base64Bytes::new),
         block_timestamp,
         block_hash.to_b256_ed(),
-        tx_idx,
+        *prog_tx_idx,
         self.inscription_id.to_string(),
         *inscription_byte_length,
         op_return_tx_id.to_b256_ed(),
       )?
       .len() as u64;
+
+    *prog_tx_idx += prog_tx_count;
 
     Ok(BRC20Receipt {
       inscription_id: self.inscription_id.clone(),
@@ -65,7 +67,6 @@ impl BRC20ExecutionMessage {
           None
         },
       })),
-      prog_tx_count,
     })
   }
 }

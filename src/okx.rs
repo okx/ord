@@ -239,9 +239,8 @@ impl<'a> OkxUpdater<'a> {
             self.height as u32,
             self.timestamp,
             &self.block_hash,
-            *prog_tx_idx,
+            prog_tx_idx,
           ) {
-            *prog_tx_idx += receipt.prog_tx_count;
             brc20_receipts.push(receipt);
           }
           result.phase_durations.brc20 += brc20_start.elapsed();

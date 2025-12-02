@@ -88,7 +88,7 @@ impl BRC20ExecutionMessage {
     height: u32,
     blocktime: u32,
     block_hash: &BlockHash,
-    prog_tx_idx: u64,
+    prog_tx_idx: &mut u64,
   ) -> Result<BRC20Receipt> {
     let result = match &self.operation {
       // Core BRC20 operations
@@ -156,7 +156,6 @@ impl BRC20ExecutionMessage {
         sender: self.sender.clone(),
         receiver: self.receiver.unwrap_or(self.sender),
         result: Err(e),
-        prog_tx_count: 0,
       }),
       Err(e) => {
         log::error!(
