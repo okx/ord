@@ -76,6 +76,16 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     }
     let previous_block = self.context.get_opi_block_validations(height - 1)?;
 
+    log::debug!(
+      "[OPI] Validating block {}: previous_cumulative_event_hash: {}, brc20_block_event_hash: {}",
+      height,
+      previous_block
+        .as_ref()
+        .map(|v| v.brc20_cumulative_event_hash.as_str())
+        .unwrap_or("null"),
+      brc20_block_event_hash
+    );
+
     // Calculate current cumulative event hash
     let current_cumulative_event_hash = match previous_block
       .as_ref()
