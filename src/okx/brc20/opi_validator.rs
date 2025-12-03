@@ -11,7 +11,7 @@ use {
   bitcoin::BlockHash,
   chrono::Utc,
   once_cell::sync::Lazy,
-  std::{thread, time::Duration},
+  std::{str::FromStr, thread, time::Duration},
 };
 
 const RECENT_BLOCKS_TIME_WINDOW: i64 = 60 * 60 * 24; // 1 day
@@ -74,25 +74,39 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     {
       return Ok(None);
     }
-    let previous_block = self.context.get_opi_block_validations(height - 1)?;
+    let previous_block_in_database = self.context.get_opi_block_validations(height - 1)?;
+    let previous_block = match previous_block_in_database {
+      Some(previous) if matches!(self.validation_mode, OpiValidationMode::Strict) => previous,
+      _ => {
+        // Use OPI stored trace/event hash if it's not in database (e.g., during initial sync, or an update) or not strict mode
+        // This allows non-strict validation to continue without halting completely
+        let previous_opi_cumulative_hashes = self.get_opi_cumulative_hashes(height - 1)?;
+        OpiBlockValidation {
+          block_hash: BlockHash::from_str("0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+          block_timestamp: 0,
+          brc20_block_event_hash: String::new(),
+          brc20_cumulative_event_hash: previous_opi_cumulative_hashes.event_hash,
+          brc20_prog_block_trace_hash: None,
+          brc20_cumulative_trace_hash: Some(previous_opi_cumulative_hashes.trace_hash),
+        }
+      }
+    };
 
     log::debug!(
       "[OPI] Validating block {}: previous_cumulative_event_hash: {}, brc20_block_event_hash: {}",
       height,
-      previous_block
-        .as_ref()
-        .map(|v| v.brc20_cumulative_event_hash.as_str())
-        .unwrap_or("null"),
+      previous_block.brc20_cumulative_event_hash.as_str(),
       brc20_block_event_hash
     );
 
     // Calculate current cumulative event hash
-    let current_cumulative_event_hash = match previous_block
-      .as_ref()
-      .map(|v| v.brc20_cumulative_event_hash.as_str())
+    let current_cumulative_event_hash = if previous_block.brc20_cumulative_event_hash.as_str() != ""
     {
-      Some(prev_hash) => sha256::digest(prev_hash.to_owned() + &brc20_block_event_hash),
-      None => brc20_block_event_hash.clone(),
+      sha256::digest(
+        previous_block.brc20_cumulative_event_hash.to_owned() + &brc20_block_event_hash,
+      )
+    } else {
+      brc20_block_event_hash.clone()
     };
 
     // Calculate current cumulative trace hash
@@ -103,10 +117,8 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
         };
 
         let cumulative_trace_hash = if !trace_hash.is_empty() {
-          let prev = previous_block
-            .and_then(|v| v.brc20_cumulative_trace_hash.map(|h| h))
-            .unwrap_or_default();
-          sha256::digest(prev + &trace_hash)
+          let prev = previous_block.brc20_cumulative_trace_hash.as_deref().unwrap_or_default();
+          sha256::digest(prev.to_owned() + &trace_hash)
         } else {
           String::new()
         };
