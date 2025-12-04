@@ -82,6 +82,12 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     let previous_block_in_database = self.context.get_opi_block_validations(height - 1)?;
     let previous_block = match previous_block_in_database {
       Some(previous) if matches!(self.validation_mode, OpiValidationMode::Strict) => previous,
+      None if matches!(self.validation_mode, OpiValidationMode::Strict) => {
+        bail!(
+          "Previous OPI block validation data not found for block {} in strict mode",
+          height - 1
+        );
+      }
       _ => {
         // Use OPI stored trace/event hash if it's not in database (e.g., during initial sync, or an update) or not strict mode
         // This allows non-strict validation to continue without halting completely
