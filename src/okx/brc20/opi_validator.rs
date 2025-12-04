@@ -15,7 +15,12 @@ use {
 };
 
 const RECENT_BLOCKS_TIME_WINDOW: i64 = 60 * 60 * 24; // 1 day
-const HISTORICAL_CHECKPOINT_INTERVAL: u32 = 1000;
+
+lazy_static::lazy_static! {
+  static ref CHECKPOINT_INTERVAL: u32 = option_env!("HISTORICAL_CHECKPOINT_INTERVAL")
+    .and_then(|s| s.parse::<u32>().ok())
+    .unwrap_or(1000);
+}
 
 static OPI_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| {
   reqwest::blocking::Client::builder()
@@ -132,7 +137,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     // - For recent blocks (within the last 24 hours): validate every height against OPI.
     // - For historical sync (older than 24 hours): validate every HISTORICAL_CHECKPOINT_INTERVAL blocks as checkpoints.
     if (Utc::now().timestamp() - block_timestamp as i64) < RECENT_BLOCKS_TIME_WINDOW
-      || height % HISTORICAL_CHECKPOINT_INTERVAL == 0
+      || height % *CHECKPOINT_INTERVAL == 0
     {
       // Get current cumulative hashes from OPI
       let opi_cumulative_hashes = match self.get_opi_cumulative_hashes(height) {
