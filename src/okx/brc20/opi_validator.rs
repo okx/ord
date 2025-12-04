@@ -184,9 +184,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
 
       // Validate trace hash
       if let Some(trace_hash) = &current_cumulative_trace_hash {
-        if !opi_cumulative_hashes.trace_hash.is_empty()
-          && trace_hash.to_owned() != opi_cumulative_hashes.trace_hash
-        {
+        if trace_hash.to_owned() != opi_cumulative_hashes.trace_hash {
           return self
             .handle_error(
               format!(
