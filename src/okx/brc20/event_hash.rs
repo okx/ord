@@ -20,7 +20,7 @@ impl BRC20BlockEventHash {
           "predeploy-inscribe;{};{};{};{}",
           receipt.inscription_id,
           hex::encode(predeploy_event.predeployer.to_script_bytes()),
-          hex::encode(predeploy_event.hash),
+          predeploy_event.hash,
           predeploy_event.block_height
         ));
       }
