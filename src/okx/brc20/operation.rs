@@ -68,13 +68,10 @@ impl BRC20OperationExtractor for Inscription {
 
     let content_type = self.content_type().ok_or(Error::InvalidContentType)?;
 
-    if content_type != "text/plain"
-      && content_type != "text/plain;charset=utf-8"
-      && content_type != "text/plain;charset=UTF-8"
-      && content_type != "application/json"
-      && content_type != "application/json;charset=utf-8"
-      && content_type != "application/json;charset=UTF-8"
+    if !content_type.eq("text/plain")
       && !content_type.starts_with("text/plain;")
+      && !content_type.eq("application/json")
+      && !content_type.starts_with("application/json;")
     {
       return Err(Error::UnSupportContentType);
     }
