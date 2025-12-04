@@ -39,7 +39,7 @@ impl HardForks {
   pub fn brc20_prog_prague_activation_height(chain: &Chain) -> u32 {
     match chain {
       Chain::Mainnet => 923369, // decided by community
-      Chain::Testnet => 0,       // decided by okx team
+      Chain::Testnet => 0,      // decided by okx team
       Chain::Regtest => 0,
       Chain::Signet => 275000,
       Chain::Testnet4 => 0,

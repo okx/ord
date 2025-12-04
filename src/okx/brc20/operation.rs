@@ -189,7 +189,6 @@ mod tests {
   #[test]
   fn test_predeploy_deserialize() {
     let hash = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
-    let decoded_hash = hex::decode(hash).unwrap().as_slice().try_into().unwrap();
     let json_str = format!(
       r##"{{
       "p": "brc-20",
@@ -199,7 +198,9 @@ mod tests {
     );
     assert_eq!(
       deserialize_brc20_operation(&serde_json::from_str(&json_str).unwrap()).unwrap(),
-      RawOperation::Predeploy(Predeploy { hash: decoded_hash })
+      RawOperation::Predeploy(Predeploy {
+        hash: hash.to_string()
+      })
     );
   }
 

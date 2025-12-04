@@ -147,6 +147,10 @@ fn validate_predeploy_hash(
     ));
   }
 
+  let predeploy_hash = sha256::Hash::from_str(&predeploy.hash).map_err(|_| {
+    ExecutionError::ExecutionFailed(BRC20Error::PredeployHashInvalid(ticker.to_string()))
+  })?;
+
   let Some(salt) = &deploy.salt else {
     return Err(ExecutionError::ExecutionFailed(BRC20Error::SaltNotFound(
       ticker.to_string(),
@@ -166,12 +170,12 @@ fn validate_predeploy_hash(
   ]
   .concat();
 
-  if sha256::Hash::from_slice(&predeploy.hash)
-    != Ok(sha256::Hash::hash(
+  if predeploy_hash
+    != sha256::Hash::hash(
       sha256::Hash::hash(&salted_ticker)
         .to_byte_array()
         .as_slice(),
-    ))
+    )
   {
     return Err(ExecutionError::ExecutionFailed(
       BRC20Error::PredeployHashInvalid(ticker.to_string()),
@@ -188,14 +192,7 @@ mod tests {
   #[test]
   fn test_validate_predeploy_hash_ok() {
     let predeploy = BRC20Predeploy {
-      hash: sha256::Hash::from_str(
-        "4245293d3aa93d79f79554f0bee7565d7da6f19f4025b26c9d0440dba9eade10",
-      )
-      .unwrap()
-      .as_byte_array()
-      .as_slice()
-      .try_into()
-      .unwrap(),
+      hash: "4245293d3aa93d79f79554f0bee7565d7da6f19f4025b26c9d0440dba9eade10".to_string(),
       predeployer: UtxoAddress::from_str(
         "bc1qhqexvv8f4rqgwyk8yl60xrgn75ams53v4a5pm9",
         Network::Bitcoin,
@@ -222,14 +219,7 @@ mod tests {
   #[test]
   fn test_validate_predeploy_hash_too_soon() {
     let predeploy = BRC20Predeploy {
-      hash: sha256::Hash::from_str(
-        "4245293d3aa93d79f79554f0bee7565d7da6f19f4025b26c9d0440dba9eade10",
-      )
-      .unwrap()
-      .as_byte_array()
-      .as_slice()
-      .try_into()
-      .unwrap(),
+      hash: "4245293d3aa93d79f79554f0bee7565d7da6f19f4025b26c9d0440dba9eade10".to_string(),
       predeployer: UtxoAddress::from_str(
         "bc1qhqexvv8f4rqgwyk8yl60xrgn75ams53v4a5pm9",
         Network::Bitcoin,
@@ -256,14 +246,7 @@ mod tests {
   #[test]
   fn test_validate_predeploy_hash_err() {
     let predeploy = BRC20Predeploy {
-      hash: sha256::Hash::from_str(
-        "3a6eb0794f5f5e8e2c3f4b5a6d7e8f90123456789abcdef0123456789abcdef0",
-      )
-      .unwrap()
-      .as_byte_array()
-      .as_slice()
-      .try_into()
-      .unwrap(),
+      hash: "3a6eb0794f5f5e8e2c3f4b5a6d7e8f90123456789abcdef0123456789abcdef0".to_string(),
       predeployer: UtxoAddress::from_str(
         "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
         Network::Bitcoin,

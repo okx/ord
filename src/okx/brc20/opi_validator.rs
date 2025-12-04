@@ -87,7 +87,10 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
         // This allows non-strict validation to continue without halting completely
         let previous_opi_cumulative_hashes = self.get_opi_cumulative_hashes(height - 1)?;
         OpiBlockValidation {
-          block_hash: BlockHash::from_str("0000000000000000000000000000000000000000000000000000000000000000").unwrap(),
+          block_hash: BlockHash::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+          )
+          .unwrap(),
           block_timestamp: 0,
           brc20_block_event_hash: String::new(),
           brc20_cumulative_event_hash: previous_opi_cumulative_hashes.event_hash,
@@ -122,7 +125,10 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
         };
 
         let cumulative_trace_hash = if !trace_hash.is_empty() {
-          let prev = previous_block.brc20_cumulative_trace_hash.as_deref().unwrap_or_default();
+          let prev = previous_block
+            .brc20_cumulative_trace_hash
+            .as_deref()
+            .unwrap_or_default();
           sha256::digest(prev.to_owned() + &trace_hash)
         } else {
           String::new()

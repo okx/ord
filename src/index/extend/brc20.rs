@@ -163,10 +163,6 @@ impl Index {
     rtx: &Rtx,
   ) -> Result<Option<OpiBlockValidation>> {
     let table = rtx.0.open_table(OPI_BLOCK_VALIDATIONS)?;
-    Ok(
-      table
-        .get(&height)?
-        .map(|v| DynamicEntry::load(v.value())),
-    )
+    Ok(table.get(&height)?.map(|v| DynamicEntry::load(v.value())))
   }
 }

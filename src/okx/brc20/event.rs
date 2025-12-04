@@ -57,7 +57,7 @@ pub enum BRC20Event {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct PredeployEvent {
-  pub hash: [u8; 32],
+  pub hash: String,
   pub predeployer: UtxoAddress,
   pub block_height: u32,
 }

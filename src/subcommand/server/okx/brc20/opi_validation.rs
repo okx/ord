@@ -1,6 +1,6 @@
 use {super::*, crate::okx::brc20::entry::OpiBlockValidation};
 
-#[derive(Debug,Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiOpiBlockValidation {
   pub block_hash: Option<BlockHash>,

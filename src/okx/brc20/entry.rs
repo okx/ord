@@ -32,7 +32,7 @@ pub type BRC20PredeployValue = [u8];
 impl_bincode_dynamic_entry!(BRC20Predeploy, BRC20PredeployValue);
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BRC20Predeploy {
-  pub hash: [u8; 32],
+  pub hash: String,
   pub predeployer: UtxoAddress,
   pub block_height: u32,
 }
@@ -178,7 +178,7 @@ mod tests {
   #[test]
   fn test_predeploy_store_load() {
     let predeploy = BRC20Predeploy {
-      hash: [1u8; 32],
+      hash: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
       predeployer: UtxoAddress::from_str(
         "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
         bitcoin::Network::Bitcoin,

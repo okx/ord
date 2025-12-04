@@ -95,11 +95,23 @@ pub struct Options {
   pub(crate) log_dir: Option<PathBuf>,
   #[arg(long, help = "Store inscription receipts.")]
   pub(crate) save_inscription_receipts: bool,
-  #[arg(long, help_heading = "OkxIndexing", help = "Index Bitmap protocol inscriptions.")]
+  #[arg(
+    long,
+    help_heading = "OkxIndexing",
+    help = "Index Bitmap protocol inscriptions."
+  )]
   pub(crate) index_bitmap: bool,
-  #[arg(long, help_heading = "OkxIndexing", help = "Index BTC Domain protocol inscriptions.")]
+  #[arg(
+    long,
+    help_heading = "OkxIndexing",
+    help = "Index BTC Domain protocol inscriptions."
+  )]
   pub(crate) index_btc_domain: bool,
-  #[arg(long, help_heading = "OkxIndexing", help = "Index BRC-20 protocol inscriptions.")]
+  #[arg(
+    long,
+    help_heading = "OkxIndexing",
+    help = "Index BRC-20 protocol inscriptions."
+  )]
   pub(crate) index_brc20: bool,
   #[arg(long, help = "BRC-20 prog API URL.")]
   pub(crate) brc20_prog_url: Option<String>,

@@ -12,7 +12,7 @@ impl BRC20ExecutionMessage {
 
     // Insert the new predeploy record.
     let predeploy_record = BRC20Predeploy {
-      hash: predeploy.hash,
+      hash: predeploy.hash.clone(),
       predeployer: self.receiver.clone().unwrap(),
       block_height: height,
     };
@@ -28,7 +28,7 @@ impl BRC20ExecutionMessage {
       receiver: self.receiver.clone().unwrap(),
       op_type: BRC20OpType::Predeploy,
       result: Ok(BRC20Event::Predeploy(PredeployEvent {
-        hash: predeploy.hash,
+        hash: predeploy.hash.clone(),
         predeployer: self.receiver.clone().unwrap(),
         block_height: height,
       })),
