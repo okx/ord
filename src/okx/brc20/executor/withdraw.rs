@@ -50,6 +50,8 @@ impl BRC20ExecutionMessage {
       self.inscription_id.to_string(),
     )?;
 
+    *prog_tx_idx += 1;
+
     if receipt.status.is_zero() {
       return Err(ExecutionError::ExecutionFailed(
         BRC20Error::WithdrawExecutionFailed(WithdrawEvent {
