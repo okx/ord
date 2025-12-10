@@ -81,7 +81,10 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     let previous_block_in_database = self.context.get_opi_block_validations(height - 1)?;
     let previous_block = match previous_block_in_database {
       Some(previous) if matches!(self.validation_mode, OpiValidationMode::Strict) => previous,
-      None if matches!(self.validation_mode, OpiValidationMode::Strict) => {
+      None
+        if matches!(self.validation_mode, OpiValidationMode::Strict)
+          && height > self.chain.first_brc20_height() =>
+      {
         bail!(
           "Previous OPI block validation data not found for block {} in strict mode",
           height - 1
