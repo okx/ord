@@ -1,5 +1,4 @@
 use {
-  super::event_hash::EVENT_SEPARATOR,
   crate::{
     chain::Chain,
     okx::{
@@ -126,19 +125,18 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     // Calculate current cumulative trace hash
     let (current_trace_hash, current_cumulative_trace_hash) =
       if height >= self.chain.first_brc20_prog_height() {
-        let Ok(trace_hash) = calculate_trace_hash(height, self.brc20_prog_client) else {
+        let Ok(trace_hash) = retrieve_trace_hash(height, self.brc20_prog_client) else {
           bail!("BRC20 block trace hash is required for block {}", height);
         };
 
-        let cumulative_trace_hash = if !trace_hash.is_empty() {
-          let prev = previous_block
+        let cumulative_trace_hash = sha256::digest(
+          previous_block
             .brc20_cumulative_trace_hash
             .as_deref()
-            .unwrap_or_default();
-          sha256::digest(prev.to_owned() + &trace_hash)
-        } else {
-          String::new()
-        };
+            .unwrap_or_default()
+            .to_owned()
+            + &trace_hash,
+        );
 
         (Some(trace_hash), Some(cumulative_trace_hash))
       } else {
@@ -242,7 +240,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
       _ => "testnet",
     };
     let url = format!(
-      "{}/lc/get_best_hashes_for_block/{}?event_hash_version=2&network_type={}",
+      "{}/lc/get_best_hashes_for_block/{}?event_hash_version=3&network_type={}",
       option_env!("OPI_API_URL").unwrap_or("https://api.opi.network"),
       block_height,
       network_type
@@ -294,54 +292,12 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
 }
 
 /// Calculate BRC20 prog traces hash (synchronous)
-fn calculate_trace_hash(height: u32, brc20_prog_client: &Brc20ProgClient) -> Result<String> {
-  let mut traces_hash_str = String::new();
-
-  let block = brc20_prog_client.eth_get_block_by_number(format!("{}", height), Some(true))?;
-
-  if block.transactions.is_left() {
-    if block.transactions.left().unwrap_or_default().is_empty() {
-      log::debug!("[OPI] No traces in block {}", height);
-    } else {
-      bail!("Unexpected transaction format in block {}", height);
-    }
-  } else if let Some(mut txes) = block.transactions.right() {
-    txes.sort_by_key(|tx| tx.transaction_index);
-    for tx in txes {
-      match brc20_prog_client.debug_trace_transaction(tx.hash) {
-        Ok(Some(trace)) => {
-          let trace_hash_str = serde_json_canonicalizer::to_string(&trace)?;
-          traces_hash_str.push_str(&trace_hash_str);
-          traces_hash_str.push_str(EVENT_SEPARATOR);
-        }
-        Ok(None) => {
-          log::warn!(
-            "[OPI] No trace found for transaction {:?} in block {}",
-            tx.hash,
-            height
-          );
-          continue;
-        }
-        Err(e) => {
-          log::warn!(
-            "[OPI] Error getting trace for transaction {:?} in block {}: {}",
-            tx.hash,
-            height,
-            e
-          );
-          continue;
-        }
-      }
-    }
-  }
-  log::debug!(
-    "[OPI] Calculated traces for block {}: {}",
-    height,
-    traces_hash_str
-  );
-  Ok(sha256::digest(
-    traces_hash_str
-      .trim_end_matches(EVENT_SEPARATOR)
-      .to_string(),
-  ))
+fn retrieve_trace_hash(height: u32, brc20_prog_client: &Brc20ProgClient) -> Result<String> {
+  let Ok(Some(block_trace_hash)) = brc20_prog_client.debug_get_block_trace_hash(height) else {
+    return Err(anyhow!(
+      "BRC20 prog block trace hash not found for block {}",
+      height
+    ));
+  };
+  Ok(block_trace_hash)
 }

@@ -6,7 +6,7 @@ use {
     hashes::Hash,
   },
   brc20_prog::{
-    types::{AddressED, Base64Bytes, BlockResponseED, RawBytes, TraceED, TxReceiptED, B256ED},
+    types::{AddressED, Base64Bytes, RawBytes, TxReceiptED, B256ED},
     Brc20ProgApiClient,
   },
   jsonrpsee::http_client::{HeaderMap, HttpClient, HttpClientBuilder},
@@ -266,24 +266,9 @@ impl Brc20ProgClient {
       .map_err(anyhow::Error::from)
   }
 
-  pub fn debug_trace_transaction(&self, tx_hash: B256ED) -> Result<Option<TraceED>> {
+  pub fn debug_get_block_trace_hash(&self, height: u32) -> Result<Option<String>> {
     BRC20_PROG_RUNTIME
-      .block_on(async { self.client.debug_trace_transaction(tx_hash).await })
-      .map_err(anyhow::Error::from)
-  }
-
-  pub fn eth_get_block_by_number(
-    &self,
-    block_number: String,
-    is_full: Option<bool>,
-  ) -> Result<BlockResponseED> {
-    BRC20_PROG_RUNTIME
-      .block_on(async {
-        self
-          .client
-          .eth_get_block_by_number(block_number, is_full)
-          .await
-      })
+      .block_on(async { self.client.debug_get_block_trace_hash(height.to_string()).await })
       .map_err(anyhow::Error::from)
   }
 }
