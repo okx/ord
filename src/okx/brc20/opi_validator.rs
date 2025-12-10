@@ -83,7 +83,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
       Some(previous) if matches!(self.validation_mode, OpiValidationMode::Strict) => previous,
       None
         if matches!(self.validation_mode, OpiValidationMode::Strict)
-          && height > self.chain.first_brc20_height() =>
+          && height > self.chain.first_inscription_height() =>
       {
         bail!(
           "Previous OPI block validation data not found for block {} in strict mode",
