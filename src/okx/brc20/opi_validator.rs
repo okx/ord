@@ -16,7 +16,7 @@ use {
 const RECENT_BLOCKS_TIME_WINDOW: i64 = 60 * 60 * 24; // 1 day
 
 lazy_static::lazy_static! {
-  static ref CHECKPOINT_INTERVAL: u32 = option_env!("HISTORICAL_CHECKPOINT_INTERVAL")
+  static ref CHECKPOINT_INTERVAL: u32 = option_env!("CHECKPOINT_INTERVAL")
     .and_then(|s| s.parse::<u32>().ok())
     .unwrap_or(1000);
 }
@@ -109,10 +109,11 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     };
 
     log::debug!(
-      "[OPI] Validating block {}: previous_cumulative_event_hash: {}, brc20_block_event_hash: {}",
+      "[OPI] Validating block {}: previous_cumulative_event_hash: {}, brc20_block_event_hash: {}, previous_cumulative_trace_hash: {}",
       height,
       previous_block.brc20_cumulative_event_hash.as_str(),
-      brc20_block_event_hash
+      brc20_block_event_hash,
+      previous_block.brc20_cumulative_trace_hash.as_deref().unwrap_or_default()
     );
 
     // Calculate current cumulative event hash
@@ -139,6 +140,13 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
             .unwrap_or_default()
             .to_owned()
             + &trace_hash,
+        );
+
+        tracing::debug!(
+          "[OPI] Block {}: current_trace_hash: {}, current_cumulative_trace_hash: {}",
+          height,
+          trace_hash,
+          cumulative_trace_hash
         );
 
         (Some(trace_hash), Some(cumulative_trace_hash))
