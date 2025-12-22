@@ -161,52 +161,63 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     if (Utc::now().timestamp() - block_timestamp as i64) < RECENT_BLOCKS_TIME_WINDOW
       || height % *CHECKPOINT_INTERVAL == 0
     {
-      // Get current cumulative hashes from OPI
-      let opi_cumulative_hashes = match self.get_opi_cumulative_hashes(height) {
-        Ok(hash) => hash,
-        Err(e) => {
+      loop {
+        // Get current cumulative hashes from OPI
+        let opi_cumulative_hashes = match self.get_opi_cumulative_hashes(height) {
+          Ok(hash) => hash,
+          Err(e) => {
+            return self
+              .handle_error(
+                format!(
+                  "Failed to get current OPI cumulative event hash at block {}: {}",
+                  height, e
+                ),
+                "Failed to get current OPI cumulative event hash",
+              )
+              .map(|_| None);
+          }
+        };
+
+        if opi_cumulative_hashes.event_hash.is_empty()
+          && matches!(self.validation_mode, OpiValidationMode::Strict)
+        {
+          log::info!("[OPI] Empty cumulative event hash from OPI at block {}. Waiting for non-empty hash for 5 seconds...", height);
+          thread::sleep(Duration::from_secs(5));
+          continue;
+        }
+
+        // Validate event hash
+        if !opi_cumulative_hashes.event_hash.is_empty()
+          && current_cumulative_event_hash != opi_cumulative_hashes.event_hash
+        {
           return self
             .handle_error(
               format!(
-                "Failed to get current OPI cumulative event hash at block {}: {}",
-                height, e
+                "BRC20 Block Event Hash mismatch at block {}: computed {}, stored {}",
+                height, current_cumulative_event_hash, opi_cumulative_hashes.event_hash
               ),
-              "Failed to get current OPI cumulative event hash",
+              "BRC20 Block Event Hash mismatch",
             )
             .map(|_| None);
         }
-      };
 
-      // Validate event hash
-      if !opi_cumulative_hashes.event_hash.is_empty()
-        && current_cumulative_event_hash != opi_cumulative_hashes.event_hash
-      {
-        return self
-          .handle_error(
-            format!(
-              "BRC20 Block Event Hash mismatch at block {}: computed {}, stored {}",
-              height, current_cumulative_event_hash, opi_cumulative_hashes.event_hash
-            ),
-            "BRC20 Block Event Hash mismatch",
-          )
-          .map(|_| None);
-      }
-
-      // Validate trace hash
-      if let Some(trace_hash) = &current_cumulative_trace_hash {
-        if trace_hash.to_owned() != opi_cumulative_hashes.trace_hash {
-          return self
-            .handle_error(
-              format!(
-                "BRC20 Trace Hash mismatch at block {}: computed {}, stored {}",
-                height, trace_hash, opi_cumulative_hashes.trace_hash
-              ),
-              "BRC20 Trace Hash mismatch",
-            )
-            .map(|_| None);
+        // Validate trace hash
+        if let Some(trace_hash) = &current_cumulative_trace_hash {
+          if trace_hash.to_owned() != opi_cumulative_hashes.trace_hash {
+            return self
+              .handle_error(
+                format!(
+                  "BRC20 Trace Hash mismatch at block {}: computed {}, stored {}",
+                  height, trace_hash, opi_cumulative_hashes.trace_hash
+                ),
+                "BRC20 Trace Hash mismatch",
+              )
+              .map(|_| None);
+          }
         }
+        log::info!("[OPI] Block {} validation passed successfully. current_cumulative_event_hash: {}, current_cumulative_trace_hash: {}", height, current_cumulative_event_hash, current_cumulative_trace_hash.as_deref().unwrap_or("null"));
+        break;
       }
-      log::info!("[OPI] Block {} validation passed successfully. current_cumulative_event_hash: {}, current_cumulative_trace_hash: {}", height, current_cumulative_event_hash, current_cumulative_trace_hash.as_deref().unwrap_or("null"));
     }
     Ok(Some(OpiBlockValidation {
       block_hash: block_hash.clone(),
