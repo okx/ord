@@ -62,7 +62,7 @@ impl BRC20OperationExtractor for Inscription {
       .and_then(|body| std::str::from_utf8(body).ok())
       .ok_or(Error::InvalidJson)?;
 
-    if content_body.len() < 40 {
+    if content_body.len() < 30 {
       return Err(Error::NotBRC20Json);
     }
 
