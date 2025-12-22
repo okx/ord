@@ -187,8 +187,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
         }
 
         // Validate event hash
-        if !opi_cumulative_hashes.event_hash.is_empty()
-          && current_cumulative_event_hash != opi_cumulative_hashes.event_hash
+        if current_cumulative_event_hash != opi_cumulative_hashes.event_hash
         {
           return self
             .handle_error(
