@@ -181,7 +181,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
         if opi_cumulative_hashes.event_hash.is_empty()
           && matches!(self.validation_mode, OpiValidationMode::Strict)
         {
-          log::info!("[OPI] Empty cumulative event hash from OPI at block {}. Waiting for non-empty hash for 5 seconds...", height);
+          log::warn!("[OPI] Empty cumulative event hash from OPI at block {}. Waiting for non-empty hash for 5 seconds...", height);
           thread::sleep(Duration::from_secs(5));
           continue;
         }
