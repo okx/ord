@@ -54,7 +54,7 @@ pub enum BRC20Operation {
   },
   InscribeTransfer(Transfer),
   Transfer {
-    ticker: BRC20Ticker,
+    original_ticker: BRC20Ticker,
     amount: u128,
   },
   InscribeProgDeploy {
@@ -88,7 +88,7 @@ pub enum BRC20Operation {
   },
   InscribeWithdraw(Withdraw),
   Withdraw {
-    ticker: BRC20Ticker,
+    original_ticker: BRC20Ticker,
     amount: u128,
   },
 }
@@ -322,7 +322,7 @@ impl BRC20TransferOperationExtractor<'_, '_> for TransferredInscription {
         }
         context.remove_brc20_transferring_asset(self.old_satpoint)?;
         return Ok(Some(BRC20Operation::Transfer {
-          ticker: transfer_asset.ticker,
+          original_ticker: transfer_asset.original_ticker,
           amount: transfer_asset.amount,
         }));
       } else if let Some(prog_deploy_asset) =
@@ -369,7 +369,7 @@ impl BRC20TransferOperationExtractor<'_, '_> for TransferredInscription {
           return Ok(None);
         }
         return Ok(Some(BRC20Operation::Withdraw {
-          ticker: withdraw_asset.ticker,
+          original_ticker: withdraw_asset.original_ticker,
           amount: withdraw_asset.amount,
         }));
       }

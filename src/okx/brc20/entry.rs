@@ -61,6 +61,7 @@ pub(crate) type BRC20TransferAssetValue = [u8];
 impl_bincode_dynamic_entry!(BRC20TransferAsset, BRC20TransferAssetValue);
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct BRC20TransferAsset {
+  pub original_ticker: BRC20Ticker,
   pub ticker: BRC20Ticker,
   pub amount: u128,
   pub owner: UtxoAddress,
@@ -105,7 +106,7 @@ pub(crate) type BRC20WithdrawValue = [u8];
 impl_bincode_dynamic_entry!(BRC20Withdraw, BRC20WithdrawValue);
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BRC20Withdraw {
-  pub ticker: BRC20Ticker,
+  pub original_ticker: BRC20Ticker,
   pub amount: u128,
   pub owner: UtxoAddress,
   pub sequence_number: u32,

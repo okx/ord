@@ -10,11 +10,14 @@ impl BRC20ExecutionMessage {
     };
 
     // load ticker info, ensure the ticker is deployed
-    let ticker = BRC20Ticker::from_str(&inscribe_withdraw.tick).map_err(BRC20Error::TickerParse)?;
+    let original_ticker =
+      BRC20Ticker::from_str(&inscribe_withdraw.tick).map_err(BRC20Error::TickerParse)?;
 
     let ticker_info = context
-      .load_brc20_ticker_info(&ticker)?
-      .ok_or(BRC20Error::TickerNotFound(ticker.clone().to_string()))?;
+      .load_brc20_ticker_info(&original_ticker)?
+      .ok_or(BRC20Error::TickerNotFound(original_ticker.clone().to_string()))?;
+
+    let ticker = ticker_info.ticker;
 
     let amt = FixedPoint::new_from_str(&inscribe_withdraw.amount, ticker_info.decimals)
       .map_err(BRC20Error::NumericError)?;
@@ -29,7 +32,7 @@ impl BRC20ExecutionMessage {
     context.insert_brc20_withdraw_asset(
       self.new_satpoint,
       entry::BRC20Withdraw {
-        ticker: ticker.clone(),
+        original_ticker: original_ticker.clone(),
         amount: amt.to_u128_and_scale().0,
         owner: self.receiver.clone().unwrap(),
         sequence_number: self.sequence_number,
@@ -39,6 +42,7 @@ impl BRC20ExecutionMessage {
     )?;
 
     let event = BRC20Event::InscribeWithdraw(InscribeWithdrawEvent {
+      original_ticker: original_ticker.clone(),
       ticker: ticker.clone(),
       amount: amt.to_u128_and_scale().0,
       decimals: ticker_info.decimals,

@@ -10,12 +10,14 @@ impl BRC20ExecutionMessage {
       unreachable!()
     };
 
-    let ticker = BRC20Ticker::from_str(&mint.tick).map_err(BRC20Error::TickerParse)?;
+    let original_ticker = BRC20Ticker::from_str(&mint.tick).map_err(BRC20Error::TickerParse)?;
 
     // load ticker info, ensure the ticker is deployed
     let mut ticker_info = context
-      .load_brc20_ticker_info(&ticker)?
+      .load_brc20_ticker_info(&original_ticker)?
       .ok_or(BRC20Error::TickerNotFound(mint.tick.clone()))?;
+
+    let ticker = ticker_info.ticker.clone();
 
     // check if self mint is allowed.
     if ticker_info.self_minted && !parent.is_some_and(|parent| parent == ticker_info.inscription_id)
@@ -91,7 +93,8 @@ impl BRC20ExecutionMessage {
       receiver,
       op_type: BRC20OpType::Mint,
       result: Ok(BRC20Event::Mint(MintEvent {
-        ticker,
+        original_ticker: original_ticker.clone(),
+        ticker: ticker.clone(),
         amount: amt.to_u128_and_scale().0,
         decimals,
         clipped,

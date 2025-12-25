@@ -342,7 +342,7 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       self.brc20_address_ticker_to_transfer_assets.remove(
         AddressTickerKey {
           primary: asset.owner,
-          secondary: asset.ticker.to_lowercase(),
+          secondary: asset.original_ticker.to_lowercase(),
         }
         .store()
         .as_ref(),

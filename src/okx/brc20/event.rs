@@ -73,6 +73,7 @@ pub struct DeployEvent {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct InscribeTransferEvent {
+  pub original_ticker: BRC20Ticker,
   pub ticker: BRC20Ticker,
   pub amount: u128,
   pub decimals: u8,
@@ -80,6 +81,7 @@ pub struct InscribeTransferEvent {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct MintEvent {
+  pub original_ticker: BRC20Ticker,
   pub ticker: BRC20Ticker,
   pub amount: u128,
   pub decimals: u8,
@@ -89,6 +91,7 @@ pub struct MintEvent {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct TransferEvent {
+  pub original_ticker: BRC20Ticker,
   pub ticker: BRC20Ticker,
   pub amount: u128,
   pub decimals: u8,
@@ -145,6 +148,7 @@ pub struct ProgTransactEvent {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct InscribeWithdrawEvent {
+  pub original_ticker: BRC20Ticker,
   pub ticker: BRC20Ticker,
   pub amount: u128,
   pub decimals: u8,
@@ -152,6 +156,7 @@ pub struct InscribeWithdrawEvent {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct WithdrawEvent {
+  pub original_ticker: BRC20Ticker,
   pub ticker: BRC20Ticker,
   pub amount: u128,
   pub decimals: u8,

@@ -43,7 +43,7 @@ impl BRC20BlockEventHash {
           receipt.inscription_id,
           hex::encode(receipt.receiver.to_script_bytes()),
           mint_event.ticker.to_lowercase(),
-          mint_event.ticker,
+          mint_event.original_ticker,
           number_string_with_full_decimals(mint_event.amount, mint_event.decimals),
           mint_event.parent_id.unwrap_or_default()
         ));
@@ -54,7 +54,7 @@ impl BRC20BlockEventHash {
           receipt.inscription_id,
           hex::encode(receipt.receiver.to_script_bytes()),
           inscribe_transfer_event.ticker.to_lowercase(),
-          inscribe_transfer_event.ticker,
+          inscribe_transfer_event.original_ticker,
           number_string_with_full_decimals(
             inscribe_transfer_event.amount,
             inscribe_transfer_event.decimals
@@ -72,7 +72,7 @@ impl BRC20BlockEventHash {
             hex::encode(receipt.receiver.to_script_bytes())
           },
           transfer_event.ticker.to_lowercase(),
-          transfer_event.ticker,
+          transfer_event.original_ticker,
           number_string_with_full_decimals(transfer_event.amount, transfer_event.decimals)
         ));
       }
@@ -178,7 +178,7 @@ impl BRC20BlockEventHash {
           receipt.inscription_id,
           hex::encode(receipt.receiver.to_script_bytes()),
           inscribe_withdraw.ticker.to_lowercase(),
-          inscribe_withdraw.ticker,
+          inscribe_withdraw.original_ticker,
           number_string_with_full_decimals(inscribe_withdraw.amount, inscribe_withdraw.decimals),
         ));
       }
@@ -191,7 +191,7 @@ impl BRC20BlockEventHash {
           hex::encode(receipt.sender.to_script_bytes()),
           hex::encode(receipt.receiver.to_script_bytes()),
           withdraw_event.ticker.to_lowercase(),
-          withdraw_event.ticker,
+          withdraw_event.original_ticker,
           number_string_with_full_decimals(withdraw_event.amount, withdraw_event.decimals),
         ));
       }

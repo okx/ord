@@ -11,14 +11,16 @@ impl BRC20ExecutionMessage {
     block_hash: &BlockHash,
     prog_tx_idx: &mut u64,
   ) -> Result<BRC20Receipt, ExecutionError> {
-    let BRC20Operation::Transfer { ticker, amount } = &self.operation else {
+    let BRC20Operation::Transfer { original_ticker, amount } = &self.operation else {
       unreachable!()
     };
 
     // load ticker info, ensure the ticker is deployed
     let mut ticker_info = context
-      .load_brc20_ticker_info(ticker)?
-      .ok_or(BRC20Error::TickerNotFound(ticker.clone().to_string()))?;
+      .load_brc20_ticker_info(&original_ticker)?
+      .ok_or(BRC20Error::TickerNotFound(original_ticker.clone().to_string()))?;
+
+    let ticker = ticker_info.ticker.clone();
 
     let decimals = ticker_info.decimals;
 
@@ -104,6 +106,7 @@ impl BRC20ExecutionMessage {
       receiver,
       op_type: BRC20OpType::Transfer,
       result: Ok(BRC20Event::Transfer(TransferEvent {
+        original_ticker: original_ticker.clone(),
         ticker: ticker.clone(),
         amount: *amount,
         decimals,
