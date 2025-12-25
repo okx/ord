@@ -10,13 +10,13 @@ use {
   bitcoin::BlockHash,
   chrono::Utc,
   once_cell::sync::Lazy,
-  std::{str::FromStr, thread, time::Duration},
+  std::{env, str::FromStr, thread, time::Duration},
 };
 
 const RECENT_BLOCKS_TIME_WINDOW: i64 = 60 * 60 * 24; // 1 day
 
 lazy_static::lazy_static! {
-  static ref CHECKPOINT_INTERVAL: u32 = option_env!("CHECKPOINT_INTERVAL")
+  static ref CHECKPOINT_INTERVAL: u32 = env::var("CHECKPOINT_INTERVAL").ok()
     .and_then(|s| s.parse::<u32>().ok())
     .unwrap_or(1000);
 }
@@ -187,8 +187,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
         }
 
         // Validate event hash
-        if current_cumulative_event_hash != opi_cumulative_hashes.event_hash
-        {
+        if current_cumulative_event_hash != opi_cumulative_hashes.event_hash {
           return self
             .handle_error(
               format!(
@@ -263,7 +262,7 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
     };
     let url = format!(
       "{}/lc/get_best_hashes_for_block/{}?event_hash_version=3&network_type={}",
-      option_env!("OPI_API_URL").unwrap_or("https://api.opi.network"),
+      env::var("OPI_API_URL").unwrap_or("https://api.opi.network".to_string()),
       block_height,
       network_type
     );

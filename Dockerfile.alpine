@@ -1,6 +1,7 @@
 FROM rust:1.88.0-alpine AS builder
 
 RUN apk add --no-cache \
+    git \
     perl \
     make \
     musl-dev \
@@ -24,4 +25,3 @@ COPY --from=builder \
 
 ENV RUST_BACKTRACE=1
 ENV RUST_LOG=info
-
