@@ -525,12 +525,48 @@ impl Index {
       index_transactions = Self::is_statistic_set(&statistics, Statistic::IndexTransactions)?;
 
       index_brc20 = Self::is_statistic_set(&statistics, Statistic::OkxIndexBrc20)?;
-
       index_bitmap = Self::is_statistic_set(&statistics, Statistic::OkxIndexBitmap)?;
       index_btc_domain = Self::is_statistic_set(&statistics, Statistic::OkxIndexBTCDomain)?;
-
       save_inscription_receipts =
         Self::is_statistic_set(&statistics, Statistic::OkxSaveInscriptionReceipts)?;
+
+      // Warn if command-line flags differ from database configuration
+      // The database configuration takes precedence over command-line arguments
+      if settings.index_inscriptions_raw() && settings.index_addresses_raw() {
+        if index_brc20 != settings.index_brc20() {
+          log::warn!(
+            "index_brc20 mismatch: database={}, command-line={}. Using database configuration.",
+            index_brc20,
+            settings.index_brc20()
+          );
+        }
+
+        if save_inscription_receipts != settings.save_inscription_receipts() {
+          log::warn!(
+          "save_inscription_receipts mismatch: database={}, command-line={}. Using database configuration.",
+          save_inscription_receipts,
+          settings.save_inscription_receipts()
+        );
+        }
+
+        if settings.chain() == Chain::Mainnet {
+          if index_bitmap != settings.index_bitmap() {
+            log::warn!(
+              "index_bitmap mismatch: database={}, command-line={}. Using database configuration.",
+              index_bitmap,
+              settings.index_bitmap()
+            );
+          }
+
+          if index_btc_domain != settings.index_btc_domain() {
+            log::warn!(
+            "index_btc_domain mismatch: database={}, command-line={}. Using database configuration.",
+            index_btc_domain,
+            settings.index_btc_domain()
+          );
+          }
+        }
+      }
     }
 
     let genesis_block_coinbase_transaction =

@@ -320,7 +320,7 @@ impl Server {
         proxy: self.proxy.clone(),
       });
 
-      let api_v1_router = Router::new()
+      let mut api_v1_router = Router::new()
         .route("/node/info", get(okx::info::node_info))
         .route("/ord/id/:id/inscription", get(okx::ord::ord_inscription_id))
         .route(
@@ -329,14 +329,6 @@ impl Server {
         )
         .route("/ord/outpoint/:outpoint/info", get(okx::ord::ord_outpoint))
         .route(
-          "/ord/tx/:txid/inscriptions",
-          get(okx::ord::ord_txid_inscriptions),
-        )
-        .route(
-          "/ord/block/:blockhash/inscriptions",
-          get(okx::ord::ord_block_inscriptions),
-        )
-        .route(
           "/ord/debug/bitmap/district/:number",
           get(okx::ord::ord_debug_bitmap_district),
         )
@@ -344,38 +336,56 @@ impl Server {
           "/ord/debug/btc/domain/:btc_name",
           get(okx::ord::ord_debug_btc_domain),
         )
-        .route("/brc20/tick/:tick", get(okx::brc20::brc20_tick_info))
-        .route("/brc20/tick", get(okx::brc20::brc20_all_tick_info))
-        .route(
-          "/brc20/tick/:tick/address/:address/balance",
-          get(okx::brc20::brc20_balance),
-        )
-        .route(
-          "/brc20/address/:address/balance",
-          get(okx::brc20::brc20_all_balance),
-        )
-        .route(
-          "/brc20/tick/:tick/address/:address/transferable",
-          get(okx::brc20::brc20_transferable),
-        )
-        .route(
-          "/brc20/address/:address/transferable",
-          get(okx::brc20::brc20_all_transferable),
-        )
-        .route(
-          "/brc20/outpoint/:outpoint/transferable",
-          get(okx::brc20::brc20_outpoint),
-        )
-        .route("/brc20/tx/:txid/events", get(okx::brc20::brc20_tx_events))
-        .route(
-          "/brc20/block/:block_hash/events",
-          get(okx::brc20::brc20_block_events),
-        )
-        .route(
-          "/brc20/block/:height/validation",
-          get(okx::brc20::brc20_opi_block_validation),
-        )
         .layer(middleware::metrics_layer());
+
+      // Only add ord inscription/receipt-related routes if save_inscription_receipts is enabled
+      if index.has_inscription_receipts() {
+        api_v1_router = api_v1_router
+          .route(
+            "/ord/tx/:txid/inscriptions",
+            get(okx::ord::ord_txid_inscriptions),
+          )
+          .route(
+            "/ord/block/:blockhash/inscriptions",
+            get(okx::ord::ord_block_inscriptions),
+          );
+      }
+
+      // Only add brc20 routes if brc20 indexing is enabled
+      if index.has_brc20_index() {
+        api_v1_router = api_v1_router
+          .route("/brc20/tick/:tick", get(okx::brc20::brc20_tick_info))
+          .route("/brc20/tick", get(okx::brc20::brc20_all_tick_info))
+          .route(
+            "/brc20/tick/:tick/address/:address/balance",
+            get(okx::brc20::brc20_balance),
+          )
+          .route(
+            "/brc20/address/:address/balance",
+            get(okx::brc20::brc20_all_balance),
+          )
+          .route(
+            "/brc20/tick/:tick/address/:address/transferable",
+            get(okx::brc20::brc20_transferable),
+          )
+          .route(
+            "/brc20/address/:address/transferable",
+            get(okx::brc20::brc20_all_transferable),
+          )
+          .route(
+            "/brc20/outpoint/:outpoint/transferable",
+            get(okx::brc20::brc20_outpoint),
+          )
+          .route("/brc20/tx/:txid/events", get(okx::brc20::brc20_tx_events))
+          .route(
+            "/brc20/block/:block_hash/events",
+            get(okx::brc20::brc20_block_events),
+          )
+          .route(
+            "/brc20/block/:height/validation",
+            get(okx::brc20::brc20_opi_block_validation),
+          );
+      }
 
       let api_router = Router::new().nest("/v1", api_v1_router);
 
