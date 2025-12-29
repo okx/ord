@@ -48,25 +48,28 @@ pub(crate) async fn brc20_transferable(
   Extension(index): Extension<Arc<Index>>,
   Path((ticker, address)): Path<(String, String)>,
 ) -> ApiResult<ApiTransferableAssets> {
-  log::debug!("rpc: get brc20_transferable: {ticker} {address}");
+  tracing::debug!("rpc: get brc20_transferable: {ticker} {address}");
   task::block_in_place(|| {
-    let rtx = index.begin_read()?;
-
     let brc20_ticker = BRC20Ticker::from_str(&ticker).map_err(ApiError::bad_request)?;
 
     let utxo_address =
       UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::bad_request)?;
 
-    Index::brc20_get_ticker_info(&brc20_ticker, &rtx)?
-      .ok_or(BRC20ApiError::UnknownTicker(ticker.clone()))?;
+    let rtx = index.begin_read()?;
+    trace_db_call!("check_brc20_ticker_exists", {
+      Index::brc20_get_ticker_info(&brc20_ticker, &rtx)?
+        .ok_or(BRC20ApiError::UnknownTicker(ticker.clone()))
+    })?;
 
-    let assets = Index::brc20_get_transferring_assets_with_location_by_address_ticker(
-      &utxo_address,
-      &brc20_ticker,
-      &rtx,
-    )?;
+    let assets = trace_db_call!("get_brc20_transferable_assets", {
+      Index::brc20_get_transferring_assets_with_location_by_address_ticker(
+        &utxo_address,
+        &brc20_ticker,
+        &rtx,
+      )
+    })?;
 
-    log::debug!(
+    tracing::debug!(
       "rpc: get brc20_transferable: {ticker} {address}, assets count: {}",
       assets.len()
     );
@@ -87,16 +90,17 @@ pub(crate) async fn brc20_all_transferable(
   Extension(index): Extension<Arc<Index>>,
   Path(address): Path<String>,
 ) -> ApiResult<ApiTransferableAssets> {
-  log::debug!("rpc: get brc20_all_transferable: {address}");
+  tracing::debug!("rpc: get brc20_all_transferable: {address}");
   task::block_in_place(|| {
-    let rtx = index.begin_read()?;
-
     let utxo_address =
       UtxoAddress::from_str(&address, settings.chain().network()).map_err(ApiError::bad_request)?;
 
-    let assets = Index::get_brc20_transferring_assets_location_by_address(&utxo_address, &rtx)?;
+    let rtx = index.begin_read()?;
+    let assets = trace_db_call!("get_all_brc20_transferable_assets", {
+      Index::get_brc20_transferring_assets_location_by_address(&utxo_address, &rtx)
+    })?;
 
-    log::debug!(
+    tracing::debug!(
       "rpc: get brc20_all_transferable: {address}, assets count: {}",
       assets.len()
     );

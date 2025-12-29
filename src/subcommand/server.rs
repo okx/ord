@@ -22,6 +22,7 @@ use {
   },
   axum_server::Handle,
   brotli::Decompressor,
+  metrics_exporter_prometheus::PrometheusBuilder,
   rust_embed::RustEmbed,
   rustls_acme::{
     acme::{LETS_ENCRYPT_PRODUCTION_DIRECTORY, LETS_ENCRYPT_STAGING_DIRECTORY},
@@ -29,7 +30,11 @@ use {
     caches::DirCache,
     AcmeConfig,
   },
-  std::{str, sync::Arc},
+  std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    str,
+    sync::Arc,
+  },
   tokio_stream::StreamExt,
   tower_http::{
     compression::CompressionLayer,
@@ -37,6 +42,7 @@ use {
     set_header::SetResponseHeaderLayer,
     validate_request::ValidateRequestHeaderLayer,
   },
+  tracing_subscriber::EnvFilter,
 };
 
 pub use server_config::ServerConfig;
@@ -44,7 +50,7 @@ pub use server_config::ServerConfig;
 mod accept_encoding;
 mod accept_json;
 mod error;
-mod metrics;
+mod middleware;
 mod okx;
 pub mod query;
 mod server_config;
@@ -138,13 +144,146 @@ pub struct Server {
     help = "Poll Bitcoin Core every <POLLING_INTERVAL>."
   )]
   pub(crate) polling_interval: humantime::Duration,
-  #[arg(long, help = "Enable prometheus metrics.")]
-  pub(crate) enable_metrics: bool,
+
+  // Tracing options
+  #[arg(
+    long = "tracing-otlp",
+    value_name = "URL",
+    require_equals = true,
+    value_parser = parse_otlp_endpoint,
+    help = "Enable OpenTelemetry tracing to <URL>.",
+    help_heading = "Tracing"
+  )]
+  pub(crate) otlp: Option<Url>,
+  #[arg(
+    long = "tracing-otlp.filter",
+    value_name = "FILTER",
+    default_value = "info",
+    help = "Set the filter for OpenTelemetry tracing.",
+    help_heading = "Tracing"
+  )]
+  pub(crate) otlp_filter: EnvFilter,
+  #[arg(
+    long = "tracing-otlp.sample-rate",
+    value_name = "RATE",
+    default_value = "1.0",
+    value_parser = parse_sample_rate,
+    help = "Set the sampling rate for tracing (0.0-1.0). 1.0 means sample all traces.",
+    help_heading = "Tracing"
+  )]
+  pub(crate) otlp_sample_rate: f64,
+  #[arg(
+    long = "tracing-otlp.environment",
+    value_name = "ENV",
+    default_value = "dev",
+    help = "Set the deployment environment name (e.g., pro, pre, dev).",
+    help_heading = "Tracing"
+  )]
+  pub(crate) otlp_environment: String,
+  #[arg(
+    long = "tracing-otlp.service-name",
+    value_name = "NAME",
+    default_value = "ord",
+    help = "Set the service name for OpenTelemetry tracing.",
+    help_heading = "Tracing"
+  )]
+  pub(crate) otlp_service_name: String,
+
+  // Metrics options
+  #[arg(
+    long = "metrics", 
+    alias = "metrics.prometheus",
+    value_name = "PROMETHEUS",
+    value_parser = parse_socket_address,
+    help = "Listen on <PROMETHEUS> for Prometheus metrics.",
+    help_heading = "Metrics"
+  )]
+  pub(crate) prometheus: Option<SocketAddr>,
+}
+
+fn parse_otlp_endpoint(arg: &str) -> Result<Url> {
+  Url::parse(arg).context("Invalid URL for OTLP trace output")
+}
+
+fn parse_sample_rate(arg: &str) -> Result<f64> {
+  let rate: f64 = arg.parse().context("Invalid sample rate")?;
+  if !(0.0..=1.0).contains(&rate) {
+    bail!("Sample rate must be between 0.0 and 1.0, got {}", rate);
+  }
+  Ok(rate)
+}
+
+/// Helper to parse a [Duration] from seconds
+pub fn parse_duration_from_secs(arg: &str) -> Result<Duration, std::num::ParseIntError> {
+  let seconds = arg.parse()?;
+  Ok(Duration::from_secs(seconds))
+}
+
+/// Error thrown while parsing a socket address.
+#[derive(thiserror::Error, Debug)]
+pub enum SocketAddressParsingError {
+  /// Failed to convert the string into a socket addr
+  #[error("could not parse socket address: {0}")]
+  Io(#[from] std::io::Error),
+  /// Input must not be empty
+  #[error("cannot parse socket address from empty string")]
+  Empty,
+  /// Failed to parse the address
+  #[error("could not parse socket address from {0}")]
+  Parse(String),
+  /// Failed to parse port
+  #[error("could not parse port: {0}")]
+  Port(#[from] std::num::ParseIntError),
+}
+
+/// Parse a [`SocketAddr`] from a `str`.
+///
+/// The following formats are checked:
+///
+/// - If the value can be parsed as a `u16` or starts with `:` it is considered a port, and the
+///   hostname is set to `localhost`.
+/// - If the value contains `:` it is assumed to be the format `<host>:<port>`
+/// - Otherwise it is assumed to be a hostname
+///
+/// An error is returned if the value is empty.
+pub fn parse_socket_address(value: &str) -> Result<SocketAddr, SocketAddressParsingError> {
+  if value.is_empty() {
+    return Err(SocketAddressParsingError::Empty);
+  }
+
+  if let Some(port) = value
+    .strip_prefix(':')
+    .or_else(|| value.strip_prefix("localhost:"))
+  {
+    let port: u16 = port.parse()?;
+    return Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port));
+  }
+  if let Ok(port) = value.parse() {
+    return Ok(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port));
+  }
+  value
+    .to_socket_addrs()?
+    .next()
+    .ok_or_else(|| SocketAddressParsingError::Parse(value.to_string()))
 }
 
 impl Server {
   pub fn run(self, settings: Settings, index: Arc<Index>, handle: Handle) -> SubcommandResult {
     Runtime::new()?.block_on(async {
+      // Initialize OpenTelemetry tracing if configured
+      if let Some(otlp_endpoint) = &self.otlp {
+        crate::telemetry::init_tracing(
+          otlp_endpoint,
+          self.otlp_filter.clone(),
+          self.otlp_sample_rate,
+          &self.otlp_environment,
+          &self.otlp_service_name,
+        )?;
+      }
+
+      // Initialize Prometheus exporter
+      Self::init_prometheus_exporter()?;
+
       let index_clone = index.clone();
       let integration_test = settings.integration_test();
 
@@ -231,7 +370,8 @@ impl Server {
         .route(
           "/brc20/block/:block_hash/events",
           get(okx::brc20::brc20_block_events),
-        );
+        )
+        .layer(middleware::metrics_layer());
 
       let api_router = Router::new().nest("/v1", api_v1_router);
 
@@ -344,7 +484,6 @@ impl Server {
         .route("/tx/:txid", get(Self::transaction))
         .route("/decode/:txid", get(Self::decode))
         .route("/update", get(Self::update))
-        .merge(Self::metrics_router(self.enable_metrics))
         .nest("/api", api_router)
         .fallback(Self::fallback)
         .layer(Extension(index))
@@ -376,6 +515,13 @@ impl Server {
         router.layer(ValidateRequestHeaderLayer::basic(username, password))
       } else {
         router
+      };
+
+      // Start Prometheus metrics server if enabled
+      let metrics_handle = if let Some(prometheus) = self.prometheus {
+        Some(self.spawn_metrics_server(&settings, handle.clone(), prometheus)?)
+      } else {
+        None
       };
 
       match (self.http_port(), self.https_port()) {
@@ -427,16 +573,12 @@ impl Server {
         (None, None) => unreachable!(),
       }
 
+      if let Some(metrics_handle) = metrics_handle {
+        let _ = metrics_handle.await;
+      }
+
       Ok(None)
     })
-  }
-
-  fn metrics_router(enable_metrics: bool) -> Router<Arc<ServerConfig>> {
-    if enable_metrics {
-      Router::new().route("/metrics", get(metrics::metrics_handler))
-    } else {
-      Router::new()
-    }
   }
 
   fn spawn(
@@ -501,6 +643,86 @@ impl Server {
         }
       }
     }))
+  }
+
+  fn spawn_metrics_server(
+    &self,
+    settings: &Settings,
+    handle: Handle,
+    addr: SocketAddr,
+  ) -> Result<task::JoinHandle<io::Result<()>>> {
+    if !settings.integration_test() && !cfg!(test) {
+      eprintln!("Prometheus metrics available at http://{addr}/metrics");
+    }
+
+    // Create a simple router for metrics endpoint
+    let metrics_router = Router::new().route("/metrics", get(Self::prometheus_metrics));
+
+    Ok(tokio::spawn(async move {
+      axum_server::Server::bind(addr)
+        .handle(handle)
+        .serve(metrics_router.into_make_service())
+        .await
+    }))
+  }
+
+  /// Initialize Prometheus metrics exporter
+  ///
+  /// Sets up the Prometheus recorder which will collect all metrics
+  /// recorded via the `metrics` crate and make them available in
+  /// Prometheus text format.
+  fn init_prometheus_exporter() -> Result<()> {
+    let recorder = PrometheusBuilder::new()
+      .set_buckets(&[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0])?
+      .install_recorder()
+      .map_err(|err| anyhow!("Failed to install Prometheus recorder: {}", err))?;
+
+    // Store the recorder handle in a static for later access
+    PROMETHEUS_RECORDER.lock().unwrap().replace(recorder);
+
+    log::info!("Prometheus metrics exporter initialized");
+    Ok(())
+  }
+
+  /// Prometheus metrics endpoint
+  ///
+  /// Returns all collected metrics in Prometheus text exposition format.
+  /// This endpoint can be scraped by Prometheus or other monitoring systems.
+  ///
+  /// # Endpoint
+  /// - Path: `/metrics`
+  /// - Method: GET
+  /// - Content-Type: text/plain; version=0.0.4
+  async fn prometheus_metrics() -> Response {
+    task::block_in_place(|| {
+      // Get the PrometheusHandle from static storage
+      // This is a blocking operation that holds a Mutex lock
+      let handle = PROMETHEUS_RECORDER.lock().unwrap();
+
+      let handle = match handle.as_ref() {
+        Some(h) => h,
+        None => {
+          log::error!("Prometheus recorder not initialized");
+          return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Prometheus recorder not initialized",
+          )
+            .into_response();
+        }
+      };
+
+      // Render metrics in Prometheus format
+      // This is a CPU-intensive synchronous operation
+      (
+        StatusCode::OK,
+        [(
+          header::CONTENT_TYPE,
+          HeaderValue::from_static("text/plain; version=0.0.4; charset=utf-8"),
+        )],
+        handle.render(),
+      )
+        .into_response()
+    })
   }
 
   fn acme_cache(acme_cache: Option<&PathBuf>, settings: &Settings) -> PathBuf {

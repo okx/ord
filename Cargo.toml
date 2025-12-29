@@ -74,13 +74,29 @@ tower-http = { version = "0.4.0", features = ["auth", "compression-br", "compres
 urlencoding = "2.1.3"
 bincode = "1.3.3"
 thiserror = "2.0.6"
-strum_macros = "0.24.3"
+strum = "0.26"
+strum_macros = "0.26"
 log4rs = { version = "1.3.0", features = ["gzip"] }
 bigdecimal = "0.4.7"
 once_cell = "1.20.2"
 num_enum = "0.7.3"
 prometheus = "0.13.4"
-openssl = { version = "0.10.70", optional = true }
+
+# metrics
+metrics = "0.24.2"
+metrics-exporter-prometheus = { version = "0.16.0", default-features = false, features = ["push-gateway"] }
+
+# otlp obs
+opentelemetry = "0.31.0"
+opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.31.0", features = ["trace", "http-proto", "reqwest-rustls"] }
+tower = "0.4.13"
+pin-project = "1.1.7"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+tracing-opentelemetry = "0.32.0"
+opentelemetry-semantic-conventions = { version = "0.31.0", features = ["semconv_experimental"] }
+if-addrs = "0.13"
 
 [dev-dependencies]
 criterion = "0.5.1"
@@ -102,7 +118,3 @@ path = "src/lib.rs"
 [[test]]
 name = "integration"
 path = "tests/lib.rs"
-
-[features]
-default = []
-openssl = ["openssl/vendored"]
