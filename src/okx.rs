@@ -13,11 +13,11 @@ use {
   crate::{
     index::{
       bundle_message::{BundleMessage, InscriptionAction, SubType},
+      reorg::Reorg,
       BlockData,
     },
     metrics::{BlockStatistic, IndexingPhase},
   },
-  anyhow::bail,
   std::collections::HashMap,
 };
 
@@ -78,24 +78,23 @@ impl<'a> OkxUpdater<'a> {
         let mut prog_block_height = brc20_prog_client.eth_block_number()?;
         if prog_block_height == 0 {
           brc20_prog_client.brc20_initialise([0u8; 32].into(), 0, 0)?;
+          // Refresh prog_block_height after initialization
+          prog_block_height = brc20_prog_client.eth_block_number()?;
         }
         // Mine empty blocks if not yet at first BRC20 prog height
-        while prog_block_height < first_brc20_prog_height - 1 {
-          let next_prog_height =
-            (prog_block_height + BRC20_PROG_MINE_BATCH_SIZE).min(first_brc20_prog_height - 1);
-          brc20_prog_client.brc20_mine(next_prog_height - prog_block_height, 0)?;
-          brc20_prog_client.brc20_commit_to_database()?;
-          prog_block_height = next_prog_height;
+        // Avoid underflow when first_brc20_prog_height is 0
+        if first_brc20_prog_height > 0 {
+          while prog_block_height < first_brc20_prog_height - 1 {
+            let next_prog_height =
+              (prog_block_height + BRC20_PROG_MINE_BATCH_SIZE).min(first_brc20_prog_height - 1);
+            brc20_prog_client.brc20_mine(next_prog_height - prog_block_height, 0)?;
+            brc20_prog_client.brc20_commit_to_database()?;
+            prog_block_height = next_prog_height;
+          }
         }
 
-        let prog_block_height = brc20_prog_client.eth_block_number()?;
-        if prog_block_height != self.height - 1 {
-          bail!(
-            "BRC20 Prog block height {} is behind OKX-ORD block height {}",
-            prog_block_height,
-            self.height - 1
-          );
-        }
+        // Check and fix height consistency between ord and prog databases
+        Reorg::detect_reorg_with_brc20(self.height as u32, brc20_prog_client)?;
       }
     }
 

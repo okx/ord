@@ -59,7 +59,7 @@ pub mod event;
 mod extend;
 mod fetcher;
 mod lot;
-mod reorg;
+pub(crate) mod reorg;
 mod rtx;
 mod updater;
 mod utxo_entry;

@@ -26,6 +26,65 @@ const CHAIN_TIP_DISTANCE: u32 = 21;
 pub(crate) struct Reorg {}
 
 impl Reorg {
+  pub(crate) fn detect_reorg_with_brc20(
+    ord_processing_height: u32,
+    brc20_prog_client: &Brc20ProgClient,
+  ) -> Result {
+    let ord_committed_height = ord_processing_height.saturating_sub(1);
+    let brc20_prog_height = brc20_prog_client.eth_block_number()? as u32;
+
+    if ord_committed_height == brc20_prog_height {
+      return Ok(());
+    }
+
+    let height_diff = ord_committed_height.abs_diff(brc20_prog_height);
+
+    if brc20_prog_height > ord_committed_height {
+      // Abnormal case: prog is ahead of ord
+      // This should not happen in normal operation, but if it does,
+      // we can simply roll back the prog database without triggering a full reorg
+      log::info!(
+        "BRC20 prog height {} is ahead of ord committed height {} (difference: {}). Rolling back prog only.",
+        brc20_prog_height,
+        ord_committed_height,
+        height_diff
+      );
+      brc20_prog_client.brc20_reorg(ord_committed_height as u64)?;
+      log::info!(
+        "Successfully rolled back BRC20 prog to height {}",
+        ord_committed_height
+      );
+      return Ok(());
+    }
+
+    // Normal case: ord is ahead of prog (likely due to crash during commit)
+    // Check if ord can be rolled back via savepoints
+    let max_recoverable_depth =
+      (MAX_SAVEPOINTS - 1) * SAVEPOINT_INTERVAL + (ord_processing_height) % SAVEPOINT_INTERVAL;
+
+    if height_diff > max_recoverable_depth {
+      log::error!(
+        "Height difference ({}) between ord committed height ({}) and brc20 prog height ({}) exceeds max recoverable depth ({})",
+        height_diff,
+        ord_committed_height,
+        brc20_prog_height,
+        max_recoverable_depth
+      );
+      return Err(anyhow!(Error::Unrecoverable));
+    }
+
+    log::info!(
+      "ord committed height {} is ahead of brc20 prog height {} (difference: {}), triggering recovery",
+      ord_committed_height,
+      brc20_prog_height,
+      height_diff
+    );
+    return Err(anyhow!(Error::Recoverable {
+      height: ord_processing_height,
+      depth: 0,
+    }));
+  }
+
   pub(crate) fn detect_reorg(block: &BlockData, height: u32, index: &Index) -> Result {
     let bitcoind_prev_blockhash = block.header.prev_blockhash;
 
@@ -79,45 +138,13 @@ impl Reorg {
 
     if index.has_brc20_index() {
       if let Some(brc20_prog_client) = &index.brc20_prog_client {
-        let first_brc20_prog_height = index.settings.chain().first_brc20_prog_height();
         let brc20_prog_height = brc20_prog_client.eth_block_number()?;
-        let target_height = rolled_back_height as u64;
-
-        let needs_reorg = if rolled_back_height >= first_brc20_prog_height {
-          if brc20_prog_height > target_height {
-            true
-          } else if brc20_prog_height < target_height {
-            bail!(
-              "BRC20 prog height {} is behind rolled back height {}, this may indicate a sync issue",
-              brc20_prog_height,
-              rolled_back_height
-            );
-          } else {
-            false
-          }
-        } else if brc20_prog_height > 0 {
-          brc20_prog_height > target_height
-        } else {
-          false
-        };
-
-        if needs_reorg {
-          brc20_prog_client.brc20_reorg(target_height)?;
-
-          // Verify the reorg was successful
-          let new_prog_height = brc20_prog_client.eth_block_number()?;
-          if new_prog_height != target_height {
-            bail!(
-              "BRC20 prog reorg failed: expected height {}, got {}",
-              target_height,
-              new_prog_height
-            );
-          }
-
+        log::info!("handling BRC20 prog reorg for height {}", brc20_prog_height);
+        if brc20_prog_height > rolled_back_height as u64 {
+          brc20_prog_client.brc20_reorg(rolled_back_height as u64)?;
           log::info!(
-            "successfully rolled back BRC20 prog height from {} to {}",
-            brc20_prog_height,
-            target_height
+            "successfully rolled back BRC20 prog height to height {}",
+            rolled_back_height
           );
         }
       }
