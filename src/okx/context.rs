@@ -10,7 +10,7 @@ use {
       },
       BRC20Ticker,
     },
-    composite_key::AddressTickerKey,
+    composite_key::{AddressEndpoint, AddressTickerKey},
     entry::{
       AddressTickerKeyValue, CollectionType, DynamicEntry, InscriptionReceipt,
       InscriptionReceiptsValue,
@@ -189,6 +189,22 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
           .as_ref(),
         )?
         .map(|v| DynamicEntry::load(v.value())),
+    )
+  }
+
+  pub fn load_brc20_balances_by_address(
+    &mut self,
+    address: &UtxoAddress,
+  ) -> Result<Vec<BRC20Balance>, redb::StorageError> {
+    Ok(
+      self
+        .brc20_balances
+        .range(
+          AddressEndpoint::Left(address.clone()).store().as_ref()
+            ..=AddressEndpoint::Right(address.clone()).store().as_ref(),
+        )?
+        .flat_map(|result| result.map(|(_, v)| BRC20Balance::load(v.value())))
+        .collect(),
     )
   }
 
