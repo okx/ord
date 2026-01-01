@@ -179,3 +179,70 @@ pub(super) enum ExecutionError {
   #[error("Unexpected error: {0}")]
   Unexpected(#[from] Error),
 }
+
+pub(crate) fn swap_refund_by_ticker(
+  context: &mut TableContext<'_, '_>,
+  original_ticker: BRC20Ticker,
+  sender_address: &UtxoAddress,
+  receiver_address: &UtxoAddress,
+) -> Result<BRC20Receipt> {
+  // load ticker info, ensure the ticker is deployed
+  let ticker_info =
+    context
+      .load_brc20_ticker_info(&original_ticker)?
+      .ok_or(BRC20Error::TickerNotFound(
+        original_ticker.clone().to_string(),
+      ))?;
+
+  let ticker = ticker_info.ticker.clone();
+  let decimals = ticker_info.decimals;
+
+  // check if the sender has enough balance and update the balance
+  let mut sender_balance = context
+    .load_brc20_balance(sender_address, &ticker)?
+    .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
+
+  let amount = sender_balance.total;
+
+  sender_balance.total = 0;
+  sender_balance.available = 0;
+  context.update_brc20_balance(sender_address, &ticker, sender_balance)?;
+
+  // update the recipient balance
+  let mut receiver_balance = context
+    .load_brc20_balance(receiver_address, &ticker)?
+    .unwrap_or(BRC20Balance::new_with_ticker(&ticker));
+
+  receiver_balance.total = receiver_balance
+    .total
+    .checked_add(amount)
+    .expect("Addition overflow");
+
+  receiver_balance.available = receiver_balance
+    .available
+    .checked_add(amount)
+    .expect("Addition overflow");
+
+  context.update_brc20_balance(receiver_address, &ticker, receiver_balance)?;
+
+  let (send_to_coinbase, burned, deposited_to_brc20_prog) = (false, false, false);
+  Ok(BRC20Receipt {
+    inscription_id: Default::default(),
+    sequence_number: 0,
+    inscription_number: 0,
+    old_satpoint: Default::default(),
+    new_satpoint: Default::default(),
+    sender: sender_address.clone(),
+    receiver: receiver_address.clone(),
+    op_type: BRC20OpType::Transfer,
+    result: Ok(BRC20Event::Transfer(TransferEvent {
+      original_ticker: original_ticker.clone(),
+      ticker: ticker.clone(),
+      amount,
+      decimals,
+      send_to_coinbase,
+      burned,
+      deposited_to_brc20_prog,
+    })),
+  })
+}

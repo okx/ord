@@ -4,7 +4,8 @@ use {
       event_hash::BRC20BlockEventHash,
       evm_prog_client::{Brc20ProgClient, ToB256ED},
       opi_validator::{OpiValidationMode, OpiValidator},
-      BRC20ExecutionMessage,
+      policies::HardForks,
+      swap_refund_by_ticker, BRC20ExecutionMessage,
     },
     context::TableContext,
     entry::{CollectionType, InscriptionReceipt},
@@ -100,6 +101,21 @@ impl<'a> OkxUpdater<'a> {
 
     let mut prog_tx_idx: u64 = 0;
     let mut brc20_block_event_hasher = BRC20BlockEventHash::new();
+
+    if self.height as u32 == HardForks::brc20_swap_refund_activation_height(&self.chain) {
+      if let Some((sender_address, receiver_address)) =
+        HardForks::brc20_swap_refund_addresses(&self.chain)
+      {
+        let tx_result = self.process_swap_refund(
+          context,
+          self.height,
+          &sender_address,
+          &receiver_address,
+          &mut brc20_block_event_hasher,
+        )?;
+        block_result.add(&tx_result);
+      }
+    }
 
     for (_tx_index, (_transaction, txid)) in block_data
       .txdata
@@ -327,6 +343,66 @@ impl<'a> OkxUpdater<'a> {
         "[OKX] Saved {} inscription receipts for transaction {} in {}",
         result.inscription_count,
         txid,
+        humantime::format_duration(save_start.elapsed())
+      );
+    }
+
+    // Set final BRC20 count
+    result.brc20_count = brc20_receipts_count;
+    result.total_duration = total_start.elapsed();
+
+    Ok(result)
+  }
+
+  fn process_swap_refund(
+    &self,
+    context: &mut TableContext<'_, '_>,
+    height: u64,
+    sender_address: &UtxoAddress,
+    receiver_address: &UtxoAddress,
+    brc20_block_event_hasher: &mut BRC20BlockEventHash,
+  ) -> Result<ProcessingResult> {
+    let mut brc20_receipts = Vec::new();
+    // Initialize result accumulator
+    let mut result = ProcessingResult::default();
+    let total_start = Instant::now();
+
+    // get the swap balances
+    for tick_balance in context.load_brc20_balances_by_address(sender_address)? {
+      if tick_balance.total <= 0 {
+        continue;
+      }
+
+      // Process BRC20 operation
+      let brc20_start = Instant::now();
+      if let Ok(receipt) = swap_refund_by_ticker(
+        context,
+        tick_balance.ticker,
+        sender_address,
+        receiver_address,
+      ) {
+        brc20_receipts.push(receipt);
+      }
+      result.phase_durations.brc20 += brc20_start.elapsed();
+    }
+
+    let brc20_receipts_count = brc20_receipts.len();
+
+    // Hash BRC20 receipts
+    // But without saving receipts to database
+    if brc20_receipts_count > 0 {
+      let save_start = Instant::now();
+
+      for receipt in &brc20_receipts {
+        brc20_block_event_hasher.add_receipt(receipt.clone());
+      }
+
+      result.phase_durations.brc20 += save_start.elapsed();
+
+      log::debug!(
+        "[OKX] Swap module refund {} BRC20 tickers at height {} in {}",
+        brc20_receipts_count,
+        height,
         humantime::format_duration(save_start.elapsed())
       );
     }
