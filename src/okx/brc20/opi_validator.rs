@@ -150,8 +150,8 @@ impl<'a, 't: 'a, 'txn: 'a> OpiValidator<'a, 't, 'txn> {
       "[OPI] Validating block {}: previous_cumulative_event_hash: {}, previous_cumulative_trace_hash: {}, brc20_block_event_hash: {}, brc20_block_trace_hash: {}",
       height,
       previous_block.brc20_cumulative_event_hash.as_str(),
-      brc20_block_event_hash,
       previous_block.brc20_cumulative_trace_hash.as_deref().unwrap_or("null"),
+      brc20_block_event_hash,
       current_trace_hash.as_deref().unwrap_or("null")
     );
 
