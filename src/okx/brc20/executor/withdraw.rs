@@ -109,7 +109,7 @@ impl BRC20ExecutionMessage {
       sender: self.sender.clone(),
       receiver: self.receiver.clone().unwrap_or(self.sender.clone()),
       result: Ok(BRC20Event::Withdraw(WithdrawEvent {
-        original_ticker: ticker.clone(),
+        original_ticker: original_ticker.clone(),
         ticker: ticker.clone(),
         amount: *amount,
         decimals,
