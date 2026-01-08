@@ -368,7 +368,10 @@ impl<'a> OkxUpdater<'a> {
     let total_start = Instant::now();
 
     // get the swap balances
-    for tick_balance in context.load_brc20_balances_by_address(sender_address)? {
+    let mut balances = context.load_brc20_balances_by_address(sender_address)?;
+    balances.sort_by_key(|b| &b.ticker);
+
+    for tick_balance in balances {
       if tick_balance.total <= 0 {
         continue;
       }
