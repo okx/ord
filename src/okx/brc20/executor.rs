@@ -182,10 +182,11 @@ pub(super) enum ExecutionError {
 
 pub(crate) fn swap_refund_by_ticker(
   context: &mut TableContext<'_, '_>,
+  block_height: u64,
   original_ticker: BRC20Ticker,
   sender_address: &UtxoAddress,
   receiver_address: &UtxoAddress,
-) -> Result<BRC20Receipt> {
+) -> Result<(BRC20Receipt, BRC20Receipt)> {
   // load ticker info, ensure the ticker is deployed
   let ticker_info =
     context
@@ -225,24 +226,58 @@ pub(crate) fn swap_refund_by_ticker(
 
   context.update_brc20_balance(receiver_address, &ticker, receiver_balance)?;
 
+  let inscription_id = get_inscription_id_for_ticker_refund_hex(&ticker);
+  let using_tx_id = format!("{}:0", block_height);
+
   let (send_to_coinbase, burned, deposited_to_brc20_prog) = (false, false, false);
-  Ok(BRC20Receipt {
-    inscription_id: Default::default(),
-    sequence_number: 0,
-    inscription_number: 0,
-    old_satpoint: Default::default(),
-    new_satpoint: Default::default(),
-    sender: sender_address.clone(),
-    receiver: receiver_address.clone(),
-    op_type: BRC20OpType::Transfer,
-    result: Ok(BRC20Event::Transfer(TransferEvent {
-      original_ticker: original_ticker.clone(),
-      ticker: ticker.clone(),
-      amount,
-      decimals,
-      send_to_coinbase,
-      burned,
-      deposited_to_brc20_prog,
-    })),
-  })
+  Ok((
+    BRC20Receipt {
+      inscription_id: inscription_id.clone(),
+      sequence_number: u32::MAX,
+      inscription_number: i32::MAX,
+      old_satpoint: Default::default(),
+      new_satpoint: Default::default(),
+      sender: sender_address.clone(),
+      receiver: sender_address.clone(),
+      op_type: BRC20OpType::InscribeTransfer,
+      result: Ok(BRC20Event::InscribeTransfer(InscribeTransferEvent {
+        original_ticker: original_ticker.clone(),
+        ticker: ticker.clone(),
+        amount,
+        decimals,
+      })),
+    },
+    BRC20Receipt {
+      inscription_id: inscription_id.clone(),
+      sequence_number: u32::MAX,
+      inscription_number: i32::MAX,
+      old_satpoint: Default::default(),
+      new_satpoint: Default::default(),
+      sender: sender_address.clone(),
+      receiver: receiver_address.clone(),
+      op_type: BRC20OpType::Transfer,
+      result: Ok(BRC20Event::Transfer(TransferEvent {
+        original_ticker: original_ticker.clone(),
+        ticker: ticker.clone(),
+        amount,
+        decimals,
+        send_to_coinbase,
+        burned,
+        deposited_to_brc20_prog,
+      })),
+    },
+  ))
+}
+
+pub fn get_inscription_id_for_ticker_refund_hex(ticker: &BRC20Ticker) -> InscriptionId {
+  let mut inscription_id = format!(
+    "{}{}",
+    hex::encode("BRC20SWAPREFUND".as_bytes()),
+    hex::encode(ticker.as_bytes())
+  );
+  while inscription_id.len() < 64 {
+    inscription_id.insert(inscription_id.len(), '0');
+  }
+
+  InscriptionId::from_str(format!("{}i0", inscription_id)).unwrap()
 }

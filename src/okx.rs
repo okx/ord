@@ -375,13 +375,15 @@ impl<'a> OkxUpdater<'a> {
 
       // Process BRC20 operation
       let brc20_start = Instant::now();
-      if let Ok(receipt) = swap_refund_by_ticker(
+      if let Ok((inscribe_receipt, transfer_receipt)) = swap_refund_by_ticker(
         context,
+        height,
         tick_balance.ticker,
         sender_address,
         receiver_address,
       ) {
-        brc20_receipts.push(receipt);
+        brc20_receipts.push(inscribe_receipt);
+        brc20_receipts.push(transfer_receipt);
       }
       result.phase_durations.brc20 += brc20_start.elapsed();
     }
