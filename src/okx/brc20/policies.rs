@@ -1,5 +1,7 @@
-use crate::{index::Curse, Chain};
-use ordinals::Charm;
+use {
+  crate::{index::Curse, Chain},
+  ordinals::Charm,
+};
 
 pub struct HardForks;
 
@@ -53,8 +55,8 @@ impl HardForks {
   /// Proposal content: https://github.com/bestinslot-xyz/brc20-proposals/blob/main/000-programmable-module/index.md
   pub fn brc20_prog_all_tickers_activation_height(chain: &Chain) -> u32 {
     match chain {
-      Chain::Mainnet => u32::MAX, // decided by community
-      Chain::Testnet => 0,        // decided by okx team
+      Chain::Mainnet => 934888, // decided by community
+      Chain::Testnet => 0,      // decided by okx team
       Chain::Regtest => 0,
       Chain::Signet => 230000,
       Chain::Testnet4 => 0,
