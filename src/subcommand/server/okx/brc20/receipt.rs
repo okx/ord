@@ -1,23 +1,46 @@
-use super::*;
-use crate::okx::brc20::{
-  event::{BRC20Event, BRC20OpType},
-  BRC20Receipt,
+use {
+  super::*,
+  crate::okx::brc20::{
+    event::{BRC20Event, BRC20OpType},
+    BRC20Receipt,
+  },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 #[serde(rename_all = "camelCase")]
 pub enum ApiTxEvent {
+  PredeployEvent(ApiPredeployEvent),
   Deploy(ApiDeployEvent),
   Mint(ApiMintEvent),
   InscribeTransfer(ApiInscribeTransferEvent),
   Transfer(ApiTransferEvent),
+  InscribeWithdraw(ApiInscribeWithdrawEvent),
+  Withdraw(ApiWithdrawEvent),
+  InscribeProgDeploy(ApiInscribeProgDeployEvent),
+  InscribeProgCall(ApiInscribeProgCallEvent),
+  InscribeProgTransact(ApiInscribeProgTransactEvent),
+  ProgDeploy(ApiProgDeployEvent),
+  ProgCall(ApiProgCallEvent),
+  ProgTransact(ApiProgTransactEvent),
   Error(ApiErrorEvent),
 }
 
 impl From<BRC20Receipt> for ApiTxEvent {
   fn from(event: BRC20Receipt) -> Self {
     match event.result {
+      Ok(BRC20Event::Predeploy(predeploy_event)) => Self::PredeployEvent(ApiPredeployEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        hash: hex::encode(predeploy_event.hash),
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
       Ok(BRC20Event::Deploy(deploy_event)) => Self::Deploy(ApiDeployEvent {
         inscription_id: event.inscription_id,
         inscription_number: event.inscription_number,
@@ -75,6 +98,104 @@ impl From<BRC20Receipt> for ApiTxEvent {
         msg: "ok".to_string(),
         event: event.op_type,
       }),
+      Ok(BRC20Event::InscribeWithdraw(inscribe_withdraw_event)) => {
+        Self::InscribeTransfer(ApiInscribeTransferEvent {
+          inscription_id: event.inscription_id,
+          inscription_number: event.inscription_number,
+          old_satpoint: event.old_satpoint,
+          new_satpoint: event.new_satpoint,
+          from: event.sender.into(),
+          to: event.receiver.into(),
+          valid: true,
+          tick: inscribe_withdraw_event.ticker,
+          amount: inscribe_withdraw_event.amount.to_string(),
+          msg: "ok".to_string(),
+          event: event.op_type,
+        })
+      }
+      Ok(BRC20Event::Withdraw(withdraw_event)) => Self::Withdraw(ApiWithdrawEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        tick: withdraw_event.ticker,
+        amount: withdraw_event.amount.to_string(),
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::InscribeProgDeploy(_)) => {
+        Self::InscribeProgDeploy(ApiInscribeProgDeployEvent {
+          inscription_id: event.inscription_id,
+          inscription_number: event.inscription_number,
+          old_satpoint: event.old_satpoint,
+          new_satpoint: event.new_satpoint,
+          from: event.sender.into(),
+          to: event.receiver.into(),
+          valid: true,
+          msg: "ok".to_string(),
+          event: event.op_type,
+        })
+      }
+      Ok(BRC20Event::ProgDeploy(_)) => Self::ProgDeploy(ApiProgDeployEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::InscribeProgCall(_)) => Self::InscribeProgCall(ApiInscribeProgCallEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::ProgCall(_)) => Self::ProgCall(ApiProgCallEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
+      Ok(BRC20Event::InscribeProgTransact(_)) => {
+        Self::InscribeProgTransact(ApiInscribeProgTransactEvent {
+          inscription_id: event.inscription_id,
+          inscription_number: event.inscription_number,
+          old_satpoint: event.old_satpoint,
+          new_satpoint: event.new_satpoint,
+          from: event.sender.into(),
+          to: event.receiver.into(),
+          valid: true,
+          msg: "ok".to_string(),
+          event: event.op_type,
+        })
+      }
+      Ok(BRC20Event::ProgTransact(_)) => Self::ProgTransact(ApiProgTransactEvent {
+        inscription_id: event.inscription_id,
+        inscription_number: event.inscription_number,
+        old_satpoint: event.old_satpoint,
+        new_satpoint: event.new_satpoint,
+        from: event.sender.into(),
+        to: event.receiver.into(),
+        valid: true,
+        msg: "ok".to_string(),
+        event: event.op_type,
+      }),
       Err(err) => Self::Error(ApiErrorEvent {
         inscription_id: event.inscription_id,
         inscription_number: event.inscription_number,
@@ -101,6 +222,22 @@ pub struct ApiErrorEvent {
   pub new_satpoint: SatPoint,
   pub from: ApiUtxoAddress,
   pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiPredeployEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub hash: String,
   pub valid: bool,
   pub msg: String,
 }
@@ -170,6 +307,130 @@ pub struct ApiTransferEvent {
   pub old_satpoint: SatPoint,
   pub new_satpoint: SatPoint,
   pub amount: String,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInscribeWithdrawEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub tick: BRC20Ticker,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub amount: String,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiWithdrawEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub tick: BRC20Ticker,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub amount: String,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInscribeProgDeployEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiProgDeployEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInscribeProgCallEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiProgCallEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiInscribeProgTransactEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
+  pub from: ApiUtxoAddress,
+  pub to: ApiUtxoAddress,
+  pub valid: bool,
+  pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiProgTransactEvent {
+  #[serde(rename = "type")]
+  pub event: BRC20OpType,
+  pub inscription_id: InscriptionId,
+  pub inscription_number: i32,
+  pub old_satpoint: SatPoint,
+  pub new_satpoint: SatPoint,
   pub from: ApiUtxoAddress,
   pub to: ApiUtxoAddress,
   pub valid: bool,
@@ -321,6 +582,49 @@ mod tests {
   use super::*;
   #[test]
   fn test_serialize_api_event() {
+    let predeploy: ApiPredeployEvent = ApiPredeployEvent {
+      event: BRC20OpType::Predeploy,
+      inscription_id: Default::default(),
+      inscription_number: 0,
+      old_satpoint: Default::default(),
+      new_satpoint: Default::default(),
+      from: UtxoAddress::from_str(
+        "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+        Network::Bitcoin,
+      )
+      .unwrap()
+      .into(),
+      to: UtxoAddress::from_str(
+        "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+        Network::Bitcoin,
+      )
+      .unwrap()
+      .into(),
+      hash: "abcdef".to_string(),
+      valid: true,
+      msg: "ok".to_string(),
+    };
+
+    assert_eq!(
+      serde_json::to_string_pretty(&predeploy).unwrap(),
+      r#"{
+  "type": "predeploy",
+  "inscriptionId": "0000000000000000000000000000000000000000000000000000000000000000i0",
+  "inscriptionNumber": 0,
+  "oldSatpoint": "0000000000000000000000000000000000000000000000000000000000000000:4294967295:0",
+  "newSatpoint": "0000000000000000000000000000000000000000000000000000000000000000:4294967295:0",
+  "from": {
+    "address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+  },
+  "to": {
+    "address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+  },
+  "hash": "abcdef",
+  "valid": true,
+  "msg": "ok"
+}"#
+    );
+
     let deploy = ApiDeployEvent {
       event: BRC20OpType::Deploy,
       tick: BRC20Ticker::from_str("ordi").unwrap(),

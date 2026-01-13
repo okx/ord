@@ -1,5 +1,7 @@
-use super::*;
-use event::{BRC20Event, BRC20OpType};
+use {
+  super::*,
+  event::{BRC20Event, BRC20OpType},
+};
 
 pub type BRC20BalanceValue = [u8];
 impl_bincode_dynamic_entry!(BRC20Balance, BRC20BalanceValue);
@@ -26,6 +28,15 @@ impl_bincode_dynamic_entry!(BRC20Ticker, BRC20TickerValue);
 pub type BRC20LowerCaseTickerValue = [u8];
 impl_bincode_dynamic_entry!(BRC20LowerCaseTicker, BRC20LowerCaseTickerValue);
 
+pub type BRC20PredeployValue = [u8];
+impl_bincode_dynamic_entry!(BRC20Predeploy, BRC20PredeployValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20Predeploy {
+  pub hash: String,
+  pub predeployer: UtxoAddress,
+  pub block_height: u32,
+}
+
 pub(crate) type BRC20TickerInfoValue = [u8];
 impl_bincode_dynamic_entry!(BRC20TickerInfo, BRC20TickerInfoValue);
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -50,7 +61,52 @@ pub(crate) type BRC20TransferAssetValue = [u8];
 impl_bincode_dynamic_entry!(BRC20TransferAsset, BRC20TransferAssetValue);
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct BRC20TransferAsset {
+  pub original_ticker: BRC20Ticker,
   pub ticker: BRC20Ticker,
+  pub amount: u128,
+  pub owner: UtxoAddress,
+  pub sequence_number: u32,
+  pub inscription_number: i32,
+  pub inscription_id: InscriptionId,
+}
+
+pub(crate) type BRC20ProgDeployValue = [u8];
+impl_bincode_dynamic_entry!(BRC20ProgDeploy, BRC20ProgDeployValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20ProgDeploy {
+  pub data: Option<String>,
+  pub base64_data: Option<String>,
+  pub inscription_id: InscriptionId,
+  pub inscription_byte_length: u64,
+}
+
+pub(crate) type BRC20ProgCallValue = [u8];
+impl_bincode_dynamic_entry!(BRC20ProgCall, BRC20ProgCallValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20ProgCall {
+  pub contract_address: Option<String>,
+  pub contract_inscription_id: Option<String>,
+  pub data: Option<String>,
+  pub base64_data: Option<String>,
+  pub inscription_id: InscriptionId,
+  pub inscription_byte_length: u64,
+}
+
+pub(crate) type BRC20ProgTransactValue = [u8];
+impl_bincode_dynamic_entry!(BRC20ProgTransact, BRC20ProgTransactValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20ProgTransact {
+  pub data: Option<String>,
+  pub base64_data: Option<String>,
+  pub inscription_id: InscriptionId,
+  pub inscription_byte_length: u64,
+}
+
+pub(crate) type BRC20WithdrawValue = [u8];
+impl_bincode_dynamic_entry!(BRC20Withdraw, BRC20WithdrawValue);
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BRC20Withdraw {
+  pub original_ticker: BRC20Ticker,
   pub amount: u128,
   pub owner: UtxoAddress,
   pub sequence_number: u32,
@@ -73,12 +129,26 @@ pub struct BRC20Receipt {
   pub result: Result<BRC20Event, BRC20Error>,
 }
 
+pub(crate) type OpiBlockValidationValue = [u8];
+impl_bincode_dynamic_entry!(OpiBlockValidation, OpiBlockValidationValue);
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct OpiBlockValidation {
+  pub block_hash: BlockHash,
+  pub block_timestamp: u32,
+  pub brc20_block_event_hash: String,
+  pub brc20_cumulative_event_hash: String,
+  pub brc20_prog_block_trace_hash: Option<String>,
+  pub brc20_cumulative_trace_hash: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::define_table;
-  use redb::{ReadableTable, TableDefinition};
-  use tempfile::NamedTempFile;
+  use {
+    super::*,
+    crate::define_table,
+    redb::{ReadableTable, TableDefinition},
+    tempfile::NamedTempFile,
+  };
 
   #[test]
   fn test_store() {
@@ -104,6 +174,22 @@ mod tests {
       lower_ticker,
       BRC20Ticker::from_str("abcd").unwrap().to_lowercase()
     );
+  }
+
+  #[test]
+  fn test_predeploy_store_load() {
+    let predeploy = BRC20Predeploy {
+      hash: "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20".to_string(),
+      predeployer: UtxoAddress::from_str(
+        "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        bitcoin::Network::Bitcoin,
+      )
+      .unwrap(),
+      block_height: 100,
+    };
+    let value = predeploy.store();
+    let loaded_predeploy = BRC20Predeploy::load(&value);
+    assert_eq!(predeploy, loaded_predeploy);
   }
 
   #[test]

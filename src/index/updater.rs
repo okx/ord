@@ -3,7 +3,7 @@ use {
   super::{fetcher::Fetcher, *},
   crate::{
     metrics::{BlockHeightState, BlockStatistic, IndexingPhase},
-    okx::{context::TableContext, OkxUpdater},
+    okx::{context::TableContext, Brc20IndexingConfig, OkxUpdater},
   },
   futures::future::try_join_all,
   tokio::sync::{
@@ -11,10 +11,7 @@ use {
     mpsc::{self},
   },
 };
-
-pub(crate) use inscription_updater::Curse;
-
-mod inscription_updater;
+pub(crate) mod inscription_updater;
 mod rune_updater;
 
 pub(crate) struct BlockData {
@@ -455,11 +452,23 @@ impl Updater<'_> {
     // BRC20 tables
     let mut brc20_ticker_info = wtx.open_table(BRC20_TICKER_ENTRY)?;
     let mut brc20_balances = wtx.open_table(BRC20_BALANCES)?;
+    let mut brc20_predeploys = wtx.open_table(BRC20_PREDEPLOYS)?;
     let mut brc20_receipts = wtx.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
     let mut brc20_satpoint_to_transfer_assets =
       wtx.open_table(BRC20_SATPOINT_TO_TRANSFER_ASSETS)?;
+    let mut brc20_satpoint_to_prog_deploy_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_PROG_DEPLOY_ASSETS)?;
+    let mut brc20_satpoint_to_prog_call_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_PROG_CALL_ASSETS)?;
+    let mut brc20_satpoint_to_prog_transact_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_PROG_TRANSACT_ASSETS)?;
+    let mut brc20_satpoint_to_withdraw_assets =
+      wtx.open_table(BRC20_SATPOINT_TO_WITHDRAW_ASSETS)?;
     let mut brc20_address_ticker_to_transfer_assets =
       wtx.open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS)?;
+
+    // OPI validation tables
+    let mut opi_block_validations = wtx.open_table(OPI_BLOCK_VALIDATIONS)?;
 
     let index_inscriptions = self.height >= self.index.settings.first_inscription_height()
       && self.index.index_inscriptions;
@@ -760,6 +769,7 @@ impl Updater<'_> {
       let mut context = TableContext::new(
         &mut inscription_receipts,
         &mut brc20_balances,
+        &mut brc20_predeploys,
         &mut brc20_ticker_info,
         &mut brc20_receipts,
         &mut brc20_satpoint_to_transfer_assets,
@@ -767,17 +777,36 @@ impl Updater<'_> {
         &mut sequence_number_to_collection_type,
         &mut bitmap_block_height_to_sequence_number,
         &mut btc_domain_to_sequence_number,
+        &mut brc20_satpoint_to_prog_deploy_assets,
+        &mut brc20_satpoint_to_prog_call_assets,
+        &mut brc20_satpoint_to_prog_transact_assets,
+        &mut brc20_satpoint_to_withdraw_assets,
+        &mut opi_block_validations,
       );
 
       let mut okx_updater = OkxUpdater {
-        height: self.height,
+        height: self.height as u64,
+        chain: self.index.chain(),
+        timestamp: block.header.time,
+        block_hash: block.header.block_hash(),
+        save_inscription_receipts: self.index.save_inscription_receipts,
+        index_bitmap: self.index.index_bitmap,
+        index_btc_domain: self.index.index_btc_domain,
+        index_brc20: if self.index.index_brc20 {
+          self
+            .index
+            .brc20_prog_client
+            .as_ref()
+            .map(|client| Brc20IndexingConfig {
+              brc20_prog_client: client,
+              opi_validation_mode: self.index.opi_validation_mode(),
+            })
+        } else {
+          None
+        },
       };
-      okx_updater.index_block_bundle_messages(
-        &mut context,
-        self.index,
-        block,
-        block_bundle_messages,
-      )?;
+
+      okx_updater.index_block_bundle_messages(&mut context, &block, block_bundle_messages)?;
     }
 
     Ok(())
@@ -940,6 +969,17 @@ impl Updater<'_> {
     metrics::record_height(BlockHeightState::DbCommitted, self.height as u64);
     metrics::record_commit(commit_start.elapsed());
 
+    if self.index.has_brc20_index() && self.height >= self.index.settings.first_inscription_height()
+    {
+      if let Some(brc20_prog_client) = &self.index.brc20_prog_client {
+        {
+          let prog_commit_start = Instant::now();
+          brc20_prog_client.brc20_commit_to_database()?;
+          metrics::record_height(BlockHeightState::Brc20ProgCommitted, self.height as u64);
+          metrics::record_phase(IndexingPhase::Brc20ProgCommit, prog_commit_start.elapsed());
+        }
+      }
+    }
     Ok(())
   }
 }

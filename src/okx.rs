@@ -1,27 +1,32 @@
-use super::*;
-use brc20::BRC20ExecutionMessage;
-use context::TableContext;
-use entry::{CollectionType, InscriptionReceipt};
-use std::{
-  collections::HashMap,
-  time::{Duration, Instant},
-};
 use {
-  crate::metrics::{BlockStatistic, IndexingPhase},
-  index::{
-    bundle_message::{BundleMessage, InscriptionAction, SubType},
-    event::{Action, OkxInscriptionEvent},
-    BlockData,
+  self::{
+    brc20::{
+      event_hash::BRC20BlockEventHash,
+      evm_prog_client::{Brc20ProgClient, ToB256ED},
+      opi_validator::{OpiValidationMode, OpiValidator},
+      BRC20ExecutionMessage,
+    },
+    context::TableContext,
+    entry::{CollectionType, InscriptionReceipt},
   },
+  super::*,
+  crate::{
+    index::{
+      bundle_message::{BundleMessage, InscriptionAction, SubType},
+      reorg::Reorg,
+      BlockData,
+    },
+    metrics::{BlockStatistic, IndexingPhase},
+  },
+  std::collections::HashMap,
 };
 
 pub(crate) mod bitmap;
 pub(crate) mod brc20;
 pub(crate) mod btc_domain;
+mod composite_key;
 pub(crate) mod context;
 pub(crate) mod entry;
-
-mod composite_key;
 mod utxo_address;
 
 pub(crate) use self::{
@@ -29,15 +34,28 @@ pub(crate) use self::{
   utxo_address::{UtxoAddress, UtxoAddressRef},
 };
 
-pub(crate) struct OkxUpdater {
-  pub(crate) height: u32,
+const BRC20_PROG_MINE_BATCH_SIZE: u64 = 5000;
+
+pub struct Brc20IndexingConfig<'a> {
+  pub(crate) brc20_prog_client: &'a Brc20ProgClient,
+  pub(crate) opi_validation_mode: OpiValidationMode,
 }
 
-impl OkxUpdater {
+pub(crate) struct OkxUpdater<'a> {
+  pub(crate) height: u64,
+  pub(crate) chain: Chain,
+  pub(crate) timestamp: u32,
+  pub(crate) block_hash: BlockHash,
+  pub(crate) save_inscription_receipts: bool,
+  pub(crate) index_bitmap: bool,
+  pub(crate) index_btc_domain: bool,
+  pub(crate) index_brc20: Option<Brc20IndexingConfig<'a>>,
+}
+
+impl<'a> OkxUpdater<'a> {
   pub(crate) fn index_block_bundle_messages(
     &mut self,
-    context: &mut TableContext,
-    index: &Index,
+    context: &mut TableContext<'_, '_>,
     block_data: &BlockData,
     mut bundle_messages: HashMap<Txid, Vec<BundleMessage>>,
   ) -> Result<()> {
@@ -53,6 +71,36 @@ impl OkxUpdater {
       bundle_messages.len()
     );
 
+    if let Some(brc20_indexing_config) = &self.index_brc20 {
+      let first_brc20_prog_height = self.chain.first_brc20_prog_height() as u64;
+      if self.height >= first_brc20_prog_height {
+        let brc20_prog_client = brc20_indexing_config.brc20_prog_client;
+        let mut prog_block_height = brc20_prog_client.eth_block_number()?;
+        if prog_block_height == 0 {
+          brc20_prog_client.brc20_initialise([0u8; 32].into(), 0, 0)?;
+          // Refresh prog_block_height after initialization
+          prog_block_height = brc20_prog_client.eth_block_number()?;
+        }
+        // Mine empty blocks if not yet at first BRC20 prog height
+        // Avoid underflow when first_brc20_prog_height is 0
+        if first_brc20_prog_height > 0 {
+          while prog_block_height < first_brc20_prog_height - 1 {
+            let next_prog_height =
+              (prog_block_height + BRC20_PROG_MINE_BATCH_SIZE).min(first_brc20_prog_height - 1);
+            brc20_prog_client.brc20_mine(next_prog_height - prog_block_height, 0)?;
+            brc20_prog_client.brc20_commit_to_database()?;
+            prog_block_height = next_prog_height;
+          }
+        }
+
+        // Check and fix height consistency between ord and prog databases
+        Reorg::detect_reorg_with_brc20(self.height as u32, brc20_prog_client)?;
+      }
+    }
+
+    let mut prog_tx_idx: u64 = 0;
+    let mut brc20_block_event_hasher = BRC20BlockEventHash::new();
+
     for (_tx_index, (_transaction, txid)) in block_data
       .txdata
       .iter()
@@ -66,15 +114,52 @@ impl OkxUpdater {
 
       let tx_result = self.process_bundle_messages(
         context,
-        index,
         *txid,
         &transaction_bundle_messages,
-        block_data.header.time,
+        &mut prog_tx_idx,
+        &mut brc20_block_event_hasher,
       )?;
 
       // Accumulate results from this transaction
       block_result.add(&tx_result);
     }
+
+    // Finalize block and validate with OPI
+    if let Some(brc20_indexing_config) = &self.index_brc20 {
+      let first_brc20_prog_height = self.chain.first_brc20_prog_height() as u64;
+      if self.height >= self.chain.first_inscription_height() as u64 {
+        let brc20_prog_client = brc20_indexing_config.brc20_prog_client;
+        if self.height >= first_brc20_prog_height {
+          brc20_prog_client.brc20_finalise_block(
+            self.timestamp as u64,
+            self.block_hash.to_b256_ed(),
+            prog_tx_idx,
+          )?;
+        }
+
+        // Validate BRC20 events with OPI
+        let opi_validation_start = Instant::now();
+
+        let mut validator = OpiValidator::new(
+          self.chain.clone(),
+          context,
+          brc20_indexing_config.opi_validation_mode,
+          brc20_prog_client,
+        );
+
+        if let Some(opi_block_validation) = validator.validate(
+          self.height as u32,
+          &self.block_hash,
+          self.timestamp,
+          brc20_block_event_hasher.get_block_event_hash(),
+        )? {
+          context.insert_opi_block_validation(self.height as u32, opi_block_validation)?;
+        }
+
+        metrics::record_phase(IndexingPhase::OpiValidation, opi_validation_start.elapsed());
+      }
+    }
+
     block_result.total_duration = block_start.elapsed();
 
     // Record OKX indexing sub-phase durations
@@ -127,11 +212,11 @@ impl OkxUpdater {
 
   fn process_bundle_messages(
     &self,
-    context: &mut TableContext,
-    index: &Index,
+    context: &mut TableContext<'_, '_>,
     txid: Txid,
     bundle_messages: &[BundleMessage],
-    blocktime: u32,
+    prog_tx_idx: &mut u64,
+    brc20_block_event_hasher: &mut BRC20BlockEventHash,
   ) -> Result<ProcessingResult> {
     let mut brc20_receipts = Vec::new();
     // Initialize result accumulator
@@ -141,12 +226,20 @@ impl OkxUpdater {
     // Process each bundle message
     for bundle_message in bundle_messages {
       // Process BRC20 operation
-      if index.has_brc20_index() {
+      if let Some(brc20_indexing_config) = &self.index_brc20 {
         if let Some(brc20_execution_message) =
           BRC20ExecutionMessage::new_from_bundle_message(bundle_message, context)?
         {
           let brc20_start = Instant::now();
-          if let Ok(receipt) = brc20_execution_message.execute(context, self.height, blocktime) {
+          if let Ok(receipt) = brc20_execution_message.execute(
+            context,
+            brc20_indexing_config.brc20_prog_client,
+            &self.chain,
+            self.height as u32,
+            self.timestamp,
+            &self.block_hash,
+            prog_tx_idx,
+          ) {
             brc20_receipts.push(receipt);
           }
           result.phase_durations.brc20 += brc20_start.elapsed();
@@ -155,7 +248,7 @@ impl OkxUpdater {
       }
 
       // Process bitmap operation
-      if index.has_bitmap_index() {
+      if self.index_bitmap {
         if let InscriptionAction::Created {
           sub_type: Some(SubType::Bitmap(bitmap_operation)),
           ..
@@ -167,14 +260,14 @@ impl OkxUpdater {
             context,
             bundle_message.sequence_number,
             bundle_message.inscription_id,
-            self.height,
+            self.height as u32,
           )?;
           result.phase_durations.bitmap += bitmap_start.elapsed();
         }
       }
 
       // Process BTC domain operation
-      if index.has_btc_domain_index() {
+      if self.index_btc_domain {
         if let InscriptionAction::Created {
           sub_type: Some(SubType::BtcDomain(btc_domain)),
           ..
@@ -199,6 +292,7 @@ impl OkxUpdater {
       let save_start = Instant::now();
 
       for receipt in &brc20_receipts {
+        brc20_block_event_hasher.add_receipt(receipt.clone());
         context.insert_sequence_number_to_collection_type(
           receipt.sequence_number,
           CollectionType::BRC20,
@@ -218,7 +312,7 @@ impl OkxUpdater {
 
     // Save inscription receipts to database
     result.inscription_count = bundle_messages.len();
-    if index.has_inscription_receipts() && !bundle_messages.is_empty() {
+    if self.save_inscription_receipts && !bundle_messages.is_empty() {
       let save_start = Instant::now();
 
       let inscription_receipts = bundle_messages

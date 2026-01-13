@@ -1,25 +1,37 @@
-use super::{
-  brc20::{
-    entry::{
-      BRC20Balance, BRC20BalanceValue, BRC20Receipt, BRC20ReceiptsValue, BRC20TickerInfo,
-      BRC20TickerInfoValue, BRC20TransferAsset, BRC20TransferAssetValue,
+use {
+  super::{
+    brc20::{
+      entry::{
+        BRC20Balance, BRC20BalanceValue, BRC20Predeploy, BRC20PredeployValue, BRC20ProgCall,
+        BRC20ProgCallValue, BRC20ProgDeploy, BRC20ProgDeployValue, BRC20ProgTransact,
+        BRC20ProgTransactValue, BRC20Receipt, BRC20ReceiptsValue, BRC20TickerInfo,
+        BRC20TickerInfoValue, BRC20TransferAsset, BRC20TransferAssetValue, BRC20Withdraw,
+        BRC20WithdrawValue, OpiBlockValidation, OpiBlockValidationValue,
+      },
+      BRC20Ticker,
     },
-    BRC20Ticker,
+    composite_key::AddressTickerKey,
+    entry::{
+      AddressTickerKeyValue, CollectionType, DynamicEntry, InscriptionReceipt,
+      InscriptionReceiptsValue,
+    },
+    utxo_address::UtxoAddress,
   },
-  composite_key::AddressTickerKey,
-  entry::{
-    AddressTickerKeyValue, CollectionType, DynamicEntry, InscriptionReceipt,
-    InscriptionReceiptsValue,
+  crate::{
+    index::entry::{Entry, SatPointValue, TxidValue},
+    InscriptionId,
   },
-  *,
+  bitcoin::Txid,
+  ordinals::SatPoint,
+  redb::{MultimapTable, ReadableTable, Table},
 };
-use crate::index::entry::{Entry, SatPointValue, TxidValue};
-use redb::{MultimapTable, ReadableTable, Table};
 
 pub(crate) struct TableContext<'a, 'txn> {
   inscription_receipts: &'a mut Table<'txn, &'static TxidValue, &'static InscriptionReceiptsValue>,
   // BRC20 tables
   brc20_balances: &'a mut Table<'txn, &'static AddressTickerKeyValue, &'static BRC20BalanceValue>,
+  // Inscription ID as str -> BRC20 Predeploy Hash, Deployer Address and Block Height
+  brc20_predeploys: &'a mut Table<'txn, &'static str, &'static BRC20PredeployValue>,
   brc20_ticker_info:
     &'a mut Table<'txn, &'static AddressTickerKeyValue, &'static BRC20TickerInfoValue>,
   brc20_receipts: &'a mut Table<'txn, &'static TxidValue, &'static BRC20ReceiptsValue>,
@@ -30,6 +42,17 @@ pub(crate) struct TableContext<'a, 'txn> {
   sequence_number_to_collection_type: &'a mut Table<'txn, u32, u16>,
   bitmap_block_height_to_sequence_number: &'a mut Table<'txn, u32, u32>,
   btc_domain_to_sequence_number: &'a mut Table<'txn, &'static str, u32>,
+
+  brc20_satpoint_to_prog_deploy_assets:
+    &'a mut Table<'txn, &'static SatPointValue, &'static BRC20ProgDeployValue>,
+  brc20_satpoint_to_prog_call_assets:
+    &'a mut Table<'txn, &'static SatPointValue, &'static BRC20ProgCallValue>,
+  brc20_satpoint_to_prog_transact_assets:
+    &'a mut Table<'txn, &'static SatPointValue, &'static BRC20ProgTransactValue>,
+
+  brc20_satpoint_to_withdraw_assets:
+    &'a mut Table<'txn, &'static SatPointValue, &'static BRC20WithdrawValue>,
+  opi_block_validations: &'a mut Table<'txn, u32, &'static OpiBlockValidationValue>,
 }
 
 impl<'a, 'txn> TableContext<'a, 'txn> {
@@ -40,6 +63,7 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       &'static InscriptionReceiptsValue,
     >,
     brc20_balances: &'a mut Table<'txn, &'static AddressTickerKeyValue, &'static BRC20BalanceValue>,
+    brc20_predeploys: &'a mut Table<'txn, &'static str, &'static BRC20PredeployValue>,
     brc20_ticker_info: &'a mut Table<
       'txn,
       &'static AddressTickerKeyValue,
@@ -59,10 +83,32 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
     sequence_number_to_collection_type: &'a mut Table<'txn, u32, u16>,
     bitmap_block_height_to_sequence_number: &'a mut Table<'txn, u32, u32>,
     btc_domain_to_sequence_number: &'a mut Table<'txn, &'static str, u32>,
+    brc20_satpoint_to_prog_deploy_assets: &'a mut Table<
+      'txn,
+      &'static SatPointValue,
+      &'static BRC20ProgDeployValue,
+    >,
+    brc20_satpoint_to_prog_call_assets: &'a mut Table<
+      'txn,
+      &'static SatPointValue,
+      &'static BRC20ProgCallValue,
+    >,
+    brc20_satpoint_to_prog_transact_assets: &'a mut Table<
+      'txn,
+      &'static SatPointValue,
+      &'static BRC20ProgTransactValue,
+    >,
+    brc20_satpoint_to_withdraw_assets: &'a mut Table<
+      'txn,
+      &'static SatPointValue,
+      &'static BRC20WithdrawValue,
+    >,
+    opi_block_validations: &'a mut Table<'txn, u32, &'static OpiBlockValidationValue>,
   ) -> Self {
     Self {
       inscription_receipts,
       brc20_balances,
+      brc20_predeploys,
       brc20_ticker_info,
       brc20_receipts,
       brc20_satpoint_to_transfer_assets,
@@ -70,7 +116,36 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       sequence_number_to_collection_type,
       bitmap_block_height_to_sequence_number,
       btc_domain_to_sequence_number,
+      brc20_satpoint_to_prog_deploy_assets,
+      brc20_satpoint_to_prog_call_assets,
+      brc20_satpoint_to_prog_transact_assets,
+      brc20_satpoint_to_withdraw_assets,
+      opi_block_validations,
     }
+  }
+
+  pub fn insert_brc20_predeploy(
+    &mut self,
+    inscription_id: &InscriptionId,
+    predeploy: BRC20Predeploy,
+  ) -> Result<(), redb::StorageError> {
+    self.brc20_predeploys.insert(
+      inscription_id.to_string().as_str(),
+      predeploy.store().as_ref(),
+    )?;
+    Ok(())
+  }
+
+  pub fn load_brc20_predeploy(
+    &mut self,
+    inscription_id: &InscriptionId,
+  ) -> Result<Option<BRC20Predeploy>, redb::StorageError> {
+    Ok(
+      self
+        .brc20_predeploys
+        .get(inscription_id.to_string().as_str())?
+        .map(|v| DynamicEntry::load(v.value())),
+    )
   }
 
   pub fn load_brc20_ticker_info(
@@ -135,6 +210,114 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
     Ok(())
   }
 
+  pub fn pop_brc20_prog_call_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> Result<Option<BRC20ProgCall>, redb::StorageError> {
+    let value = self
+      .brc20_satpoint_to_prog_call_assets
+      .get(&satpoint.store())?
+      .map(|v| DynamicEntry::load(v.value()));
+    if value.is_some() {
+      self
+        .brc20_satpoint_to_prog_call_assets
+        .remove(&satpoint.store())?;
+    }
+    Ok(value)
+  }
+
+  pub fn pop_brc20_prog_transact_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> Result<Option<BRC20ProgTransact>, redb::StorageError> {
+    let value = self
+      .brc20_satpoint_to_prog_transact_assets
+      .get(&satpoint.store())?
+      .map(|v| DynamicEntry::load(v.value()));
+    if value.is_some() {
+      self
+        .brc20_satpoint_to_prog_transact_assets
+        .remove(&satpoint.store())?;
+    }
+    Ok(value)
+  }
+
+  pub fn pop_brc20_prog_deploy_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> Result<Option<BRC20ProgDeploy>, redb::StorageError> {
+    let value = self
+      .brc20_satpoint_to_prog_deploy_assets
+      .get(&satpoint.store())?
+      .map(|v| DynamicEntry::load(v.value()));
+    if value.is_some() {
+      self
+        .brc20_satpoint_to_prog_deploy_assets
+        .remove(&satpoint.store())?;
+    }
+    Ok(value)
+  }
+
+  pub fn pop_brc20_prog_withdraw_asset(
+    &mut self,
+    satpoint: SatPoint,
+  ) -> Result<Option<BRC20Withdraw>, redb::StorageError> {
+    let value = self
+      .brc20_satpoint_to_withdraw_assets
+      .get(&satpoint.store())?
+      .map(|v| DynamicEntry::load(v.value()));
+    if value.is_some() {
+      self
+        .brc20_satpoint_to_withdraw_assets
+        .remove(&satpoint.store())?;
+    }
+    Ok(value)
+  }
+
+  pub fn insert_brc20_prog_deploy_asset(
+    &mut self,
+    satpoint: SatPoint,
+    asset: BRC20ProgDeploy,
+  ) -> std::result::Result<(), redb::StorageError> {
+    self
+      .brc20_satpoint_to_prog_deploy_assets
+      .insert(&satpoint.store(), asset.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn insert_brc20_prog_call_asset(
+    &mut self,
+    satpoint: SatPoint,
+    asset: BRC20ProgCall,
+  ) -> std::result::Result<(), redb::StorageError> {
+    self
+      .brc20_satpoint_to_prog_call_assets
+      .insert(&satpoint.store(), asset.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn insert_brc20_prog_transact_asset(
+    &mut self,
+    satpoint: SatPoint,
+    asset: BRC20ProgTransact,
+  ) -> std::result::Result<(), redb::StorageError> {
+    self
+      .brc20_satpoint_to_prog_transact_assets
+      .insert(&satpoint.store(), asset.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn insert_brc20_withdraw_asset(
+    &mut self,
+    satpoint: SatPoint,
+    asset: BRC20Withdraw,
+  ) -> std::result::Result<(), redb::StorageError> {
+    self
+      .brc20_satpoint_to_withdraw_assets
+      .insert(&satpoint.store(), asset.store().as_ref())?;
+    Ok(())
+  }
+
   pub fn load_brc20_transferring_asset(
     &mut self,
     satpoint: SatPoint,
@@ -159,7 +342,7 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       self.brc20_address_ticker_to_transfer_assets.remove(
         AddressTickerKey {
           primary: asset.owner,
-          secondary: asset.ticker.to_lowercase(),
+          secondary: asset.original_ticker.to_lowercase(),
         }
         .store()
         .as_ref(),
@@ -268,5 +451,28 @@ impl<'a, 'txn> TableContext<'a, 'txn> {
       .sequence_number_to_collection_type
       .insert(sequence_number, u16::from(collection_type))?;
     Ok(())
+  }
+
+  pub fn insert_opi_block_validation(
+    &mut self,
+    height: u32,
+    validation: OpiBlockValidation,
+  ) -> Result<(), redb::StorageError> {
+    self
+      .opi_block_validations
+      .insert(height, validation.store().as_ref())?;
+    Ok(())
+  }
+
+  pub fn get_opi_block_validations(
+    &mut self,
+    height: u32,
+  ) -> Result<Option<OpiBlockValidation>, redb::StorageError> {
+    Ok(
+      self
+        .opi_block_validations
+        .get(height)?
+        .map(|v| DynamicEntry::load(v.value())),
+    )
   }
 }

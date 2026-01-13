@@ -37,6 +37,8 @@ pub enum BlockHeightState {
   Processed,
   /// Latest block height committed to database
   DbCommitted,
+  /// Latest block height committed to BRC20 prog database
+  Brc20ProgCommitted,
 }
 
 /// Block indexing phase types
@@ -57,6 +59,10 @@ pub enum IndexingPhase {
   BtcDomainIndexing,
   /// Total time spent on all OKX extended content indexing
   OkxTotalIndexing,
+  /// Time spent validating BRC20 events with OPI
+  OpiValidation,
+  /// Time spent committing BRC20 prog to database
+  Brc20ProgCommit,
 }
 
 /// Block statistics categories

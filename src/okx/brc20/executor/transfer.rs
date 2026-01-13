@@ -3,18 +3,26 @@ use super::*;
 impl BRC20ExecutionMessage {
   pub(super) fn execute_transfer(
     &self,
-    context: &mut TableContext,
+    context: &mut TableContext<'_, '_>,
+    brc20_prog_client: &Brc20ProgClient,
+    chain: &Chain,
+    height: u32,
+    blocktime: u32,
+    block_hash: &BlockHash,
+    prog_tx_idx: &mut u64,
   ) -> Result<BRC20Receipt, ExecutionError> {
-    let BRC20Operation::Transfer { ticker, amount } = &self.operation else {
+    let BRC20Operation::Transfer { original_ticker, amount } = &self.operation else {
       unreachable!()
     };
 
     // load ticker info, ensure the ticker is deployed
     let mut ticker_info = context
-      .load_brc20_ticker_info(ticker)?
-      .ok_or(BRC20Error::TickerNotFound(ticker.clone().to_string()))?;
+      .load_brc20_ticker_info(&original_ticker)?
+      .ok_or(BRC20Error::TickerNotFound(original_ticker.clone().to_string()))?;
 
     let ticker = ticker_info.ticker.clone();
+
+    let decimals = ticker_info.decimals;
 
     // check if the sender has enough balance and update the balance
     let mut sender_balance = context
@@ -53,7 +61,13 @@ impl BRC20ExecutionMessage {
 
     context.update_brc20_balance(&receiver, &ticker, receiver_balance)?;
 
-    let burned = receiver.op_return();
+    let deposited_to_brc20_prog = receiver.op_return_prog()
+      && ((ticker.len() == PREDEPLOYED_TICKER_LENGTH
+        && height >= HardForks::brc20_prog_activation_height(chain))
+        || height >= HardForks::brc20_prog_all_tickers_activation_height(chain));
+
+    let burned = receiver.op_return() && !deposited_to_brc20_prog;
+
     if burned {
       ticker_info.burned = ticker_info
         .burned
@@ -62,6 +76,26 @@ impl BRC20ExecutionMessage {
 
       context.update_brc20_ticker_info(&ticker, ticker_info)?;
     }
+
+    if deposited_to_brc20_prog {
+      brc20_prog_client.brc20_deposit(
+        hex::encode(self.sender.to_script_bytes()),
+        ticker.to_lowercase().to_string(),
+        if decimals < 18 {
+          amount
+            .checked_mul(10u128.pow((18 - decimals) as u32))
+            .expect("Multiplication overflow")
+        } else {
+          *amount
+        },
+        blocktime as u64,
+        block_hash.to_b256_ed(),
+        *prog_tx_idx,
+        self.inscription_id.to_string(),
+      )?;
+      *prog_tx_idx += 1;
+    }
+
     Ok(BRC20Receipt {
       inscription_id: self.inscription_id,
       sequence_number: self.sequence_number,
@@ -72,10 +106,13 @@ impl BRC20ExecutionMessage {
       receiver,
       op_type: BRC20OpType::Transfer,
       result: Ok(BRC20Event::Transfer(TransferEvent {
-        ticker,
+        original_ticker: original_ticker.clone(),
+        ticker: ticker.clone(),
         amount: *amount,
+        decimals,
         send_to_coinbase,
         burned,
+        deposited_to_brc20_prog,
       })),
     })
   }

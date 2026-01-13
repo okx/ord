@@ -5,7 +5,7 @@ pub struct BRC20Ticker(Box<[u8]>);
 
 impl BRC20Ticker {
   pub const MIN_SIZE: usize = 4;
-  pub const MAX_SIZE: usize = 5;
+  pub const MAX_SIZE: usize = 6;
 
   pub fn len(&self) -> usize {
     self.0.len()
@@ -14,6 +14,10 @@ impl BRC20Ticker {
   pub fn to_lowercase(&self) -> BRC20LowerCaseTicker {
     let str = self.to_string().to_lowercase();
     BRC20LowerCaseTicker(str.as_bytes().to_vec().into_boxed_slice())
+  }
+
+  pub fn as_bytes(&self) -> &[u8] {
+    &self.0
   }
 }
 
@@ -30,13 +34,30 @@ impl FromStr for BRC20Ticker {
     let bytes = s.as_bytes();
     let length = bytes.len();
 
-    // BRC20Ticker names on the Bitcoin mainnet will be limited to 4 - 5 bytes.
+    // BRC20Ticker names on the Bitcoin mainnet will be limited to 4 - 6 bytes.
     if !(Self::MIN_SIZE..=Self::MAX_SIZE).contains(&length) {
       return Err(Error::Range);
     }
 
+    if bytes.iter().any(|b| *b == 0x00) {
+      return Err(Error::InvalidCharacters);
+    }
+
+    if length == PREDEPLOYED_TICKER_LENGTH {
+      if !is_valid_predeployed_ticker(s) {
+        return Err(Error::InvalidCharacters);
+      }
+    }
+
     Ok(Self(bytes.into()))
   }
+}
+
+fn is_valid_predeployed_ticker(ticker: &str) -> bool {
+  // Allow only ASCII alphanumeric characters and hyphens in 6-byte
+  ticker
+    .chars()
+    .all(|c| c.is_ascii_alphanumeric() || c == '-')
 }
 
 #[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, SerializeDisplay, Deserialize)]
@@ -57,12 +78,14 @@ impl Display for BRC20LowerCaseTicker {
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub enum Error {
   Range,
+  InvalidCharacters,
 }
 
 impl Display for Error {
   fn fmt(&self, f: &mut Formatter) -> fmt::Result {
     match self {
       Self::Range => write!(f, "ticker name out of range"),
+      Self::InvalidCharacters => write!(f, "ticker name contains invalid characters"),
     }
   }
 }
@@ -74,9 +97,32 @@ mod tests {
   use super::*;
 
   #[test]
+  fn test_six_bytes_ticker_valid() {
+    assert!(BRC20Ticker::from_str("ABCD-E").is_ok());
+    assert!(BRC20Ticker::from_str("1234-5").is_ok());
+    assert!(BRC20Ticker::from_str("A1B2-C").is_ok());
+  }
+
+  #[test]
+  fn test_six_bytes_ticker_invalid() {
+    assert_eq!(
+      BRC20Ticker::from_str("ABCD@E"),
+      Err(Error::InvalidCharacters)
+    );
+    assert_eq!(
+      BRC20Ticker::from_str("1234_5"),
+      Err(Error::InvalidCharacters)
+    );
+    assert_eq!(
+      BRC20Ticker::from_str("A1B2 C"),
+      Err(Error::InvalidCharacters)
+    );
+  }
+
+  #[test]
   fn test_ticker_from_str_valid_bytes() {
     assert!(BRC20Ticker::from_str("BTC").is_err()); // length is less than MIN_SIZE
-    assert!(BRC20Ticker::from_str("BITOIN").is_err()); // length is greater than MAX_SIZE
+    assert!(BRC20Ticker::from_str("BITCOIN").is_err()); // length is greater than MAX_SIZE
 
     assert_eq!(BRC20Ticker::from_str("ORDI").unwrap().to_string(), "ORDI"); // length is 4 bytes
     assert_eq!(BRC20Ticker::from_str("USDTS").unwrap().to_string(), "USDTS"); // length is 5 bytes
@@ -85,7 +131,7 @@ mod tests {
   #[test]
   fn test_ticker_from_str_invalid_bytes() {
     assert_eq!(BRC20Ticker::from_str(""), Err(Error::Range));
-    assert_eq!(BRC20Ticker::from_str("XAİİ"), Err(Error::Range));
+    assert_eq!(BRC20Ticker::from_str("XAİİa"), Err(Error::Range));
   }
 
   #[test]
@@ -109,8 +155,8 @@ mod tests {
   fn test_ticker_from_str_invalid() {
     assert_eq!(BRC20Ticker::from_str(""), Err(Error::Range));
     assert_eq!(BRC20Ticker::from_str("BTC"), Err(Error::Range));
-    assert_eq!(BRC20Ticker::from_str("BITCOI"), Err(Error::Range));
-    assert_eq!(BRC20Ticker::from_str("XAİİ"), Err(Error::Range));
+    assert_eq!(BRC20Ticker::from_str("BITCOIN"), Err(Error::Range));
+    assert_eq!(BRC20Ticker::from_str("XAİİa"), Err(Error::Range));
   }
 
   #[test]
@@ -208,7 +254,7 @@ mod tests {
 
   #[test]
   fn test_error_display() {
-    let ticker1 = BRC20Ticker::from_str("BTCDDD");
+    let ticker1 = BRC20Ticker::from_str("BTCDDDD");
     assert_eq!(
       format!("{}", ticker1.err().unwrap()),
       "ticker name out of range"
@@ -279,7 +325,7 @@ mod tests {
 
     // deserialize with error
     assert_eq!(
-      bincode::deserialize::<BRC20Ticker>(&[6, 0, 0, 0, 0, 0, 0, 0, 65, 98, 49, 59, 47, 49])
+      bincode::deserialize::<BRC20Ticker>(&[7, 0, 0, 0, 0, 0, 0, 0, 65, 98, 49, 59, 57, 47, 49])
         .unwrap_err()
         .to_string(),
       Error::Range.to_string()

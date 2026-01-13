@@ -1,5 +1,7 @@
-use super::*;
-use serde::{Deserialize, Serialize};
+use {
+  super::{event::WithdrawEvent, *},
+  serde::{Deserialize, Serialize},
+};
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error, Deserialize, Serialize)]
 pub enum BRC20Error {
@@ -35,6 +37,36 @@ pub enum BRC20Error {
 
   #[error("Self-mint operation denied: insufficient permissions")]
   SelfMintPermissionDenied,
+
+  #[error("Salt not found for ticker: {0}")]
+  SaltNotFound(String),
+
+  #[error("Salt is an invalid hex string for ticker: {0}")]
+  SaltInvalidHex(String),
+
+  #[error("Predeploy not found for ticker: {0}")]
+  PredeployNotFound(String),
+
+  #[error("Predeploy too young for ticker: {0}, block height: {1}")]
+  PredeployTooYoung(String, u32),
+
+  #[error("Predeploy hash invalid for ticker: {0}")]
+  PredeployHashInvalid(String),
+
+  #[error("Invalid BRC2.0 inscription receiver")]
+  InvalidBRC20ProgReceiverAddress,
+
+  #[error("Invalid BRC2.0 withdraw receiver")]
+  InvalidBRC20WithdrawReceiverAddress(WithdrawEvent),
+
+  #[error("BRC2.0 withdraw execution failed")]
+  WithdrawExecutionFailed(WithdrawEvent),
+
+  #[error("Invalid BRC2.0 data: both 'data' and 'base64_data' are set")]
+  BRC20ProgDataConflict,
+
+  #[error("Invalid BRC2.0 data: 'data' and 'base64_data' are unset")]
+  BRC20ProgDataMissing,
 
   #[error("Numeric error occurred: {0}")]
   NumericError(#[from] fixed_point::NumParseError),

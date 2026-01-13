@@ -13,9 +13,14 @@ use {
   super::*,
   crate::{
     okx::{
-      brc20::entry::{
-        BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
-        BRC20TransferAssetValue,
+      brc20::{
+        entry::{
+          BRC20BalanceValue, BRC20LowerCaseTickerValue, BRC20PredeployValue, BRC20ProgCallValue,
+          BRC20ProgDeployValue, BRC20ProgTransactValue, BRC20ReceiptsValue, BRC20TickerInfoValue,
+          BRC20TransferAssetValue, BRC20WithdrawValue, OpiBlockValidationValue,
+        },
+        evm_prog_client::Brc20ProgClient,
+        opi_validator::OpiValidationMode,
       },
       entry::{AddressTickerKeyValue, InscriptionReceiptsValue},
     },
@@ -46,7 +51,7 @@ use {
 pub use self::entry::RuneEntry;
 pub(crate) use self::{
   rtx::Rtx,
-  updater::{BlockData, Curse},
+  updater::{inscription_updater::Curse, BlockData},
 };
 
 pub(crate) mod entry;
@@ -54,7 +59,7 @@ pub mod event;
 mod extend;
 mod fetcher;
 mod lot;
-mod reorg;
+pub(crate) mod reorg;
 mod rtx;
 mod updater;
 mod utxo_entry;
@@ -63,7 +68,7 @@ pub(crate) mod bundle_message;
 #[cfg(test)]
 pub(crate) mod testing;
 
-const SCHEMA_VERSION: u64 = 30;
+const SCHEMA_VERSION: u64 = 41;
 
 define_multimap_table! { SAT_TO_SEQUENCE_NUMBER, u64, u32 }
 define_multimap_table! { SEQUENCE_NUMBER_TO_CHILDREN, u32, u32 }
@@ -94,10 +99,18 @@ define_table! { BTC_DOMAIN_TO_SEQUENCE_NUMBER, &str, u32}
 
 // BRC-20 tables
 define_table! { BRC20_BALANCES, &AddressTickerKeyValue, &BRC20BalanceValue }
+define_table! { BRC20_PREDEPLOYS, &str, &BRC20PredeployValue }
 define_table! { BRC20_TICKER_ENTRY, &BRC20LowerCaseTickerValue, &BRC20TickerInfoValue }
 define_table! { BRC20_TRANSACTION_ID_TO_RECEIPTS, &TxidValue, &BRC20ReceiptsValue }
 define_table! { BRC20_SATPOINT_TO_TRANSFER_ASSETS, &SatPointValue, &BRC20TransferAssetValue }
+define_table! { BRC20_SATPOINT_TO_PROG_DEPLOY_ASSETS, &SatPointValue, &BRC20ProgDeployValue }
+define_table! { BRC20_SATPOINT_TO_PROG_CALL_ASSETS, &SatPointValue, &BRC20ProgCallValue }
+define_table! { BRC20_SATPOINT_TO_PROG_TRANSACT_ASSETS, &SatPointValue, &BRC20ProgTransactValue }
+define_table! { BRC20_SATPOINT_TO_WITHDRAW_ASSETS, &SatPointValue, &BRC20WithdrawValue }
 define_multimap_table! { BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS, &AddressTickerKeyValue, &SatPointValue }
+
+// OPI validation tables
+define_table! { OPI_BLOCK_VALIDATIONS, u32, &OpiBlockValidationValue }
 
 #[derive(Copy, Clone)]
 pub(crate) enum Statistic {
@@ -245,6 +258,7 @@ pub struct Index {
   index_bitmap: bool,
   index_btc_domain: bool,
   save_inscription_receipts: bool,
+  pub(crate) brc20_prog_client: Option<Brc20ProgClient>,
 }
 
 impl Index {
@@ -371,6 +385,9 @@ impl Index {
         tx.open_table(BRC20_TRANSACTION_ID_TO_RECEIPTS)?;
         tx.open_table(BRC20_SATPOINT_TO_TRANSFER_ASSETS)?;
         tx.open_multimap_table(BRC20_ADDRESS_TICKER_TO_TRANSFER_ASSETS)?;
+
+        // OPI validation tables
+        tx.open_table(OPI_BLOCK_VALIDATIONS)?;
 
         {
           let mut statistics = tx.open_table(STATISTIC_TO_COUNT)?;
@@ -508,12 +525,48 @@ impl Index {
       index_transactions = Self::is_statistic_set(&statistics, Statistic::IndexTransactions)?;
 
       index_brc20 = Self::is_statistic_set(&statistics, Statistic::OkxIndexBrc20)?;
-
       index_bitmap = Self::is_statistic_set(&statistics, Statistic::OkxIndexBitmap)?;
       index_btc_domain = Self::is_statistic_set(&statistics, Statistic::OkxIndexBTCDomain)?;
-
       save_inscription_receipts =
         Self::is_statistic_set(&statistics, Statistic::OkxSaveInscriptionReceipts)?;
+
+      // Warn if command-line flags differ from database configuration
+      // The database configuration takes precedence over command-line arguments
+      if settings.index_inscriptions_raw() && settings.index_addresses_raw() {
+        if index_brc20 != settings.index_brc20() {
+          log::warn!(
+            "index_brc20 mismatch: database={}, command-line={}. Using database configuration.",
+            index_brc20,
+            settings.index_brc20()
+          );
+        }
+
+        if save_inscription_receipts != settings.save_inscription_receipts() {
+          log::warn!(
+          "save_inscription_receipts mismatch: database={}, command-line={}. Using database configuration.",
+          save_inscription_receipts,
+          settings.save_inscription_receipts()
+        );
+        }
+
+        if settings.chain() == Chain::Mainnet {
+          if index_bitmap != settings.index_bitmap() {
+            log::warn!(
+              "index_bitmap mismatch: database={}, command-line={}. Using database configuration.",
+              index_bitmap,
+              settings.index_bitmap()
+            );
+          }
+
+          if index_btc_domain != settings.index_btc_domain() {
+            log::warn!(
+            "index_btc_domain mismatch: database={}, command-line={}. Using database configuration.",
+            index_btc_domain,
+            settings.index_btc_domain()
+          );
+          }
+        }
+      }
     }
 
     let genesis_block_coinbase_transaction =
@@ -527,6 +580,17 @@ impl Index {
       settings.first_rune_height()
     } else {
       u32::MAX
+    };
+
+    let brc20_prog_client = if index_brc20 {
+      match Brc20ProgClient::new(settings.brc20_prog_auth_header(), settings.brc20_prog_url()) {
+        Ok(client) => Some(client),
+        Err(e) => {
+          bail!("Failed to connect to BRC20 Prog client: {:#}", e);
+        }
+      }
+    } else {
+      None
     };
 
     Ok(Self {
@@ -552,6 +616,7 @@ impl Index {
       index_bitmap,
       index_btc_domain,
       save_inscription_receipts,
+      brc20_prog_client,
     })
   }
 
@@ -776,6 +841,11 @@ impl Index {
         Ok(ok) => return Ok(ok),
         Err(err) => {
           log::info!("{}", err.to_string());
+
+          // Only clear caches when we need to retry (after error/reorg)
+          if let Some(brc20_prog_client) = &self.brc20_prog_client {
+            brc20_prog_client.brc20_clear_caches()?;
+          }
 
           match err.downcast_ref() {
             Some(&reorg::Error::Recoverable { height, depth }) => {
@@ -2541,6 +2611,20 @@ impl Index {
       ),
       txout,
     )))
+  }
+
+  pub(crate) fn chain(&self) -> Chain {
+    self.settings.chain()
+  }
+
+  pub(crate) fn opi_validation_mode(&self) -> OpiValidationMode {
+    if self.settings.opi_validation_strict() {
+      OpiValidationMode::Strict
+    } else if self.settings.opi_validation() {
+      OpiValidationMode::Relaxed
+    } else {
+      OpiValidationMode::None
+    }
   }
 }
 

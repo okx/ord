@@ -9,11 +9,11 @@ impl BRC20ExecutionMessage {
       unreachable!()
     };
 
-    let ticker = BRC20Ticker::from_str(&transfer.tick).map_err(BRC20Error::TickerParse)?;
+    let original_ticker = BRC20Ticker::from_str(&transfer.tick).map_err(BRC20Error::TickerParse)?;
 
     // load ticker info, ensure the ticker is deployed
     let ticker_info = context
-      .load_brc20_ticker_info(&ticker)?
+      .load_brc20_ticker_info(&original_ticker)?
       .ok_or(BRC20Error::TickerNotFound(transfer.tick.clone()))?;
 
     let ticker = ticker_info.ticker;
@@ -46,6 +46,7 @@ impl BRC20ExecutionMessage {
     context.update_brc20_balance(&address, &ticker, balance)?;
 
     let transferring_asset = BRC20TransferAsset {
+      original_ticker: original_ticker.clone(),
       ticker: ticker.clone(),
       amount: amt.to_u128_and_scale().0,
       owner: address.clone(),
@@ -72,7 +73,9 @@ impl BRC20ExecutionMessage {
       op_type: BRC20OpType::InscribeTransfer,
       result: Ok(BRC20Event::InscribeTransfer(InscribeTransferEvent {
         ticker,
+        original_ticker,
         amount: amt.to_u128_and_scale().0,
+        decimals: ticker_info.decimals,
       })),
     })
   }
