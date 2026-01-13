@@ -35,7 +35,7 @@ pub static MAXIMUM_SUPPLY: Lazy<FixedPoint> =
 pub(crate) use self::{
   entry::{BRC20Balance, BRC20Receipt, BRC20TickerInfo, BRC20TransferAsset},
   error::BRC20Error,
-  executor::{swap_refund_by_ticker, BRC20ExecutionMessage},
+  executor::{unisat_swap_refund::SwapModuleRefundExecutor, BRC20ExecutionMessage},
   ticker::{BRC20LowerCaseTicker, BRC20Ticker},
 };
 const SELF_ISSUANCE_TICKER_LENGTH: usize = 5;
