@@ -279,5 +279,5 @@ pub fn get_inscription_id_for_ticker_refund_hex(ticker: &BRC20Ticker) -> Inscrip
     inscription_id.insert(inscription_id.len(), '0');
   }
 
-  InscriptionId::from_str(format!("{}i0", inscription_id)).unwrap()
+  InscriptionId::from_str(&format!("{}i0", inscription_id)).unwrap()
 }

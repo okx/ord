@@ -369,7 +369,7 @@ impl<'a> OkxUpdater<'a> {
 
     // get the swap balances
     let mut balances = context.load_brc20_balances_by_address(sender_address)?;
-    balances.sort_by_key(|b| &b.ticker);
+    balances.sort_by(|a, b| a.ticker.cmp(&b.ticker));
 
     for tick_balance in balances {
       if tick_balance.total <= 0 {
