@@ -1,8 +1,8 @@
-use crate::okx::UtxoAddress;
-use bitcoin::Script;
-
-use crate::{index::Curse, Chain};
-use ordinals::Charm;
+use {
+  crate::{index::Curse, okx::UtxoAddress, Chain},
+  bitcoin::Script,
+  ordinals::Charm,
+};
 
 pub struct HardForks;
 
