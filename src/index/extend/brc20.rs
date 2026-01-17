@@ -146,6 +146,30 @@ impl Index {
     Ok(transferable_assets)
   }
 
+  pub(crate) fn brc20_get_withdraw_assets_with_location_by_outpoint(
+    outpoint: OutPoint,
+    rtx: &Rtx,
+  ) -> Result<Vec<(SatPoint, BRC20Withdraw)>> {
+    let satpoint_assets_table = rtx.0.open_table(BRC20_SATPOINT_TO_WITHDRAW_ASSETS)?;
+    let mut withdraw_assets = Vec::new();
+    for range in satpoint_assets_table.range::<&[u8; 44]>(
+      &SatPoint {
+        outpoint,
+        offset: 0,
+      }
+      .store()..&SatPoint {
+        outpoint,
+        offset: u64::MAX,
+      }
+      .store(),
+    )? {
+      let (satpoint, asset) = range?;
+      let satpoint = SatPoint::load(*satpoint.value());
+      withdraw_assets.push((satpoint, DynamicEntry::load(asset.value())));
+    }
+    Ok(withdraw_assets)
+  }
+
   pub(crate) fn brc20_get_raw_receipts(
     txid: &Txid,
     rtx: &Rtx,

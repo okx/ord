@@ -1,3 +1,4 @@
+pub use server_config::ServerConfig;
 use {
   self::{
     accept_encoding::AcceptEncoding,
@@ -44,8 +45,6 @@ use {
   },
   tracing_subscriber::EnvFilter,
 };
-
-pub use server_config::ServerConfig;
 
 mod accept_encoding;
 mod accept_json;
@@ -375,6 +374,10 @@ impl Server {
           .route(
             "/brc20/outpoint/:outpoint/transferable",
             get(okx::brc20::brc20_outpoint),
+          )
+          .route(
+            "/brc20/outpoint/:outpoint/withdraw",
+            get(okx::brc20::brc20_outpoint_withdraw),
           )
           .route("/brc20/tx/:txid/events", get(okx::brc20::brc20_tx_events))
           .route(
