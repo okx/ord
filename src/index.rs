@@ -87,6 +87,7 @@ define_table! { SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY, u32, InscriptionEntryValue
 define_table! { SEQUENCE_NUMBER_TO_RUNE_ID, u32, RuneIdValue }
 define_table! { SEQUENCE_NUMBER_TO_SATPOINT, u32, &SatPointValue }
 define_table! { STATISTIC_TO_COUNT, u64, u64 }
+define_table! { SAVEPOINT_HEIGHT_TO_ID, u64, u64 }
 define_table! { TRANSACTION_ID_TO_RUNE, &TxidValue, u128 }
 define_table! { TRANSACTION_ID_TO_TRANSACTION, &TxidValue, &[u8] }
 define_table! { WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP, u32, u128 }
@@ -388,6 +389,9 @@ impl Index {
 
         // OPI validation tables
         tx.open_table(OPI_BLOCK_VALIDATIONS)?;
+
+        // Restore savepoints
+        tx.open_table(SAVEPOINT_HEIGHT_TO_ID)?;
 
         {
           let mut statistics = tx.open_table(STATISTIC_TO_COUNT)?;
