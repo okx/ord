@@ -23,6 +23,7 @@ mod prog_call;
 mod prog_deploy;
 mod prog_transact;
 mod transfer;
+pub(super) mod unisat_swap_refund;
 mod withdraw;
 
 /// Represents a message used for executing BRC20 operations.

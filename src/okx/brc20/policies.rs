@@ -1,5 +1,6 @@
 use {
-  crate::{index::Curse, Chain},
+  crate::{index::Curse, okx::UtxoAddress, Chain},
+  bitcoin::Script,
   ordinals::Charm,
 };
 
@@ -15,6 +16,56 @@ impl HardForks {
       Chain::Regtest => 0,
       Chain::Signet => 0,
       Chain::Testnet4 => 0,
+    }
+  }
+
+  /// Proposed block activation height for BRC-20 Prog phase one.
+  /// Proposal content: https://github.com/brc20-devs/brc20-proposals/blob/main/bp08-module-swap-refund/proposal.md
+  pub fn brc20_swap_refund_activation_height(chain: &Chain) -> u32 {
+    match chain {
+      Chain::Mainnet => 932888, // decided by community
+      Chain::Testnet => 0,
+      Chain::Regtest => 0,
+      Chain::Signet => 283888,
+      Chain::Testnet4 => 0,
+    }
+  }
+
+  pub fn brc20_swap_refund_addresses(chain: &Chain) -> Option<(UtxoAddress, UtxoAddress)> {
+    match chain {
+      Chain::Mainnet => Some((
+        UtxoAddress::from_script(
+          Script::from_bytes(
+            hex::decode("6a208cbc2ac9896cac98d304aa42f43b98208ce8ae31c25e48d84ee852834a1a8066")
+              .unwrap()
+              .as_slice(),
+          ),
+          &Chain::Mainnet,
+        ),
+        UtxoAddress::from_str(
+          "bc1qrj03km5h9ag24cpynyn3l5tvny9cyd0x0le42u",
+          bitcoin::Network::Bitcoin,
+        )
+        .unwrap(),
+      )),
+      Chain::Testnet => None,
+      Chain::Regtest => None,
+      Chain::Signet => Some((
+        UtxoAddress::from_script(
+          Script::from_bytes(
+            hex::decode("6a2031152ea2364a6dbaab9013be8d656a34256d7e89f0c30714bbb04a9d85e63e5b")
+              .unwrap()
+              .as_slice(),
+          ),
+          &Chain::Signet,
+        ),
+        UtxoAddress::from_str(
+          "tb1qkrewl9zclku2qngth52eezdyrwmjpcspttdypa",
+          bitcoin::Network::Signet,
+        )
+        .unwrap(),
+      )),
+      Chain::Testnet4 => None,
     }
   }
 
