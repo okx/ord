@@ -19,8 +19,8 @@ impl Display for Error {
 
 impl std::error::Error for Error {}
 
-const MAX_SAVEPOINTS: u32 = 2;
-const SAVEPOINT_INTERVAL: u32 = 10;
+const MAX_SAVEPOINTS: u32 = 4;
+const SAVEPOINT_INTERVAL: u32 = 5;
 const CHAIN_TIP_DISTANCE: u32 = 21;
 
 pub(crate) struct Reorg {}
@@ -37,8 +37,6 @@ impl Reorg {
       return Ok(());
     }
 
-    let height_diff = ord_committed_height.abs_diff(brc20_prog_height);
-
     if brc20_prog_height > ord_committed_height {
       // Abnormal case: prog is ahead of ord
       // This should not happen in normal operation, but if it does,
@@ -47,7 +45,7 @@ impl Reorg {
         "BRC20 prog height {} is ahead of ord committed height {} (difference: {}). Rolling back prog only.",
         brc20_prog_height,
         ord_committed_height,
-        height_diff
+        brc20_prog_height - ord_committed_height
       );
       brc20_prog_client.brc20_reorg(ord_committed_height as u64)?;
       log::info!(
@@ -62,10 +60,11 @@ impl Reorg {
     let max_recoverable_depth =
       (MAX_SAVEPOINTS - 1) * SAVEPOINT_INTERVAL + (ord_processing_height) % SAVEPOINT_INTERVAL;
 
-    if height_diff > max_recoverable_depth {
+    let depth = ord_committed_height - brc20_prog_height;
+    if depth > max_recoverable_depth {
       log::error!(
         "Height difference ({}) between ord committed height ({}) and brc20 prog height ({}) exceeds max recoverable depth ({})",
-        height_diff,
+        depth,
         ord_committed_height,
         brc20_prog_height,
         max_recoverable_depth
@@ -77,11 +76,11 @@ impl Reorg {
       "ord committed height {} is ahead of brc20 prog height {} (difference: {}), triggering recovery",
       ord_committed_height,
       brc20_prog_height,
-      height_diff
+      depth
     );
     return Err(anyhow!(Error::Recoverable {
       height: ord_processing_height,
-      depth: 0,
+      depth,
     }));
   }
 
@@ -121,15 +120,46 @@ impl Reorg {
 
     let mut wtx = index.begin_write()?;
 
-    let oldest_savepoint =
-      wtx.get_persistent_savepoint(wtx.list_persistent_savepoints()?.min().unwrap())?;
+    // Get the oldest savepoint that is before the reorg height
+    let (savepoint_height, savepoint_id) = wtx
+      .open_table(SAVEPOINT_HEIGHT_TO_ID)?
+      .range(..u64::from(height - depth))?
+      .next_back()
+      .transpose()?
+      .map(|(height, value)| (height.value(), value.value()))
+      .ok_or_else(|| {
+        anyhow!(
+          "No suitable savepoint found before height {}. Available savepoints may be corrupted.",
+          height - depth
+        )
+      })?;
 
-    wtx.restore_savepoint(&oldest_savepoint)?;
+    log::info!(
+      "restoring savepoint {} at height {}",
+      savepoint_id,
+      savepoint_height
+    );
+
+    let savepoint = wtx.get_persistent_savepoint(savepoint_id)?;
+
+    wtx.restore_savepoint(&savepoint)?;
+
+    wtx
+      .open_table(SAVEPOINT_HEIGHT_TO_ID)?
+      .insert(savepoint_height, &savepoint_id)?;
+
+    wtx
+      .open_table(STATISTIC_TO_COUNT)?
+      .insert(&Statistic::LastSavepointHeight.key(), savepoint_height)?;
 
     Index::increment_statistic(&wtx, Statistic::Commits, 1)?;
     wtx.commit()?;
 
-    let rolled_back_height = index.begin_read()?.block_count()?;
+    let rolled_back_height = index
+      .begin_read()?
+      .block_height()?
+      .map(|height| height.0 as u64)
+      .unwrap_or(0_u64);
 
     log::info!(
       "successfully rolled back database to height {}",
@@ -140,8 +170,8 @@ impl Reorg {
       if let Some(brc20_prog_client) = &index.brc20_prog_client {
         let brc20_prog_height = brc20_prog_client.eth_block_number()?;
         log::info!("handling BRC20 prog reorg for height {}", brc20_prog_height);
-        if brc20_prog_height > rolled_back_height as u64 {
-          brc20_prog_client.brc20_reorg(rolled_back_height as u64)?;
+        if brc20_prog_height > rolled_back_height {
+          brc20_prog_client.brc20_reorg(rolled_back_height)?;
           log::info!(
             "successfully rolled back BRC20 prog height to height {}",
             rolled_back_height
@@ -179,7 +209,12 @@ impl Reorg {
       let savepoints = wtx.list_persistent_savepoints()?.collect::<Vec<u64>>();
 
       if savepoints.len() >= usize::try_from(MAX_SAVEPOINTS).unwrap() {
-        wtx.delete_persistent_savepoint(savepoints.into_iter().min().unwrap())?;
+        let savepoint_id = savepoints.into_iter().min().unwrap();
+        wtx.delete_persistent_savepoint(savepoint_id)?;
+        // Remove the savepoint height from the SAVEPOINT_HEIGHT_TO_ID table
+        wtx
+          .open_table(SAVEPOINT_HEIGHT_TO_ID)?
+          .retain(|_, value| value != savepoint_id)?;
       }
 
       Index::increment_statistic(&wtx, Statistic::Commits, 1)?;
@@ -187,8 +222,12 @@ impl Reorg {
 
       let wtx = index.begin_write()?;
 
-      log::debug!("creating savepoint at height {}", height);
-      wtx.persistent_savepoint()?;
+      log::info!("creating savepoint at height {}", height);
+      let savepoint = wtx.persistent_savepoint()?;
+
+      wtx
+        .open_table(SAVEPOINT_HEIGHT_TO_ID)?
+        .insert(&height, &savepoint)?;
 
       wtx
         .open_table(STATISTIC_TO_COUNT)?
