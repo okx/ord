@@ -1,11 +1,13 @@
-use super::{rtx::Rtx, *};
-use crate::okx::{
-  brc20::{
-    entry::OpiBlockValidation, BRC20Balance, BRC20Receipt, BRC20Ticker, BRC20TickerInfo,
-    BRC20TransferAsset,
+use {
+  super::{rtx::Rtx, *},
+  crate::okx::{
+    brc20::{
+      entry::{BRC20Withdraw, OpiBlockValidation},
+      BRC20Balance, BRC20Receipt, BRC20Ticker, BRC20TickerInfo, BRC20TransferAsset,
+    },
+    entry::{CollectionType, DynamicEntry, InscriptionReceipt},
+    AddressEndpoint, AddressTickerKey, UtxoAddress,
   },
-  entry::{CollectionType, DynamicEntry, InscriptionReceipt},
-  AddressEndpoint, AddressTickerKey, UtxoAddress,
 };
 
 mod brc20;
