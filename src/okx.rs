@@ -4,7 +4,7 @@ use {
       event_hash::BRC20BlockEventHash,
       evm_prog_client::{Brc20ProgClient, ToB256ED},
       opi_validator::{OpiValidationMode, OpiValidator},
-      BRC20ExecutionMessage,
+      BRC20ExecutionMessage, SwapModuleRefundExecutor,
     },
     context::TableContext,
     entry::{CollectionType, InscriptionReceipt},
@@ -71,6 +71,9 @@ impl<'a> OkxUpdater<'a> {
       bundle_messages.len()
     );
 
+    let mut prog_tx_idx: u64 = 0;
+    let mut brc20_block_event_hasher = BRC20BlockEventHash::new();
+
     if let Some(brc20_indexing_config) = &self.index_brc20 {
       let first_brc20_prog_height = self.chain.first_brc20_prog_height() as u64;
       if self.height >= first_brc20_prog_height {
@@ -96,10 +99,29 @@ impl<'a> OkxUpdater<'a> {
         // Check and fix height consistency between ord and prog databases
         Reorg::detect_reorg_with_brc20(self.height as u32, brc20_prog_client)?;
       }
-    }
 
-    let mut prog_tx_idx: u64 = 0;
-    let mut brc20_block_event_hasher = BRC20BlockEventHash::new();
+      if let Some(swap_refund_executor) =
+        SwapModuleRefundExecutor::from_block(self.height as u32, block_data, &self.chain)
+      {
+        let brc20_start = Instant::now();
+        let (txid, brc20_receipts) = swap_refund_executor.execute(context)?;
+        context.insert_brc20_tx_receipts(&txid, brc20_receipts.clone())?;
+        let brc20_receipts_count = brc20_receipts.len();
+        for receipt in brc20_receipts {
+          brc20_block_event_hasher.add_receipt(receipt);
+          log::info!(
+            "[OKX] Swap module refund: {} receipts for transaction {} at height {} in {}",
+            brc20_receipts_count,
+            txid,
+            self.height,
+            humantime::format_duration(brc20_start.elapsed())
+          );
+        }
+        block_result.brc20_count += brc20_receipts_count;
+        block_result.phase_durations.brc20 += brc20_start.elapsed();
+        block_result.total_duration += brc20_start.elapsed();
+      }
+    }
 
     for (_tx_index, (_transaction, txid)) in block_data
       .txdata

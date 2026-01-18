@@ -26,7 +26,7 @@ mod executor;
 mod fixed_point;
 mod operation;
 pub(crate) mod opi_validator;
-mod policies;
+pub(crate) mod policies;
 mod ticker;
 
 pub static MAXIMUM_SUPPLY: Lazy<FixedPoint> =
@@ -35,7 +35,7 @@ pub static MAXIMUM_SUPPLY: Lazy<FixedPoint> =
 pub(crate) use self::{
   entry::{BRC20Balance, BRC20Receipt, BRC20TickerInfo, BRC20TransferAsset},
   error::BRC20Error,
-  executor::BRC20ExecutionMessage,
+  executor::{unisat_swap_refund::SwapModuleRefundExecutor, BRC20ExecutionMessage},
   ticker::{BRC20LowerCaseTicker, BRC20Ticker},
 };
 const SELF_ISSUANCE_TICKER_LENGTH: usize = 5;
