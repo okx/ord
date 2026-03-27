@@ -6933,4 +6933,87 @@ mod tests {
     // zero
     assert_eq!(Statistic::Schema.key(), 0);
   }
+
+  #[test]
+  fn same_tx_forward_parent_reference_does_not_panic() {
+    for context in Context::configurations() {
+      context.mine_blocks(2);
+
+      // Get the coinbase transactions from block 1 and block 2
+      let coinbase1 = context.core.tx(1, 0);
+      let coinbase2 = context.core.tx(2, 0);
+
+      let coinbase1_txid = coinbase1.compute_txid();
+      let coinbase2_txid = coinbase2.compute_txid();
+
+      // Pre-compute the txid of the transaction we're about to create.
+      // Bitcoin's legacy txid excludes witness data, so we can build a
+      // skeleton with empty witnesses and get the same txid as the real tx.
+      let total_value =
+        coinbase1.output[0].value.to_sat() + coinbase2.output[0].value.to_sat();
+
+      let skeleton_tx = Transaction {
+        version: Version(2),
+        lock_time: LockTime::ZERO,
+        input: vec![
+          TxIn {
+            previous_output: OutPoint::new(coinbase1_txid, 0),
+            script_sig: ScriptBuf::new(),
+            sequence: Sequence::MAX,
+            witness: Witness::new(),
+          },
+          TxIn {
+            previous_output: OutPoint::new(coinbase2_txid, 0),
+            script_sig: ScriptBuf::new(),
+            sequence: Sequence::MAX,
+            witness: Witness::new(),
+          },
+        ],
+        output: vec![TxOut {
+          value: Amount::from_sat(total_value),
+          script_pubkey: ScriptBuf::new_p2wpkh(&WPubkeyHash::all_zeros()),
+        }],
+      };
+
+      let precomputed_txid = skeleton_tx.compute_txid();
+
+      // The child inscription (index 0) claims the parent inscription
+      // (index 1, same transaction) as its parent — a forward reference.
+      let forward_parent_id = InscriptionId {
+        txid: precomputed_txid,
+        index: 1,
+      };
+
+      let child_witness = Inscription {
+        content_type: Some("text/plain".into()),
+        body: Some("child".into()),
+        parents: vec![forward_parent_id.value()],
+        ..default()
+      }
+      .to_witness();
+
+      let parent_witness = inscription("text/plain", "parent").to_witness();
+
+      let txid = context.core.broadcast_tx(TransactionTemplate {
+        inputs: &[(1, 0, 0, child_witness), (2, 0, 0, parent_witness)],
+        ..default()
+      });
+
+      // Verify the pre-computed txid matches
+      assert_eq!(txid, precomputed_txid);
+
+      context.mine_blocks(1);
+
+      let child_inscription_id = InscriptionId { txid, index: 0 };
+
+      // With the fix, the forward reference is silently skipped rather
+      // than panicking. The child should have no parents.
+      assert!(
+        context
+          .index
+          .get_parents_by_inscription_id(child_inscription_id)
+          .is_empty()
+      );
+    }
+  }
 }
