@@ -1,6 +1,28 @@
 Changelog
 =========
 
+[0.23.1](https://github.com/ordinals/ord/releases/tag/0.23.1) - 2026-03-30
+--------------------------------------------------------------------------
+
+### Fixed
+- Prevent indexer crash on same-tx forward parent inscription reference ([#68](https://github.com/okx/ord/pull/68))
+
+[0.23.0](https://github.com/ordinals/ord/releases/tag/0.23.0) - 2026-01-18
+--------------------------------------------------------------------------
+
+### Added
+- Add BRC20 UTXO withdraw API ([#67](https://github.com/okx/ord/pull/67))
+- Add swap module balance refund ([#65](https://github.com/okx/ord/pull/65))
+- Add support for BRC2.0 operations ([#62](https://github.com/okx/ord/pull/62))
+- Support OpenTelemetry trace ([#63](https://github.com/okx/ord/pull/63))
+
+### Fixed
+- Improve reorg recovery with height-aware savepoint restoration ([#66](https://github.com/okx/ord/pull/66))
+- Avoid crashes when index_addresses is false ([#57](https://github.com/okx/ord/pull/57))
+
+### Misc
+- Fix CI test failures ([#60](https://github.com/okx/ord/pull/60))
+
 [0.22.1](https://github.com/ordinals/ord/releases/tag/0.22.1) - 2024-12-23
 --------------------------------------------------------------------------
 
